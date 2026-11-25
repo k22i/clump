@@ -30,6 +30,8 @@ type Commit struct {
 	Hash    string `json:"hash"`    // full sha as printed after "commit "
 	Subject string `json:"subject"` // first indented message line
 	Body    string `json:"body"`    // remaining indented message lines, each followed by "\n"
+	// Merge is true when the header has a "Merge:" line.
+	Merge bool `json:"merge,omitempty"`
 }
 
 // File is one "diff --git" section.
@@ -65,11 +67,13 @@ func (f *File) DisplayPath() string {
 // Hunk is one "@@" hunk, or a pseudo-hunk standing in for a file that has no
 // text hunks (binary, pure rename or copy, mode-only, empty new/deleted file).
 type Hunk struct {
-	ID       string `json:"id"`         // "h1".."hN" in file order across the whole diff
-	Index    int    `json:"index"`      // 0-based position in Diff.Hunks
-	FileIdx  int    `json:"file_index"` // 0-based position of File in Diff.Files
-	File     *File  `json:"-"`
-	Header   string `json:"header"` // the full "@@ ... @@ context" line; for a pseudo-hunk e.g. "(binary new file)"
+	ID      string `json:"id"`         // "h1".."hN" in file order across the whole diff
+	Index   int    `json:"index"`      // 0-based position in Diff.Hunks
+	FileIdx int    `json:"file_index"` // 0-based position of File in Diff.Files
+	File    *File  `json:"-"`
+	// Header is the full "@@ ... @@ context" line, or for a pseudo-hunk one of
+	// (see PseudoHeader): "(binary new file)", "(mode change 100644 -> 100755)", ...
+	Header   string `json:"header"`
 	OldStart int    `json:"old_start"`
 	OldLines int    `json:"old_lines"`
 	NewStart int    `json:"new_start"`
@@ -80,6 +84,21 @@ type Hunk struct {
 	Add    int      `json:"add"`
 	Del    int      `json:"del"`
 	Pseudo bool     `json:"pseudo,omitempty"`
+}
+
+// PseudoHeader is the Header of a file's pseudo-hunk:
+//
+//	"(" + desc + modes + ")"
+//
+// desc by status, prefixed with "binary " when f.Binary:
+// A "new file", D "deleted file", R "rename", C "copy", T "mode change",
+// M "change" when binary, else "no text changes".
+// modes, when OldMode and NewMode are both set and differ: " OLD -> NEW" for
+// status T, ", mode OLD -> NEW" otherwise. Examples: "(binary new file)",
+// "(mode change 100644 -> 100755)", "(rename, mode 100644 -> 100755)",
+// "(binary change)", "(new file)".
+func PseudoHeader(f *File) string {
+	panic("gitdiff: PseudoHeader not implemented")
 }
 
 // Diff is a parsed patch.
