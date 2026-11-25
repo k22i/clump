@@ -210,12 +210,12 @@ func (m *Model) open(l *gitdiff.Loaded, auto bool) tea.Cmd {
 		return nil
 	}
 	if m.loadOverride() {
-		return m.status("done", fmt.Sprintf("%d groups (edited)", len(m.doc.hist.Current().Groups)))
+		return m.status("done", plural(len(m.doc.hist.Current().Groups), "group")+" (edited)")
 	}
 	if m.o.Store != nil && !m.noCacheRead() {
 		if out, ok, err := m.o.Engine.Lookup(l.Diff, m.provider); err == nil && ok {
 			m.doc.setBase(out.Result.Grouping, out.Key, out.Provider, true, out.Result.Fallback, out.Result.Notices)
-			return m.status("done", fmt.Sprintf("%d groups (cached)", len(out.Result.Groups)))
+			return m.status("done", plural(len(out.Result.Groups), "group")+" (cached)")
 		}
 	}
 	return m.requestGroup(auto, false)
@@ -331,7 +331,7 @@ func (m *Model) applyGrouped(msg groupedMsg) tea.Cmd {
 	}
 	d.setBase(msg.out.Result.Grouping, msg.out.Key, msg.out.Provider, false, msg.out.Result.Fallback, msg.out.Result.Notices)
 	m.cursor, m.linesOK = 0, false
-	return m.status("done", fmt.Sprintf("%d groups", len(msg.out.Result.Groups)))
+	return m.status("done", plural(len(msg.out.Result.Groups), "group"))
 }
 
 // status emits a program-status report, if configured.
