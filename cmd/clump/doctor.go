@@ -32,8 +32,10 @@ func runDoctor(stdout io.Writer) error {
 			note := ""
 			switch {
 			case pc.Type == "command" && len(pc.Argv) > 0:
-				if _, err := exec.LookPath(pc.Argv[0]); err != nil {
+				if path, err := exec.LookPath(pc.Argv[0]); err != nil {
 					note = " (" + pc.Argv[0] + " not on PATH)"
+				} else {
+					note = " (runs " + path + ")"
 				}
 			case pc.APIKeyEnv != "":
 				if os.Getenv(pc.APIKeyEnv) == "" {
