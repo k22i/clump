@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"math"
-	"strings"
 	"testing"
 )
 
@@ -221,15 +220,4 @@ func TestNewDispatch(t *testing.T) {
 		}
 	})
 
-	t.Run("http types are not built yet", func(t *testing.T) {
-		for _, typ := range []string{TypeOpenAI, TypeAnthropic} {
-			_, err := New(Config{Name: "h", Type: typ, Model: "m"})
-			if !errors.Is(err, ErrConfig) {
-				t.Fatalf("New(%s) error = %v, want an ErrConfig", typ, err)
-			}
-			if err == nil || !strings.Contains(err.Error(), "not built yet") {
-				t.Fatalf("New(%s) error = %v, want the not-built-yet message", typ, err)
-			}
-		}
-	})
 }
