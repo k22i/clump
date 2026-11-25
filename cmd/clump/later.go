@@ -8,10 +8,6 @@ import (
 
 // Entry points built in later phases.
 
-func runPush(args []string, stdin *os.File, stdout io.Writer) int { return 0 }
-
-func runWatch(args []string, stderr io.Writer) error { return errors.New("watch: not built yet") }
-
 func runRex(args []string, stdin *os.File, stdout io.Writer) error {
 	return errors.New("rex: not built yet")
 }

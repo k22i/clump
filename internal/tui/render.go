@@ -159,6 +159,8 @@ func (m *Model) render() string {
 	switch {
 	case m.ov == ovPick:
 		body = m.renderPick(m.width, bodyH)
+	case m.doc == nil && m.watch != nil:
+		body = m.placeholder("watching "+m.watch.o.Repo+": select a commit, range, stash or diffing-mode comparison in lazygit", bodyH)
 	case m.doc == nil || m.doc.state == stLoading:
 		body = m.placeholder(m.spin.View()+" loading…", bodyH)
 	case m.doc.state == stFailed && (m.doc.L == nil || len(m.doc.L.Diff.Hunks) == 0):
