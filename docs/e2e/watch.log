@@ -1,0 +1,128 @@
+17:45:49.777 watch start repo=$SCRATCH/fixture auto=true
+17:45:52.020 push seq=1 bytes=382 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p bda52b2e6b09ecd16a672d30e1c2fcf5d74ba09a --"
+17:45:52.421 select seq=1 kind=commit ref=commit:bda52b2e6b09ecd16a672d30e1c2fcf5d74ba09a action=follow
+17:45:52.456 call start hash=daae22b7b4b9 provider=claude-haiku est="~1,737 tokens, ~$0.0002"
+17:45:55.043 call end hash=daae22b7b4b9 groups=1 calls=1 cost=0.000356 source=reported elapsed=2.572s
+17:46:01.180 push seq=2 bytes=674 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p 65c06b3d403d2b587b574df361cff11924e86b83 --"
+17:46:01.581 select seq=2 kind=commit ref=commit:65c06b3d403d2b587b574df361cff11924e86b83 action=follow
+17:46:01.604 call start hash=3e0beaf8483b provider=claude-haiku est="~1,610 tokens, ~$0.0002"
+17:46:04.468 call end hash=3e0beaf8483b groups=1 calls=1 cost=0.000391 source=reported elapsed=2.855s
+17:46:10.323 push seq=3 bytes=382 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p 1211efcedc3096ec83032bff9ec776e11d515b21 --"
+17:46:10.725 select seq=3 kind=commit ref=commit:1211efcedc3096ec83032bff9ec776e11d515b21 action=follow
+17:46:10.774 call start hash=a16524c263b4 provider=claude-haiku est="~1,517 tokens, ~$0.0002"
+17:46:13.430 call end hash=a16524c263b4 groups=1 calls=1 cost=0.000356 source=reported elapsed=2.645s
+17:46:16.860 push seq=4 bytes=382 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p 1211efcedc3096ec83032bff9ec776e11d515b21 --"
+17:46:17.261 select seq=4 kind=commit ref=commit:1211efcedc3096ec83032bff9ec776e11d515b21 action=follow
+17:46:17.286 dedupe hash=a16524c263b4
+17:46:19.495 push seq=5 bytes=382 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p 2d075aae7e05130626b1036a7c7e6c6949fd3f56 --"
+17:46:19.896 select seq=5 kind=commit ref=commit:2d075aae7e05130626b1036a7c7e6c6949fd3f56 action=follow
+17:46:19.916 call start hash=6815b554a65c provider=claude-haiku est="~1,515 tokens, ~$0.0002"
+17:46:22.431 call end hash=6815b554a65c groups=1 calls=1 cost=0.000361 source=reported elapsed=2.507s
+17:46:22.458 push seq=6 bytes=382 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p 2d075aae7e05130626b1036a7c7e6c6949fd3f56 --"
+17:46:22.859 select seq=6 kind=commit ref=commit:2d075aae7e05130626b1036a7c7e6c6949fd3f56 action=follow
+17:46:22.888 dedupe hash=6815b554a65c
+17:46:28.663 push seq=7 bytes=676 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p 358cbbbb2dd7c172cd02c3f23e416c81487635eb --"
+17:46:29.084 select seq=7 kind=commit ref=commit:358cbbbb2dd7c172cd02c3f23e416c81487635eb action=follow
+17:46:29.193 call start hash=ec4820723459 provider=claude-haiku est="~1,622 tokens, ~$0.0002"
+17:46:31.872 call end hash=ec4820723459 groups=1 calls=1 cost=0.000393 source=reported elapsed=2.67s
+17:46:37.834 push seq=8 bytes=397 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p 714fb0b3503449771cff8f3f6fbce7aac27a0f66 --"
+17:46:38.234 select seq=8 kind=commit ref=commit:714fb0b3503449771cff8f3f6fbce7aac27a0f66 action=follow
+17:46:38.259 call start hash=cc6ebd857bc5 provider=claude-haiku est="~1,524 tokens, ~$0.0002"
+17:46:40.977 call end hash=cc6ebd857bc5 groups=1 calls=1 cost=0.000362 source=reported elapsed=2.71s
+17:47:04.143 push seq=9 bytes=676 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p 358cbbbb2dd7c172cd02c3f23e416c81487635eb --"
+17:47:04.544 select seq=9 kind=commit ref=commit:358cbbbb2dd7c172cd02c3f23e416c81487635eb action=follow
+17:47:04.560 show hash=ec4820723459 cached
+17:47:05.510 push seq=10 bytes=382 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p 2d075aae7e05130626b1036a7c7e6c6949fd3f56 --"
+17:47:05.910 select seq=10 kind=commit ref=commit:2d075aae7e05130626b1036a7c7e6c6949fd3f56 action=follow
+17:47:05.953 show hash=6815b554a65c cached
+17:47:15.289 push seq=11 bytes=382 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p 1211efcedc3096ec83032bff9ec776e11d515b21 --"
+17:47:15.320 push seq=12 bytes=674 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p 65c06b3d403d2b587b574df361cff11924e86b83 --"
+17:47:15.354 push seq=13 bytes=382 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p bda52b2e6b09ecd16a672d30e1c2fcf5d74ba09a --"
+17:47:15.394 push seq=14 bytes=382 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p f7b5a82abc3ca178b02ada28f3996fd30dc5e951 --"
+17:47:15.424 push seq=15 bytes=674 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p 556f9d09dc55b3fb55547644abdb4c898aef76fb --"
+17:47:15.458 push seq=16 bytes=382 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p 44e180e645e6ed7ecbe8011753a0c588d96842cc --"
+17:47:15.494 push seq=17 bytes=382 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p 371defc1a59f97b4964a29ae626e0b96291a80b5 --"
+17:47:15.530 push seq=18 bytes=674 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p 509f8ea2c19293e94fd2c430f662472993868cfd --"
+17:47:15.562 push seq=19 bytes=382 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p 54a31f90270ca8cca32b44136b3319ed27bd0c92 --"
+17:47:15.598 push seq=20 bytes=382 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p 365b819b1ad5b9f6ce33b6e45632a592728717ec --"
+17:47:15.629 push seq=21 bytes=674 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p d952c6204a8b9daec089934d8d1e3d86ff615ede --"
+17:47:15.663 push seq=22 bytes=382 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p a9c64ae8f4aa8e6f26d942652fe980cc4a4e16b6 --"
+17:47:15.697 push seq=23 bytes=382 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p ca451606e3a9a6be3a5c91905e33a6a15841faed --"
+17:47:15.728 push seq=24 bytes=674 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p c44aa07ce38e501876cc4cafcf45afb71488f655 --"
+17:47:15.763 push seq=25 bytes=382 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p a38d2377c3e2280a962f5d23e4b2d965f67ec1be --"
+17:47:15.796 push seq=26 bytes=382 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p 37e0478bffb0b986575c4b8caea3d3e3f017ae94 --"
+17:47:15.830 push seq=27 bytes=672 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p 15352af58363600c011c37369140e1b9a195144c --"
+17:47:15.867 push seq=28 bytes=382 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p 510d0a11b095e06b0d77085f4da9e53d1b7a94cb --"
+17:47:15.902 push seq=29 bytes=382 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p baa9579642042dc3d71fb6203baff6066d6a3619 --"
+17:47:15.935 push seq=30 bytes=670 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p fe1303e71fff5958406fd20c65480a6260061e23 --"
+17:47:15.967 push seq=31 bytes=382 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p 9775e044e7889867fcb12f3a1d41afc39932838f --"
+17:47:16.003 push seq=32 bytes=382 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p 6483182dce6b7449d3d027e521f13a349a07c83a --"
+17:47:16.034 push seq=33 bytes=668 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p 5a7a1ead6414711d61ba9c983807345911b321e0 --"
+17:47:16.069 push seq=34 bytes=382 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p 308586f3be9b5d334daccc5163cf7666ab44e02b --"
+17:47:16.104 push seq=35 bytes=381 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p 12625448c265609f57a9eb43eebad41a956edafa --"
+17:47:16.141 push seq=36 bytes=635 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p 2cf8986dc4a247eb063261a858dfdf485e0239e8 --"
+17:47:16.171 push seq=37 bytes=377 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p c1b4a7ac3cecca4daaed634f14277dd76571daab --"
+17:47:16.207 push seq=38 bytes=376 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p 764a91d3d435cfb52e533cb6828562518eab6688 --"
+17:47:16.239 push seq=39 bytes=601 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p ee8d38e62a8b9265f9ed824babced7e7ab4e907b --"
+17:47:16.272 push seq=40 bytes=374 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p 2a438fc11199b07e9dcf5f1019bf6e39ed25b7a0 --"
+17:47:16.672 select seq=40 kind=commit ref=commit:2a438fc11199b07e9dcf5f1019bf6e39ed25b7a0 action=follow
+17:47:16.709 call start hash=6fec7d69df05 provider=claude-haiku est="~1,517 tokens, ~$0.0002"
+17:47:19.231 call end hash=6fec7d69df05 groups=1 calls=1 cost=0.000357 source=reported elapsed=2.513s
+17:47:22.497 push seq=41 bytes=374 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p 2a438fc11199b07e9dcf5f1019bf6e39ed25b7a0 --"
+17:47:22.898 select seq=41 kind=commit ref=commit:2a438fc11199b07e9dcf5f1019bf6e39ed25b7a0 action=follow
+17:47:22.937 dedupe hash=6fec7d69df05
+17:47:33.570 push seq=42 bytes=233 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false stash show --no-ext-diff --unified=3 --find-renames=50% -p --stat -u --color=always refs/stash@{0}"
+17:47:33.971 select seq=42 kind=stash ref=stash:refs/stash@{0} action=follow
+17:47:33.991 call start hash=dd768591de4f provider=claude-haiku est="~1,528 tokens, ~$0.0002"
+17:47:36.522 call end hash=dd768591de4f groups=1 calls=1 cost=0.000355 source=reported elapsed=2.521s
+17:47:39.806 push seq=43 bytes=374 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p 2a438fc11199b07e9dcf5f1019bf6e39ed25b7a0 --"
+17:47:40.207 select seq=43 kind=commit ref=commit:2a438fc11199b07e9dcf5f1019bf6e39ed25b7a0 action=follow
+17:47:40.222 show hash=6fec7d69df05 cached
+17:47:41.381 push seq=44 bytes=374 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p 2a438fc11199b07e9dcf5f1019bf6e39ed25b7a0 --"
+17:47:41.754 push seq=45 bytes=227 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false diff --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always 333ef1527769e3e18748e5fc133dcf7544313005^ 2a438fc11199b07e9dcf5f1019bf6e39ed25b7a0 --stat -p --"
+17:47:42.108 push seq=46 bytes=432 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false diff --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always 7cad34e2a144c77bcba809a9de859854ce6ab79b^ 2a438fc11199b07e9dcf5f1019bf6e39ed25b7a0 --stat -p --"
+17:47:42.510 select seq=46 kind=range ref=range:7cad34e2a144c77bcba809a9de859854ce6ab79b^..2a438fc11199b07e9dcf5f1019bf6e39ed25b7a0 action=follow
+17:47:42.567 call start hash=0eebcd7557fd provider=claude-haiku est="~1,608 tokens, ~$0.0002"
+17:47:45.338 call end hash=0eebcd7557fd groups=2 calls=1 cost=0.000412 source=reported elapsed=2.762s
+17:48:22.449 push seq=47 bytes=432 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false diff --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always 7cad34e2a144c77bcba809a9de859854ce6ab79b^ 2a438fc11199b07e9dcf5f1019bf6e39ed25b7a0 --stat -p --"
+17:48:22.850 select seq=47 kind=range ref=range:7cad34e2a144c77bcba809a9de859854ce6ab79b^..2a438fc11199b07e9dcf5f1019bf6e39ed25b7a0 action=follow
+17:48:22.886 dedupe hash=0eebcd7557fd
+17:48:37.295 push seq=48 bytes=6218 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git log --graph --color=always --abbrev-commit --decorate --date=relative --pretty=medium refs/heads/main --"
+17:48:37.697 select seq=48 kind=log ref=log action=dim
+17:48:42.228 push seq=49 bytes=163 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false diff --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always -- docs"
+17:48:42.629 select seq=49 kind=worktree ref=worktree:docs action=dim
+17:48:52.232 push seq=50 bytes=163 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false diff --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always -- docs"
+17:48:52.633 select seq=50 kind=worktree ref=worktree:docs action=dim
+17:49:02.217 push seq=51 bytes=163 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false diff --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always -- docs"
+17:49:02.618 select seq=51 kind=worktree ref=worktree:docs action=dim
+17:49:10.219 push seq=52 bytes=432 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false diff --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always 7cad34e2a144c77bcba809a9de859854ce6ab79b^ 2a438fc11199b07e9dcf5f1019bf6e39ed25b7a0 --stat -p --"
+17:49:10.620 select seq=52 kind=range ref=range:7cad34e2a144c77bcba809a9de859854ce6ab79b^..2a438fc11199b07e9dcf5f1019bf6e39ed25b7a0 action=follow
+17:49:10.652 dedupe hash=0eebcd7557fd
+17:49:11.085 push seq=53 bytes=571 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p 7cad34e2a144c77bcba809a9de859854ce6ab79b --"
+17:49:11.487 select seq=53 kind=commit ref=commit:7cad34e2a144c77bcba809a9de859854ce6ab79b action=follow
+17:49:11.521 call start hash=b98cbcd210e2 provider=claude-haiku est="~1,581 tokens, ~$0.0002"
+17:49:11.625 push seq=54 bytes=374 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p 333ef1527769e3e18748e5fc133dcf7544313005 --"
+17:49:12.025 select seq=54 kind=commit ref=commit:333ef1527769e3e18748e5fc133dcf7544313005 action=follow
+17:49:12.043 call queued hash=285fe174d01a
+17:49:14.817 call end hash=b98cbcd210e2 groups=1 calls=1 cost=0.000387 source=reported elapsed=3.289s
+17:49:14.817 call stale hash=b98cbcd210e2 (cached, not shown)
+17:49:14.817 call start hash=285fe174d01a provider=claude-haiku est="~1,527 tokens, ~$0.0002"
+17:49:17.574 call end hash=285fe174d01a groups=1 calls=1 cost=0.000356 source=reported elapsed=2.752s
+17:49:22.463 push seq=55 bytes=374 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p 333ef1527769e3e18748e5fc133dcf7544313005 --"
+17:49:22.864 select seq=55 kind=commit ref=commit:333ef1527769e3e18748e5fc133dcf7544313005 action=follow
+17:49:22.899 dedupe hash=285fe174d01a
+17:49:30.788 watch stop
+17:49:31.956 watch start repo=$SCRATCH/fixture auto=true
+17:49:34.136 push seq=1 bytes=571 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p 7cad34e2a144c77bcba809a9de859854ce6ab79b --"
+17:49:34.537 select seq=1 kind=commit ref=commit:7cad34e2a144c77bcba809a9de859854ce6ab79b action=follow
+17:49:34.578 show hash=b98cbcd210e2 cached
+17:49:37.198 push seq=2 bytes=374 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false show --no-ext-diff --unified=3 --find-renames=50% --submodule --color=always --stat --decorate -p 333ef1527769e3e18748e5fc133dcf7544313005 --"
+17:49:37.601 select seq=2 kind=commit ref=commit:333ef1527769e3e18748e5fc133dcf7544313005 action=follow
+17:49:37.638 show hash=285fe174d01a edited
+17:49:47.631 push seq=3 bytes=233 argv="/Applications/Xcode.app/Contents/Developer/usr/bin/git -C $SCRATCH/fixture -c diff.dstPrefix=b/ -c diff.srcPrefix=a/ -c diff.noprefix=false stash show --no-ext-diff --unified=3 --find-renames=50% -p --stat -u --color=always refs/stash@{0}"
+17:49:48.031 select seq=3 kind=stash ref=stash:refs/stash@{0} action=follow
+17:49:48.048 show hash=dd768591de4f cached
+17:49:49.695 call start hash=dd768591de4f provider=claude-haiku est="~1,531 tokens, ~$0.0002"
+17:49:52.626 call end hash=dd768591de4f groups=1 calls=1 cost=0.000374 source=reported elapsed=2.926s
+17:50:32.040 watch start repo=$SCRATCH/fixture auto=true
+17:50:34.134 watch stop

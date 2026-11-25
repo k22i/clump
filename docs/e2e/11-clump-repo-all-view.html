@@ -1,0 +1,24 @@
+<div style="font-family: monospace; white-space: pre;"><div style="display: inline;font-weight: bold;">clump &#183; ipc: shorter socket path fallback; refuse a socket dir that is a symlin&#8230;</div>
+<div style="display: inline;opacity: 0.5;filter: invert(100%);">&#9656; Add MaxSocketPath constant and symlink-safe dir check                +17 &#8722;0 2h</div>
+  Fall back to /tmp when the socket path is too long                  <div style="display: inline;opacity: 0.5;"> +13 &#8722;1 1h</div>
+  Verify socket directory ownership in Listen                          <div style="display: inline;opacity: 0.5;"> +3 &#8722;0 1h</div>
+  Add tests for socket path fallback and symlink refusal              <div style="display: inline;opacity: 0.5;"> +39 &#8722;0 1h</div>
+<div style="display: inline;opacity: 0.5;">&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;</div>
+<div style="display: inline;color: rgb(97, 175, 239);font-weight: bold;">&#9472;&#9472; internal/ipc/ipc.go (M +33 &#8722;1) &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;</div>
+<div style="display: inline;color: rgb(198, 120, 221);font-weight: bold;">&#9476;&#9476; 1. Add MaxSocketPath constant and symlink-safe dir check &#9476;&#9476;&#9476;&#9476;&#9476;&#9476;&#9476;&#9476;&#9476;&#9476;&#9476;&#9476;&#9476;&#9476;&#9476;&#9476;&#9476;&#9476;&#9476;&#9476;</div>
+<div style="display: inline;filter: invert(100%);">[ 1]   @@ -16,6 +16,7 @@ import (                                               </div>
+            <div style="display: inline;color: rgb(165, 214, 255);">&quot;os&quot;</div>
+            <div style="display: inline;color: rgb(165, 214, 255);">&quot;path/filepath&quot;</div>
+            <div style="display: inline;color: rgb(165, 214, 255);">&quot;sync&quot;</div>
+       <div style="display: inline;color: rgb(152, 195, 121);">+    </div><div style="display: inline;color: rgb(165, 214, 255);">&quot;syscall&quot;</div>
+            <div style="display: inline;color: rgb(165, 214, 255);">&quot;time&quot;</div>
+
+            <div style="display: inline;color: rgb(165, 214, 255);">&quot;golang.org/x/sys/unix&quot;</div>
+<div style="display: inline;color: rgb(198, 120, 221);font-weight: bold;">&#9476;&#9476; 2. Fall back to /tmp when the socket path is too long &#9476;&#9476;&#9476;&#9476;&#9476;&#9476;&#9476;&#9476;&#9476;&#9476;&#9476;&#9476;&#9476;&#9476;&#9476;&#9476;&#9476;&#9476;&#9476;&#9476;&#9476;&#9476;&#9476;</div>
+<div style="display: inline;color: rgb(198, 120, 221);font-weight: bold;">[ 2] </div>  <div style="display: inline;color: rgb(86, 182, 194);">@@ -108,12 +109,24 @@ func SocketDir() string {</div>
+        }
+
+        <div style="display: inline;color: rgb(139, 148, 158);">// SocketPath is SocketDir()/&lt;first 16 hex chars of sha256(repoRoot)&gt;.s&#8230;</div>
+       <div style="display: inline;color: rgb(152, 195, 121);">+</div><div style="display: inline;color: rgb(139, 148, 158);">//</div>
+       <div style="display: inline;color: rgb(152, 195, 121);">+</div><div style="display: inline;color: rgb(139, 148, 158);">// Unix socket paths are limited to 104 bytes on darwin (108 on linux).&#8230;</div>
+<div style="display: inline;opacity: 0.5;">? keys &#183; a all &#183; / search &#183; x mark &#183; M move &#183; u undo &#183; q quit</div></div>

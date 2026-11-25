@@ -1,0 +1,75 @@
+╭─[1]─Status────────────────────────────────────────────╮╭─[0]─Patch────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│fixture → main                                         ││Showing diff for range 7cad34e-2a438fc                                                                        ▐
+╰───────────────────────────────────────────────────────╯│                                                                                                              ▐
+╭─[2]─Files - Worktrees - Submodules────────────────────╮│ docs/log.txt | 3 +++                                                                                         ▐
+│                                                       ││ src/fill.go  | 1 +                                                                                           ▐
+│                                                       ││ 2 files changed, 4 insertions(+)                                                                             ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││diff --git a/docs/log.txt b/docs/log.txt                                                                      ▐
+│                                                       ││index 94c99a3..c8b13a5 100644                                                                                 ▐
+│                                                       ││--- a/docs/log.txt                                                                                            ▐
+│                                                       ││+++ b/docs/log.txt                                                                                            ▐
+│                                                       ││@@ -3,3 +3,6 @@ line 2                                                                                        ▐
+│                                                       ││ line 3                                                                                                       ▐
+│                                                       ││ line 4                                                                                                       ▐
+│                                                       ││ line 5                                                                                                       ▐
+│                                                       ││+line 6                                                                                                       ▐
+│                                                       ││+line 7                                                                                                       ▐
+│                                                       ││+line 8                                                                                                       ▐
+│                                                       ││diff --git a/src/fill.go b/src/fill.go                                                                        ▐
+│                                                       ││index ca11bd9..77f2c2a 100644                                                                                 ▐
+│                                                       ││--- a/src/fill.go                                                                                             ▐
+│                                                       ││+++ b/src/fill.go                                                                                             ▐
+│                                                       ││@@ -1 +1,2 @@                                                                                                 ▐
+│                                                       ││ func f3() int { return 3 }                                                                                   ▐
+│                                                       ││+func f6() int { return 6 }                                                                                   ▐
+╰────────────────────────────────────────────────0 of 0─╯│                                                                                                              ▐
+╭─[3]─Local branches - Remotes - Tags───────────────────╮│                                                                                                              ▐
+│  * main                                               ││                                                                                                              ▐
+│10M feature2                                           ││                                                                                                              ▐
+│10M feature                                            ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              │
+╰────────────────────────────────────────────────1 of 3─╯│                                                                                                              │
+╭─[4]─Commits - Reflog──────────────────────────────────╮│                                                                                                              │
+│a38d2377 FB ○ Filler commit 23                         ││                                                                                                              │
+│37e0478b FB ○ Filler commit 22                         ││                                                                                                              │
+│15352af5 FB ○ Filler commit 21                         ││                                                                                                              │
+│510d0a11 FB ○ Filler commit 20                         ││                                                                                                              │
+│baa95796 FB ○ Filler commit 19                         ││                                                                                                              │
+│fe1303e7 FB ○ Filler commit 18                         ││                                                                                                              │
+│9775e044 FB ○ Filler commit 17                         ││                                                                                                              │
+│6483182d FB ○ Filler commit 16                         ▐│                                                                                                              │
+│5a7a1ead FB ○ Filler commit 15                         ▐│                                                                                                              │
+│308586f3 FB ○ Filler commit 14                         ▐│                                                                                                              │
+│12625448 FB ○ Filler commit 13                         ▐│                                                                                                              │
+│2cf8986d FB ○ Filler commit 12                         ▐│                                                                                                              │
+│c1b4a7ac FB ○ Filler commit 11                         ▐│                                                                                                              │
+│764a91d3 FB ○ Filler commit 10                         ▐╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+│ee8d38e6 FB ○ Filler commit 9                          ▐╭─Command log──────────────────────────────────────────────────────────────────────────────────────────────────╮
+│2a438fc1 FB ○ Filler commit 8                          ││You can hide/focus this panel by pressing '@'                                                                 │
+│333ef152 FB ○ Filler commit 7                          ││                                                                                                              │
+│7cad34e2 FB ○ Filler commit 6                          ││                                                                                                              │
+│bbdef862 FB ○ Filler commit 5                          ││                                                                                                              │
+│b11ffd34 FB ○ Filler commit 4                          ││                                                                                                              │
+╰──────────────────────────────────────────────35 of 51─╯│                                                                                                              │
+╭─[5]─Stash─────────────────────────────────────────────╮│                                                                                                              │
+│10M On main: fixture stash                             ││                                                                                                              │
+╰────────────────────────────────────────────────1 of 1─╯╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+Squash: s | Fixup: f | Drop: d | Edit: e | Copy (cherry-pick): C | Keybindings: ?                                                              Donate Ask Question 0.66.3

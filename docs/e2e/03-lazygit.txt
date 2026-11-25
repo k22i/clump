@@ -1,0 +1,75 @@
+╭─[1]─Status────────────────────────────────────────────╮╭─[0]─Patch────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│fixture → main                                         ││commit 714fb0b3503449771cff8f3f6fbce7aac27a0f66 (HEAD -> main)                                                ▐
+╰───────────────────────────────────────────────────────╯│Author: Fixture Bot <fixture@example.invalid>                                                                 ▐
+╭─[2]─Files - Worktrees - Submodules────────────────────╮│Date:   Thu Jan 1 00:00:00 2026 +0000                                                                         ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││    Filler commit 40                                                                                          ▐
+│                                                       ││---                                                                                                           ▐
+│                                                       ││ docs/log.txt | 1 +                                                                                           ▐
+│                                                       ││ 1 file changed, 1 insertion(+)                                                                               ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││diff --git a/docs/log.txt b/docs/log.txt                                                                      ▐
+│                                                       ││index 7ec7cd2..bab081f 100644                                                                                 ▐
+│                                                       ││--- a/docs/log.txt                                                                                            ▐
+│                                                       ││+++ b/docs/log.txt                                                                                            ▐
+│                                                       ││@@ -37,3 +37,4 @@ line 36                                                                                     ▐
+│                                                       ││ line 37                                                                                                      ▐
+│                                                       ││ line 38                                                                                                      ▐
+│                                                       ││ line 39                                                                                                      ▐
+│                                                       ││+line 40                                                                                                      ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+╰────────────────────────────────────────────────0 of 0─╯│                                                                                                              ▐
+╭─[3]─Local branches - Remotes - Tags───────────────────╮│                                                                                                              ▐
+│  * main                                               ││                                                                                                              ▐
+│10M feature2                                           ││                                                                                                              ▐
+│10M feature                                            ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+╰────────────────────────────────────────────────1 of 3─╯│                                                                                                              ▐
+╭─[4]─Commits - Reflog──────────────────────────────────╮│                                                                                                              ▐
+│714fb0b3 FB ○ Filler commit 40                         ▐│                                                                                                              │
+│358cbbbb FB ○ Filler commit 39                         ▐│                                                                                                              │
+│2d075aae FB ○ Filler commit 38                         ▐│                                                                                                              │
+│1211efce FB ○ Filler commit 37                         ▐│                                                                                                              │
+│65c06b3d FB ○ Filler commit 36                         ▐│                                                                                                              │
+│bda52b2e FB ○ Filler commit 35                         ▐│                                                                                                              │
+│f7b5a82a FB ○ Filler commit 34                         ▐│                                                                                                              │
+│556f9d09 FB ○ Filler commit 33                         ▐│                                                                                                              │
+│44e180e6 FB ○ Filler commit 32                         ││                                                                                                              │
+│371defc1 FB ○ Filler commit 31                         ││                                                                                                              │
+│509f8ea2 FB ○ Filler commit 30                         ││                                                                                                              │
+│54a31f90 FB ○ Filler commit 29                         ││                                                                                                              │
+│365b819b FB ○ Filler commit 28                         ││                                                                                                              │
+│d952c620 FB ○ Filler commit 27                         │╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+│a9c64ae8 FB ○ Filler commit 26                         │╭─Command log──────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ca451606 FB ○ Filler commit 25                         ││You can hide/focus this panel by pressing '@'                                                                 │
+│c44aa07c FB ○ Filler commit 24                         ││                                                                                                              │
+│a38d2377 FB ○ Filler commit 23                         ││                                                                                                              │
+│37e0478b FB ○ Filler commit 22                         ││                                                                                                              │
+│15352af5 FB ○ Filler commit 21                         ││                                                                                                              │
+╰───────────────────────────────────────────────1 of 51─╯│                                                                                                              │
+╭─[5]─Stash─────────────────────────────────────────────╮│                                                                                                              │
+│10M On main: fixture stash                             ││                                                                                                              │
+╰────────────────────────────────────────────────1 of 1─╯╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+Squash: s | Fixup: f | Reword: r | Drop: d | Edit: e | Amend: A | Checkout: <space> | Reset: g | Copy (cherry-pick): C | Keybindings: ?        Donate Ask Question 0.66.3

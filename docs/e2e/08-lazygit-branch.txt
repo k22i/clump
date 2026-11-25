@@ -1,0 +1,75 @@
+╭─[1]─Status────────────────────────────────────────────╮╭─[0]─Log──────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│fixture → main                                         ││* commit 714fb0b (HEAD -> main)                                                                               ▐
+╰───────────────────────────────────────────────────────╯│| Author: Fixture Bot <fixture@example.invalid>                                                               ▐
+╭─[2]─Files - Worktrees - Submodules────────────────────╮│| Date:   11 months ago                                                                                       ▐
+│                                                       ││|                                                                                                             ▐
+│                                                       ││|     Filler commit 40                                                                                        ▐
+│                                                       ││|                                                                                                             ▐
+│                                                       ││* commit 358cbbb                                                                                              ▐
+│                                                       ││| Author: Fixture Bot <fixture@example.invalid>                                                               ▐
+│                                                       ││| Date:   11 months ago                                                                                       ▐
+│                                                       ││|                                                                                                             ▐
+│                                                       ││|     Filler commit 39                                                                                        ▐
+│                                                       ││|                                                                                                             │
+│                                                       ││* commit 2d075aa                                                                                              │
+│                                                       ││| Author: Fixture Bot <fixture@example.invalid>                                                               │
+│                                                       ││| Date:   11 months ago                                                                                       │
+│                                                       ││|                                                                                                             │
+│                                                       ││|     Filler commit 38                                                                                        │
+│                                                       ││|                                                                                                             │
+│                                                       ││* commit 1211efc                                                                                              │
+│                                                       ││| Author: Fixture Bot <fixture@example.invalid>                                                               │
+│                                                       ││| Date:   11 months ago                                                                                       │
+│                                                       ││|                                                                                                             │
+│                                                       ││|     Filler commit 37                                                                                        │
+│                                                       ││|                                                                                                             │
+╰────────────────────────────────────────────────0 of 0─╯│* commit 65c06b3                                                                                              │
+╭─[3]─Local branches - Remotes - Tags───────────────────╮│| Author: Fixture Bot <fixture@example.invalid>                                                               │
+│  * main                                               ││| Date:   11 months ago                                                                                       │
+│10M feature2                                           ││|                                                                                                             │
+│10M feature                                            ││|     Filler commit 36                                                                                        │
+│                                                       ││|                                                                                                             │
+│                                                       ││* commit bda52b2                                                                                              │
+│                                                       ││| Author: Fixture Bot <fixture@example.invalid>                                                               │
+│                                                       ││| Date:   11 months ago                                                                                       │
+│                                                       ││|                                                                                                             │
+│                                                       ││|     Filler commit 35                                                                                        │
+│                                                       ││|                                                                                                             │
+│                                                       ││* commit f7b5a82                                                                                              │
+│                                                       ││| Author: Fixture Bot <fixture@example.invalid>                                                               │
+│                                                       ││| Date:   11 months ago                                                                                       │
+│                                                       ││|                                                                                                             │
+│                                                       ││|     Filler commit 34                                                                                        │
+│                                                       ││|                                                                                                             │
+│                                                       ││* commit 556f9d0                                                                                              │
+│                                                       ││| Author: Fixture Bot <fixture@example.invalid>                                                               │
+│                                                       ││| Date:   11 months ago                                                                                       │
+│                                                       ││|                                                                                                             │
+│                                                       ││|     Filler commit 33                                                                                        │
+╰────────────────────────────────────────────────1 of 3─╯│|                                                                                                             │
+╭─[4]─Commits - Reflog──────────────────────────────────╮│* commit 44e180e                                                                                              │
+│a38d2377 FB ○ Filler commit 23                         ││| Author: Fixture Bot <fixture@example.invalid>                                                               │
+│37e0478b FB ○ Filler commit 22                         ││| Date:   11 months ago                                                                                       │
+│15352af5 FB ○ Filler commit 21                         ││|                                                                                                             │
+│510d0a11 FB ○ Filler commit 20                         ││|     Filler commit 32                                                                                        │
+│baa95796 FB ○ Filler commit 19                         ││|                                                                                                             │
+│fe1303e7 FB ○ Filler commit 18                         ││* commit 371defc                                                                                              │
+│9775e044 FB ○ Filler commit 17                         ││| Author: Fixture Bot <fixture@example.invalid>                                                               │
+│6483182d FB ○ Filler commit 16                         ▐│| Date:   11 months ago                                                                                       │
+│5a7a1ead FB ○ Filler commit 15                         ▐│|                                                                                                             │
+│308586f3 FB ○ Filler commit 14                         ▐│|     Filler commit 31                                                                                        │
+│12625448 FB ○ Filler commit 13                         ▐│|                                                                                                             │
+│2cf8986d FB ○ Filler commit 12                         ▐│* commit 509f8ea                                                                                              │
+│c1b4a7ac FB ○ Filler commit 11                         ▐│| Author: Fixture Bot <fixture@example.invalid>                                                               │
+│764a91d3 FB ○ Filler commit 10                         ▐╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+│ee8d38e6 FB ○ Filler commit 9                          ▐╭─Command log──────────────────────────────────────────────────────────────────────────────────────────────────╮
+│2a438fc1 FB ○ Filler commit 8                          ││You can hide/focus this panel by pressing '@'                                                                 │
+│333ef152 FB ○ Filler commit 7                          ││                                                                                                              │
+│7cad34e2 FB ○ Filler commit 6                          ││                                                                                                              │
+│bbdef862 FB ○ Filler commit 5                          ││                                                                                                              │
+│b11ffd34 FB ○ Filler commit 4                          ││                                                                                                              │
+╰──────────────────────────────────────────────35 of 51─╯│                                                                                                              │
+╭─[5]─Stash─────────────────────────────────────────────╮│                                                                                                              │
+│10M On main: fixture stash                             ││                                                                                                              │
+╰────────────────────────────────────────────────1 of 1─╯╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+Checkout: <space> | New branch: n | Delete: d | Rebase: r | Reset: g | Upstream: u | Keybindings: ?                                            Donate Ask Question 0.66.3

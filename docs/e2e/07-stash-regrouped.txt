@@ -1,0 +1,24 @@
+clump · stash@{0}: On main: fixture stash · 00c6d3944d71 · → claude-haiku · aut…
+▸ Add stashed change line to README                                     +1 −0 1h
+────────────────────────────────────────────────────────────────────────────────
+1. Add stashed change line to README
+1 file · 1 hunks · +1 −0
+Appends a new line reading 'stashed change' to README.md after the existing 'See
+docs/new.txt.' line. This is a docs-only edit with no code or behaviour impact;
+the commit message 'On main: fixture stash' suggests it was created by a git
+stash and may be an unintended leftover rather than a deliberate doc change.
+
+── README.md (M +1 −0) ─────────────────────────────────────────────────────────
+  @@ -3,3 +3,4 @@
+   A scratch repo for clump tests.
+
+   See docs/new.txt.
+  +stashed change
+
+
+
+
+
+
+
+? keys · a all · / search · x mark · M move · u undo · q quit

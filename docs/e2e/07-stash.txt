@@ -1,0 +1,75 @@
+clump · stash@{0}: On main: fixture stash · 00c6d3944d71 · → claude-haiku · per-file fallback · auto on
+▸ README.md                             +1 −0 1h│1. README.md
+                                                │1 file · 1 hunks · +1 −0
+                                                │All changes to README.md.
+                                                │
+                                                │── README.md (M +1 −0) ─────────────────────────────────────────────────────────────────────────────────────────────────
+                                                │  @@ -3,3 +3,4 @@
+                                                │   A scratch repo for clump tests.
+                                                │
+                                                │   See docs/new.txt.
+                                                │  +stashed change
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+                                                │
+fallback: one group per file (model returned no usable groups)

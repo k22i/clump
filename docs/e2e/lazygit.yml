@@ -1,0 +1,10 @@
+git:
+  diffRenderers:
+    - command: "$SCRATCH/e2e/clump-real push"
+      name: clump
+gui:
+  showRandomTip: false
+  showBottomLine: true
+update:
+  method: never
+disableStartupPopups: true

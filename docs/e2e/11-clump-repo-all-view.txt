@@ -1,0 +1,24 @@
+clump · ipc: shorter socket path fallback; refuse a socket dir that is a symlin…
+▸ Add MaxSocketPath constant and symlink-safe dir check                +17 −0 2h
+  Fall back to /tmp when the socket path is too long                   +13 −1 1h
+  Verify socket directory ownership in Listen                           +3 −0 1h
+  Add tests for socket path fallback and symlink refusal               +39 −0 1h
+────────────────────────────────────────────────────────────────────────────────
+── internal/ipc/ipc.go (M +33 −1) ──────────────────────────────────────────────
+┄┄ 1. Add MaxSocketPath constant and symlink-safe dir check ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
+[ 1]   @@ -16,6 +16,7 @@ import (
+            "os"
+            "path/filepath"
+            "sync"
+       +    "syscall"
+            "time"
+
+            "golang.org/x/sys/unix"
+┄┄ 2. Fall back to /tmp when the socket path is too long ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
+[ 2]   @@ -108,12 +109,24 @@ func SocketDir() string {
+        }
+
+        // SocketPath is SocketDir()/<first 16 hex chars of sha256(repoRoot)>.s…
+       +//
+       +// Unix socket paths are limited to 104 bytes on darwin (108 on linux).…
+? keys · a all · / search · x mark · M move · u undo · q quit

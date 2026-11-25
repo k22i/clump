@@ -1,0 +1,75 @@
+╭─[1]─Status────────────────────────────────────────────╮╭─[0]─Stash────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│fixture → main                                         ││stash@{0}: On main: fixture stash                                                                             ▐
+╰───────────────────────────────────────────────────────╯│                                                                                                              ▐
+╭─[2]─Files - Worktrees - Submodules────────────────────╮│ README.md | 1 +                                                                                              ▐
+│                                                       ││ 1 file changed, 1 insertion(+)                                                                               ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││diff --git a/README.md b/README.md                                                                            ▐
+│                                                       ││index dc0c2ec..da47ddf 100644                                                                                 ▐
+│                                                       ││--- a/README.md                                                                                               ▐
+│                                                       ││+++ b/README.md                                                                                               ▐
+│                                                       ││@@ -3,3 +3,4 @@                                                                                               ▐
+│                                                       ││ A scratch repo for clump tests.                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││ See docs/new.txt.                                                                                            ▐
+│                                                       ││+stashed change                                                                                               ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+╰────────────────────────────────────────────────0 of 0─╯│                                                                                                              ▐
+╭─[3]─Local branches - Remotes - Tags───────────────────╮│                                                                                                              ▐
+│  * main                                               ││                                                                                                              ▐
+│10M feature2                                           ││                                                                                                              ▐
+│10M feature                                            ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+│                                                       ││                                                                                                              ▐
+╰────────────────────────────────────────────────1 of 3─╯│                                                                                                              ▐
+╭─[4]─Commits - Reflog──────────────────────────────────╮│                                                                                                              ▐
+│ca451606 FB ○ Filler commit 25                         ││                                                                                                              ▐
+│c44aa07c FB ○ Filler commit 24                         ││                                                                                                              ▐
+│a38d2377 FB ○ Filler commit 23                         ││                                                                                                              ▐
+│37e0478b FB ○ Filler commit 22                         ││                                                                                                              ▐
+│15352af5 FB ○ Filler commit 21                         ││                                                                                                              ▐
+│510d0a11 FB ○ Filler commit 20                         ▐│                                                                                                              ▐
+│baa95796 FB ○ Filler commit 19                         ▐│                                                                                                              ▐
+│fe1303e7 FB ○ Filler commit 18                         ▐│                                                                                                              ▐
+│9775e044 FB ○ Filler commit 17                         ▐│                                                                                                              ▐
+│6483182d FB ○ Filler commit 16                         ▐│                                                                                                              ▐
+│5a7a1ead FB ○ Filler commit 15                         ││                                                                                                              ▐
+│308586f3 FB ○ Filler commit 14                         ││                                                                                                              ▐
+│12625448 FB ○ Filler commit 13                         ││                                                                                                              ▐
+│2cf8986d FB ○ Filler commit 12                         ││                                                                                                              │
+│c1b4a7ac FB ○ Filler commit 11                         ││                                                                                                              │
+│764a91d3 FB ○ Filler commit 10                         ││                                                                                                              │
+╰──────────────────────────────────────────────33 of 51─╯│                                                                                                              │
+╭─[5]─Stash─────────────────────────────────────────────╮│                                                                                                              │
+│10M On main: fixture stash                             ││                                                                                                              │
+│                                                       ││                                                                                                              │
+│                                                       ││                                                                                                              │
+│                                                       ││                                                                                                              │
+│                                                       ││                                                                                                              │
+│                                                       │╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+│                                                       │╭─Command log──────────────────────────────────────────────────────────────────────────────────────────────────╮
+│                                                       ││You can hide/focus this panel by pressing '@'                                                                 │
+│                                                       ││                                                                                                              │
+│                                                       ││                                                                                                              │
+│                                                       ││                                                                                                              │
+│                                                       ││                                                                                                              │
+│                                                       ││                                                                                                              │
+│                                                       ││                                                                                                              │
+│                                                       ││                                                                                                              │
+╰────────────────────────────────────────────────1 of 1─╯╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+Apply: <space> | Pop: g | Drop: d | Keybindings: ?                                                                                             Donate Ask Question 0.66.3
