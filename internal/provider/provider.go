@@ -9,6 +9,10 @@ package provider
 import (
 	"context"
 	"errors"
+	"fmt"
+	"math"
+	"strings"
+	"time"
 )
 
 // Usage is what one Complete call consumed.
@@ -122,26 +126,68 @@ type Config struct {
 // ModelID identifies the model for cache keys: Model if set, otherwise the
 // command argv joined by spaces, otherwise BaseURL.
 func (c Config) ModelID() string {
-	panic("provider: ModelID not implemented")
+	switch {
+	case c.Model != "":
+		return c.Model
+	case len(c.Argv) > 0:
+		return strings.Join(c.Argv, " ")
+	default:
+		return c.BaseURL
+	}
 }
 
 // EstimateTokens estimates the input tokens of a prompt of promptBytes bytes:
 // ceil(promptBytes / bpt) + OverheadTokens. bpt <= 0 means c.BytesPerToken,
 // and if that is <= 0 too, DefaultBytesPerToken(c).
 func (c Config) EstimateTokens(promptBytes int, bpt float64) int {
-	panic("provider: EstimateTokens not implemented")
+	return c.ceilTokens(promptBytes, bpt) + c.OverheadTokens
+}
+
+// bptOrDefault is the bytes-per-token heuristic c uses: bpt when positive,
+// else c.BytesPerToken when positive, else DefaultBytesPerToken(c).
+func (c Config) bptOrDefault(bpt float64) float64 {
+	if bpt <= 0 {
+		bpt = c.BytesPerToken
+	}
+	if bpt <= 0 {
+		bpt = DefaultBytesPerToken(c)
+	}
+	return bpt
+}
+
+// ceilTokens is ceil(n / bpt) with no fixed overhead: the token count of n
+// bytes of text. n <= 0 is 0.
+func (c Config) ceilTokens(n int, bpt float64) int {
+	if n <= 0 {
+		return 0
+	}
+	return int(math.Ceil(float64(n) / c.bptOrDefault(bpt)))
 }
 
 // Cost is (in*InputPrice + out*OutputPrice) / 1e6 USD.
 func (c Config) Cost(in, out int) float64 {
-	panic("provider: Cost not implemented")
+	return (float64(in)*c.InputPrice + float64(out)*c.OutputPrice) / 1e6
 }
+
+// claudeModelHints are the model-name fragments that mark a Claude model.
+var claudeModelHints = []string{"claude", "haiku", "sonnet", "opus"}
 
 // DefaultBytesPerToken is 2.0 when the provider is a Claude model (Type is
 // TypeAnthropic, or Model or any Argv element contains "claude", "haiku",
 // "sonnet" or "opus", case-insensitive), else 3.3.
 func DefaultBytesPerToken(c Config) float64 {
-	panic("provider: DefaultBytesPerToken not implemented")
+	if c.Type == TypeAnthropic {
+		return 2.0
+	}
+	for _, s := range append([]string{c.Model}, c.Argv...) {
+		s = strings.ToLower(s)
+		for _, hint := range claudeModelHints {
+			if strings.Contains(s, hint) {
+				return 2.0
+			}
+		}
+	}
+	return 3.3
 }
 
 // ErrConfig is wrapped by New for an unusable Config.
@@ -151,5 +197,37 @@ var ErrConfig = errors.New("invalid provider config")
 // does not read the API key yet: a missing key is reported by Complete, so a
 // config naming an unset env var still loads.
 func New(c Config) (Provider, error) {
-	panic("provider: New not implemented")
+	if c.Name == "" {
+		return nil, fmt.Errorf("%w: provider %q: name is empty", ErrConfig, c.Name)
+	}
+	switch c.Type {
+	case TypeCommand:
+		if len(c.Argv) == 0 || c.Argv[0] == "" {
+			return nil, fmt.Errorf("%w: provider %q: argv is empty", ErrConfig, c.Name)
+		}
+		switch c.Format {
+		case "", FormatRaw, FormatClaudeJSON, FormatOpencodeJSON:
+		default:
+			return nil, fmt.Errorf("%w: provider %q: unknown format %q", ErrConfig, c.Name, c.Format)
+		}
+	case TypeOpenAI, TypeAnthropic, TypeFake:
+	default:
+		return nil, fmt.Errorf("%w: provider %q: unknown type %q (want %s, %s, %s or %s)",
+			ErrConfig, c.Name, c.Type, TypeCommand, TypeOpenAI, TypeAnthropic, TypeFake)
+	}
+	if c.APIKeyEnv != "" {
+		RegisterSecretEnv(c.APIKeyEnv)
+	}
+	switch c.Type {
+	case TypeCommand:
+		return newCommand(c), nil
+	case TypeFake:
+		return &Fake{ProviderName: c.Name, Delay: time.Duration(c.FakeDelayMS) * time.Millisecond}, nil
+	case TypeOpenAI:
+		return newOpenAI(c)
+	case TypeAnthropic:
+		return newAnthropic(c)
+	}
+	// The type switch above rejects every other Type.
+	return nil, fmt.Errorf("%w: provider %q: unknown type %q", ErrConfig, c.Name, c.Type)
 }
