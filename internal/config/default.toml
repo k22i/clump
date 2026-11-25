@@ -32,6 +32,9 @@ follow_worktree = false
 # e.g. "delta --paging=never". Empty means plain coloured git output.
 then = ""
 
+# Show old/new line numbers beside the diff (toggle with # in the TUI).
+line_numbers = true
+
 # Generated files: their hunks are not sent to the model (cheaper, less
 # noise) and the TUI puts them in a "Generated files" group at the end of the
 # list, folded. A file is generated when .gitattributes marks it

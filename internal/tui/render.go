@@ -60,12 +60,15 @@ func (m *Model) ensureLines() []view.Line {
 	}
 	d := m.doc.L.Diff
 	w := m.diffWidth()
+	nw := m.numberWidth()
 	if m.mode == modeAll {
-		m.lines = rawview.RenderAll(d, m.doc.hist.Current(), m.th, w, func(h *gitdiff.Hunk, width int) []view.Line {
-			return diffview.RenderHunk(h, m.th, diffview.HunkOpts{Width: width, Marked: m.marks[h.ID], Path: h.File.Path()})
-		})
+		m.lines = rawview.RenderAllOpts(d, m.doc.hist.Current(), m.th, w, func(h *gitdiff.Hunk, width int) []view.Line {
+			return diffview.RenderHunk(h, m.th, diffview.HunkOpts{Width: width, Marked: m.marks[h.ID], Path: h.File.Path(), Numbers: nw})
+		}, m.fileState())
 	} else if g, ok := m.currentGroup(); ok {
-		m.lines = append(m.groupBlock(g, w), diffview.RenderGroupLines(d, g.Hunks, m.th, w, m.marks)...)
+		m.lines = append(m.groupBlock(g, w), diffview.RenderGroupLinesOpts(d, g.Hunks, m.th, w, diffview.GroupOpts{
+			Marked: m.marks, Numbers: nw, File: m.fileState(),
+		})...)
 	}
 	if m.query != "" {
 		m.matches = helpview.FindMatches(m.lines, m.query)
@@ -87,7 +90,14 @@ func (m *Model) groupBlock(g group.Group, w int) []view.Line {
 		title = g.Title
 	}
 	out := []view.Line{mk(title, m.th.Title)}
-	out = append(out, mk(fmt.Sprintf("%s · %d hunks · +%d −%d", plural(files, "file"), len(g.Hunks), add, del), m.th.Dim))
+	stats := fmt.Sprintf("%s · %d hunks · +%d −%d", plural(files, "file"), len(g.Hunks), add, del)
+	switch r := m.countReviewed(g.Hunks); {
+	case len(g.Hunks) > 0 && r == len(g.Hunks):
+		stats += " · ✓ reviewed"
+	case r > 0:
+		stats += fmt.Sprintf(" · %d/%d hunks reviewed", r, len(g.Hunks))
+	}
+	out = append(out, mk(stats, m.th.Dim))
 	if desc := strings.TrimSpace(g.Description); desc != "" && m.doc.grouped() {
 		for _, para := range strings.Split(desc, "\n") {
 			for _, l := range wrap(para, w) {
@@ -143,7 +153,8 @@ func (m *Model) listRows() []view.ListRow {
 				marks++
 			}
 		}
-		rows = append(rows, view.ListRow{ID: g.ID, Title: g.Title, Add: add, Del: del, Hunks: len(g.Hunks), Marks: marks, Ungrouped: g.ID == group.UngroupedID})
+		rows = append(rows, view.ListRow{ID: g.ID, Title: g.Title, Add: add, Del: del, Hunks: len(g.Hunks), Marks: marks,
+			Ungrouped: g.ID == group.UngroupedID || g.ID == group.GeneratedID, Reviewed: m.countReviewed(g.Hunks)})
 	}
 	return rows
 }
@@ -317,6 +328,11 @@ func (m *Model) header() string {
 		if d.fallback {
 			parts = append(parts, "per-file fallback")
 		}
+		if d.grouped() {
+			if done, total := m.reviewProgress(); done > 0 {
+				parts = append(parts, fmt.Sprintf("%d/%d reviewed", done, total))
+			}
+		}
 		switch d.state {
 		case stGrouping:
 			state = fmt.Sprintf("%s grouping… %ds", m.spin.View(), int(m.o.Now().Sub(d.started)/time.Second))
@@ -381,7 +397,7 @@ func (m *Model) footer() string {
 			return m.th.Style(m.th.Notice, view.Truncate(strings.Join(m.doc.notices, " · "), w))
 		}
 	}
-	hint := "? keys · a all · / search · x mark · M move · u undo · q quit"
+	hint := "? keys · c reviewed · z fold · a all · / search · x mark · M move · u undo · q quit"
 	if m.visual {
 		hint = "VISUAL · move to extend · x mark · M move · esc"
 	}

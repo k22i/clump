@@ -141,6 +141,27 @@ func PseudoHeader(f *File) string {
 	return "(" + desc + modes + ")"
 }
 
+// ReviewKey identifies h by content for "reviewed" marks: the lower-case
+// hex SHA-256 of the file's path and the hunk body (its header for a
+// pseudo-hunk), without line numbers. The same change keeps its key when it
+// moves within the file or shows up in another diff (a commit and the
+// branch range that contains it); any edit to its lines changes the key.
+func (h *Hunk) ReviewKey() string {
+	var b strings.Builder
+	if h.File != nil {
+		b.WriteString(h.File.DisplayPath())
+	}
+	b.WriteByte(0)
+	if h.Pseudo {
+		b.WriteString(h.Header)
+	}
+	for _, l := range h.Lines {
+		b.WriteString(l)
+		b.WriteByte('\n')
+	}
+	return sha256Hex(b.String())
+}
+
 // Diff is a parsed patch.
 type Diff struct {
 	Commits []Commit `json:"commits,omitempty"`

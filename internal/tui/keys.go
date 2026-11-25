@@ -19,11 +19,18 @@ func HelpSections(watch bool) []view.HelpSection {
 			{Keys: "ctrl+d/ctrl+u", Desc: "half page down/up"},
 			{Keys: "a", Desc: "toggle grouped / all hunks in file order"},
 		}},
+		{Title: "Review", Entries: []view.HelpEntry{
+			{Keys: "c", Desc: "mark the file (diff pane) or group (list) reviewed; then on to the next unreviewed group"},
+			{Keys: "z", Desc: "fold/unfold the file (diff pane) or every file of the group (list)"},
+			{Keys: "Z", Desc: "fold/unfold every file in the pane"},
+			{Keys: "#", Desc: "line numbers on/off"},
+		}},
 		{Title: "Search & tools", Entries: []view.HelpEntry{
 			{Keys: "/", Desc: "search the diff pane"},
 			{Keys: "n/N", Desc: "next/previous match (while searching)"},
 			{Keys: "e", Desc: "open $EDITOR at the hunk"},
 			{Keys: "y", Desc: "copy a Markdown summary"},
+			{Keys: "g", Desc: "group now (when waiting to send)"},
 			{Keys: "r", Desc: "regroup (bypass the cache)"},
 			{Keys: "m", Desc: "switch provider"},
 			{Keys: "?", Desc: "this help"},
@@ -44,7 +51,6 @@ func HelpSections(watch bool) []view.HelpSection {
 	if watch {
 		s = append(s, view.HelpSection{Title: "Watch", Entries: []view.HelpEntry{
 			{Keys: "A", Desc: "toggle auto-group"},
-			{Keys: "g", Desc: "group now (when not grouped yet)"},
 		}})
 	}
 	return s
@@ -125,6 +131,18 @@ func (m *Model) onKey(k tea.KeyPressMsg) tea.Cmd {
 	case "x":
 		m.toggleMark()
 		return nil
+	case "c":
+		m.toggleReviewed()
+		return nil
+	case "z":
+		m.toggleFold()
+		return nil
+	case "Z":
+		m.foldAll()
+		return nil
+	case "#":
+		m.toggleLineNumbers()
+		return nil
 	case "v":
 		m.toggleVisual()
 		return nil
@@ -139,7 +157,7 @@ func (m *Model) onKey(k tea.KeyPressMsg) tea.Cmd {
 	case "K":
 		return m.reorder(-1)
 	case "g":
-		if m.watch != nil && m.doc.state == stNeedsConfirm {
+		if m.doc != nil && m.doc.state == stNeedsConfirm {
 			return m.groupNow()
 		}
 		return m.startMerge()
@@ -220,14 +238,14 @@ func (m *Model) keyDiff(key string) {
 		m.setDcur(len(lines) - 1)
 	case "}":
 		for i := m.dcur + 1; i < len(lines); i++ {
-			if lines[i].Kind == view.KindHunk {
+			if lines[i].Kind == view.KindHunk || lines[i].Folded {
 				m.setDcur(i)
 				return
 			}
 		}
 	case "{":
 		for i := m.dcur - 1; i >= 0; i-- {
-			if lines[i].Kind == view.KindHunk {
+			if lines[i].Kind == view.KindHunk || lines[i].Folded {
 				m.setDcur(i)
 				return
 			}

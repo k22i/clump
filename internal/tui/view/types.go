@@ -26,6 +26,8 @@ type Theme struct {
 	Add        lipgloss.Style // "+" lines (base colour; syntax colours go on top)
 	Del        lipgloss.Style // "-" lines
 	Context    lipgloss.Style // " " lines
+	AddLine    lipgloss.Style // background tint across a whole "+" line
+	DelLine    lipgloss.Style // background tint across a whole "-" line
 	AddWord    lipgloss.Style // changed words inside a paired "+" line
 	DelWord    lipgloss.Style // changed words inside a paired "-" line
 	GroupLabel lipgloss.Style // "[g2 Title]" labels and boundaries in the raw view
@@ -67,8 +69,10 @@ func NewTheme(dark bool) Theme {
 	t.Add = s().Foreground(c("#98c379", "#116329"))
 	t.Del = s().Foreground(c("#e06c75", "#a40e26"))
 	t.Context = s()
-	t.AddWord = s().Background(c("#2d4a2b", "#ccffd8"))
-	t.DelWord = s().Background(c("#5a2a2e", "#ffd7d5"))
+	t.AddLine = s().Background(c("#17301f", "#e6ffec"))
+	t.DelLine = s().Background(c("#3b1c21", "#ffebe9"))
+	t.AddWord = s().Background(c("#2b5c38", "#abf2bc"))
+	t.DelWord = s().Background(c("#73303a", "#ffc1bd"))
 	t.GroupLabel = s().Foreground(c("#c678dd", "#8250df")).Bold(true)
 	t.Match = s().Reverse(true).Bold(true)
 	t.Notice = s().Foreground(c("#e5c07b", "#986801"))
@@ -111,6 +115,24 @@ type Line struct {
 	// file (0 when the line has none on that side). For a KindHunk line
 	// they are the hunk's OldStart/NewStart.
 	OldLine, NewLine int
+	// Gutter is the byte length of the leading part of Plain that is not
+	// content (mark column, line numbers, raw-view label). Search skips it.
+	Gutter int
+	// BlockHunks, on a KindFile line, are the hunk IDs listed under that
+	// header (shown or folded).
+	BlockHunks []string
+	// Folded is set on a KindFile line whose hunks are hidden.
+	Folded bool
+}
+
+// FileState is how a file header is drawn.
+type FileState struct {
+	// Folded hides the file's hunks; the header says how many.
+	Folded bool
+	// Reviewed draws a check mark and dims the header.
+	Reviewed bool
+	// Generated is gitdiff.File.Generated (why it is skipped), or "".
+	Generated string
 }
 
 // ListRow is one row of the group list.
@@ -121,8 +143,11 @@ type ListRow struct {
 	Hunks    int
 	// Marks is how many of the group's hunks are marked with x.
 	Marks int
-	// Ungrouped is set for the Ungrouped group (rendered last-ish, italic).
+	// Ungrouped is set for the Ungrouped and Generated files groups
+	// (rendered dim).
 	Ungrouped bool
+	// Reviewed is how many of the group's hunks are marked reviewed.
+	Reviewed int
 }
 
 // HelpEntry is one key in the help overlay.

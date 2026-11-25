@@ -17,12 +17,42 @@ import (
 // "…" when the text is wider than width). add and del are the totals of the
 // hunks shown under it.
 func RenderFileHeader(f *gitdiff.File, fileIdx, add, del int, th Theme, width int) Line {
-	text := fmt.Sprintf("── %s (%s +%d −%d) ", f.DisplayPath(), f.Status, add, del)
+	return RenderFileHeaderState(f, fileIdx, add, del, nil, FileState{}, th, width)
+}
+
+// RenderFileHeaderState is RenderFileHeader for a file block in a given
+// state; hunks are the IDs listed under the header (Line.BlockHunks):
+//
+//	── ✓ src/a.go (M +3 −1) · 2 hunks folded · generated (pattern go.sum) ──
+func RenderFileHeaderState(f *gitdiff.File, fileIdx, add, del int, hunks []string, st FileState, th Theme, width int) Line {
+	var b strings.Builder
+	b.WriteString("── ")
+	if st.Reviewed {
+		b.WriteString("✓ ")
+	}
+	fmt.Fprintf(&b, "%s (%s +%d −%d) ", f.DisplayPath(), f.Status, add, del)
+	if st.Folded {
+		n := len(hunks)
+		unit := "hunks"
+		if n == 1 {
+			unit = "hunk"
+		}
+		fmt.Fprintf(&b, "· %d %s folded ", n, unit)
+	}
+	if st.Generated != "" {
+		fmt.Fprintf(&b, "· generated (%s) ", st.Generated)
+	}
+	text := b.String()
 	if w := lipgloss.Width(text); w < width {
 		text += strings.Repeat("─", width-w)
 	}
 	text = Truncate(text, width)
-	return Line{Text: th.style(th.FileHeader, text), Plain: text, Kind: KindFile, FileIdx: fileIdx}
+	style := th.FileHeader
+	if st.Reviewed || st.Generated != "" {
+		style = th.Dim
+	}
+	return Line{Text: th.style(style, text), Plain: text, Kind: KindFile, FileIdx: fileIdx,
+		BlockHunks: hunks, Folded: st.Folded}
 }
 
 // Truncate cuts plain (unstyled) text to at most width cells, ending in "…"

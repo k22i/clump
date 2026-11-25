@@ -54,6 +54,9 @@ type Config struct {
 	// Then is the diff renderer `clump lazygit install` wraps
 	// (`clump push --then '<Then>'`), e.g. "delta --paging=never". Default "".
 	Then string `toml:"then"`
+	// LineNumbers shows old/new line numbers in the diff pane (toggle with
+	// # in the TUI). Default true.
+	LineNumbers bool `toml:"line_numbers"`
 	// Generated configures which files are skipped from review.
 	Generated Generated `toml:"generated"`
 
@@ -118,6 +121,7 @@ type rawConfig struct {
 	AutoGroup      bool                       `toml:"auto_group"`
 	FollowWorktree bool                       `toml:"follow_worktree"`
 	Then           string                     `toml:"then"`
+	LineNumbers    bool                       `toml:"line_numbers"`
 	Generated      Generated                  `toml:"generated"`
 	Providers      map[string]provider.Config `toml:"providers"`
 }
@@ -150,6 +154,7 @@ func Default() *Config {
 		AutoGroup:      true,
 		FollowWorktree: false,
 		Then:           "",
+		LineNumbers:    true,
 		Generated:      Generated{Detect: true, Builtin: true},
 		Providers: []provider.Config{
 			{
@@ -256,6 +261,9 @@ func Parse(name, text string) (*Config, error) {
 	}
 	if md.IsDefined("then") {
 		cfg.Then = raw.Then
+	}
+	if md.IsDefined("line_numbers") {
+		cfg.LineNumbers = raw.LineNumbers
 	}
 	if md.IsDefined("generated", "detect") {
 		cfg.Generated.Detect = raw.Generated.Detect

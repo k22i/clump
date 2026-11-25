@@ -31,6 +31,16 @@ type HunkRenderer func(h *gitdiff.Hunk, width int) []view.Line
 // hunks in file order. Hunks no group lists are shown as "?" with the title
 // "(no group)". An empty diff renders an empty, non-nil slice.
 func RenderAll(d *gitdiff.Diff, g group.Grouping, th view.Theme, width int, hunk HunkRenderer) []view.Line {
+	return RenderAllOpts(d, g, th, width, hunk, nil)
+}
+
+// FileStateFunc gives a file's header state from its index and hunk IDs.
+type FileStateFunc func(fileIdx int, hunkIDs []string) view.FileState
+
+// RenderAllOpts is RenderAll with per-file header state (nil: all
+// expanded). A folded file renders its header only and its hunks emit no
+// group boundary: boundaries compare shown hunks only.
+func RenderAllOpts(d *gitdiff.Diff, g group.Grouping, th view.Theme, width int, hunk HunkRenderer, file FileStateFunc) []view.Line {
 	out := make([]view.Line, 0, len(d.Hunks)+len(d.Files)*2)
 	if d == nil {
 		return out
@@ -63,11 +73,20 @@ func RenderAll(d *gitdiff.Diff, g group.Grouping, th view.Theme, width int, hunk
 		files++
 
 		add, del := 0, 0
-		for _, h := range f.Hunks {
+		ids := make([]string, len(f.Hunks))
+		for i, h := range f.Hunks {
 			add += h.Add
 			del += h.Del
+			ids[i] = h.ID
 		}
-		out = append(out, view.RenderFileHeader(f, fileIdx, add, del, th, width))
+		var st view.FileState
+		if file != nil {
+			st = file(fileIdx, ids)
+		}
+		out = append(out, view.RenderFileHeaderState(f, fileIdx, add, del, ids, st, th, width))
+		if st.Folded {
+			continue
+		}
 
 		for _, h := range f.Hunks {
 			n, ok := pos[h.ID]
@@ -126,6 +145,7 @@ func labelLines(lines []view.Line, n int, th view.Theme) []view.Line {
 			ln.Plain = blank + ln.Plain
 			ln.Text = blank + ln.Text
 		}
+		ln.Gutter += LabelWidth
 		out[i] = ln
 	}
 	return out

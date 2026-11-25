@@ -48,13 +48,22 @@ type Doc struct {
 	job *engine.Job
 	// started is when the current grouping call started.
 	started time.Time
+
+	// rkeys maps hunk ID to its ReviewKey.
+	rkeys map[string]string
+	// numW is the line-number width (0 until first needed).
+	numW int
 }
 
 // newDoc returns a document for a loaded diff, showing its files until a
 // grouping arrives.
 func newDoc(l *gitdiff.Loaded) *Doc {
 	fb := group.FallbackPerFile(l.Diff, "")
-	return &Doc{L: l, Hash: l.Diff.Hash(), state: stRaw, hist: group.NewHistory(fb.Grouping)}
+	rkeys := make(map[string]string, len(l.Diff.Hunks))
+	for _, h := range l.Diff.Hunks {
+		rkeys[h.ID] = h.ReviewKey()
+	}
+	return &Doc{L: l, Hash: l.Diff.Hash(), state: stRaw, hist: group.NewHistory(fb.Grouping), rkeys: rkeys}
 }
 
 // grouped reports whether the document shows a real grouping (editing is

@@ -66,9 +66,18 @@ func renderRow(r view.ListRow, isCursor bool, width int, th view.Theme) string {
 		prefix = cursorMark
 	}
 	right := fmt.Sprintf(" +%d −%d %dh", r.Add, r.Del, r.Hunks)
+	done := r.Hunks > 0 && r.Reviewed >= r.Hunks
+	switch {
+	case done:
+		right += " ✓"
+	case r.Reviewed > 0:
+		right = fmt.Sprintf(" +%d −%d %d/%dh", r.Add, r.Del, r.Reviewed, r.Hunks)
+	}
 	if r.Marks > 0 {
 		right += fmt.Sprintf(" x%d", r.Marks)
 	}
+	// A reviewed group reads as done: dim, like Ungrouped.
+	dim := r.Ungrouped || done
 
 	// Everything up to the counts fits: pad the title to the free room so the
 	// counts are flush right and the row is exactly width cells.
@@ -77,13 +86,13 @@ func renderRow(r view.ListRow, isCursor bool, width int, th view.Theme) string {
 		if pad := room - lipgloss.Width(title); pad > 0 {
 			title += strings.Repeat(" ", pad)
 		}
-		return styleRow(prefix, title, right, r.Ungrouped, isCursor, th)
+		return styleRow(prefix, title, right, dim, isCursor, th)
 	}
 
 	// Too narrow for the counts: cut the whole row, keeping each part intact
 	// so it can still be styled on its own.
 	p, title, rl := cutRow(prefix, r.Title, right, width)
-	return styleRow(p, title, rl, r.Ungrouped, isCursor, th)
+	return styleRow(p, title, rl, dim, isCursor, th)
 }
 
 // cutRow splits prefix+title+right at width cells the way
@@ -113,8 +122,9 @@ func cutRow(prefix, title, right string, width int) (p, t, r string) {
 }
 
 // styleRow styles the three parts of a row: the cursor row as a whole in
-// th.Selected; other rows with the title dim when the row is the Ungrouped
-// group (unstyled otherwise) and the counts always dim. The plain text of the
+// th.Selected; other rows with the title dim when the row is muted (the
+// Ungrouped or Generated files group, or a fully reviewed one; unstyled
+// otherwise) and the counts always dim. The plain text of the
 // result is exactly prefix+title+right.
 func styleRow(prefix, title, right string, ungrouped, isCursor bool, th view.Theme) string {
 	if isCursor {

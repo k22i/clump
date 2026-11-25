@@ -64,7 +64,7 @@ func FindMatches(lines []view.Line, query string) []int {
 	}
 	var out []int
 	for i, l := range lines {
-		hay := l.Plain
+		hay := l.Plain[min(l.Gutter, len(l.Plain)):]
 		if fold {
 			hay = strings.ToLower(hay)
 		}
@@ -104,13 +104,15 @@ func Highlight(l view.Line, query string, th view.Theme) string {
 	if th.Plain || query == "" {
 		return l.Plain
 	}
-	hay := []rune(l.Plain)
+	lead := l.Plain[:min(l.Gutter, len(l.Plain))]
+	hay := []rune(l.Plain[len(lead):])
 	needle := []rune(query)
 	if len(needle) == 0 || len(needle) > len(hay) {
 		return l.Plain
 	}
 	fold := !hasUpper(query)
 	var b strings.Builder
+	b.WriteString(lead)
 	for i := 0; i < len(hay); {
 		if matchAt(hay, needle, i, fold) {
 			b.WriteString(th.Match.Render(string(hay[i : i+len(needle)])))

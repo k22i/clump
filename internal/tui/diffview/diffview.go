@@ -5,6 +5,7 @@ package diffview
 
 import (
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"unicode/utf8"
@@ -38,6 +39,41 @@ type HunkOpts struct {
 	Marked bool
 	// Path picks the syntax lexer by file name ("" disables highlighting).
 	Path string
+	// Numbers is the digit width of the old/new line-number columns drawn
+	// after the mark gutter; 0 draws none. See NumberWidth.
+	Numbers int
+}
+
+// NumberWidth is the digit width that fits every line number of d (at
+// least 2), for HunkOpts.Numbers.
+func NumberWidth(d *gitdiff.Diff) int {
+	top := 0
+	if d != nil {
+		for _, h := range d.Hunks {
+			top = max(top, h.OldStart+h.OldLines, h.NewStart+h.NewLines)
+		}
+	}
+	w := 2
+	for n := 100; n <= top; n *= 10 {
+		w++
+	}
+	return w
+}
+
+// numberCols renders the line-number columns: "old new " right-aligned in
+// w digits each, blank on the side a line does not have.
+func numberCols(w, oldLine, newLine int) string {
+	col := func(n int) string {
+		if n <= 0 {
+			return strings.Repeat(" ", w)
+		}
+		s := strconv.Itoa(n)
+		if len(s) < w {
+			s = strings.Repeat(" ", w-len(s)) + s
+		}
+		return s
+	}
+	return col(oldLine) + " " + col(newLine) + " "
 }
 
 // RenderHunk renders one hunk: its header line, then its body lines.
@@ -50,11 +86,25 @@ func RenderHunk(h *gitdiff.Hunk, th view.Theme, o HunkOpts) []view.Line {
 		gutter, gutterStyles = "x ", themeStyles(th, th.Marked)
 	}
 
+	// lead is the mark gutter plus, when on, the line-number columns.
+	lead := func(oldLine, newLine int) []segment {
+		segs := []segment{{text: gutter, styles: gutterStyles}}
+		if o.Numbers > 0 {
+			segs = append(segs, segment{text: numberCols(o.Numbers, oldLine, newLine), styles: themeStyles(th, th.Dim)})
+		}
+		return segs
+	}
+	gutterLen := len(gutter)
+	if o.Numbers > 0 {
+		gutterLen += 2*o.Numbers + 2
+	}
+
 	out := make([]view.Line, 0, len(h.Lines)+1)
-	out = append(out, renderLine([]segment{
+	// The header starts at the line-number column: it carries the numbers.
+	out = append(out, withGutter(renderLine([]segment{
 		{text: gutter, styles: gutterStyles},
 		{text: h.Header, styles: themeStyles(th, th.HunkHeader)},
-	}, o.Width, view.KindHunk, h.ID, h.FileIdx, h.OldStart, h.NewStart))
+	}, o.Width, view.KindHunk, h.ID, h.FileIdx, h.OldStart, h.NewStart), len(gutter)))
 	if h.Pseudo {
 		return out
 	}
@@ -91,29 +141,67 @@ func RenderHunk(h *gitdiff.Hunk, th view.Theme, o HunkOpts) []view.Line {
 			newNo++
 		}
 
-		segs := []segment{{text: gutter, styles: gutterStyles}}
+		segs := lead(oldLine, newLine)
 		if kind == view.KindNoNewline {
 			// git's marker line has no -/+ prefix and no line number; its
 			// text is rendered as it is.
 			segs = append(segs, segment{text: raw})
 		} else {
 			content = expandTabs(content)
-			segs = append(segs, segment{text: prefix, styles: themeStyles(th, baseStyle(th, kind))})
+			body := []segment{{text: prefix, styles: themeStyles(th, baseStyle(th, kind))}}
 			runs := contentRuns(content, th, baseStyle(th, kind), hl)
 			if spans := spansFor(i, kind, delSpans, addSpans); len(spans) > 0 {
 				runs = applyWordSpans(runs, spans, wordStyle(th, kind))
 			}
-			segs = append(segs, runs...)
+			body = append(body, runs...)
+			if bg, ok := lineStyle(th, kind); ok {
+				// The tint is the outermost style, so syntax colours and
+				// the stronger changed-word background still show on top.
+				for j := range body {
+					body[j].styles = append(append([]lipgloss.Style{}, body[j].styles...), bg)
+				}
+			}
+			segs = append(segs, body...)
 		}
-		out = append(out, renderLine(segs, o.Width, kind, h.ID, h.FileIdx, oldLine, newLine))
+		l := renderLine(segs, o.Width, kind, h.ID, h.FileIdx, oldLine, newLine)
+		if bg, ok := lineStyle(th, kind); ok {
+			pad := padLine(l.Plain, o.Width)
+			l.Text += bg.Render(pad)
+			l.Plain += pad
+		}
+		out = append(out, withGutter(l, gutterLen))
 	}
 	return out
+}
+
+// withGutter sets l.Gutter, capped to what survived truncation.
+func withGutter(l view.Line, n int) view.Line {
+	l.Gutter = min(n, len(l.Plain))
+	return l
 }
 
 // RenderGroupLines renders the given hunks grouped by file in diff order:
 // for each file a view.RenderFileHeader line, then its hunks, then a blank
 // line between files. Unknown IDs are skipped; order of hunkIDs is ignored.
 func RenderGroupLines(d *gitdiff.Diff, hunkIDs []string, th view.Theme, width int, marked map[string]bool) []view.Line {
+	return RenderGroupLinesOpts(d, hunkIDs, th, width, GroupOpts{Marked: marked})
+}
+
+// GroupOpts configures RenderGroupLinesOpts.
+type GroupOpts struct {
+	// Marked draws these hunks as marked.
+	Marked map[string]bool
+	// Numbers is HunkOpts.Numbers for every hunk.
+	Numbers int
+	// File gives each file block's header state from its file index and the
+	// hunk IDs listed under it; nil draws every block expanded. A folded
+	// block renders its header only.
+	File func(fileIdx int, hunkIDs []string) view.FileState
+}
+
+// RenderGroupLinesOpts is RenderGroupLines with folding, review marks and
+// line numbers.
+func RenderGroupLinesOpts(d *gitdiff.Diff, hunkIDs []string, th view.Theme, width int, o GroupOpts) []view.Line {
 	out := []view.Line{}
 	if d == nil {
 		return out
@@ -158,16 +246,30 @@ func RenderGroupLines(d *gitdiff.Diff, hunkIDs []string, th view.Theme, width in
 			add += h.Add
 			del += h.Del
 		}
+		ids := make([]string, len(g.hunks))
+		for i, h := range g.hunks {
+			ids[i] = h.ID
+		}
+		var st view.FileState
+		if o.File != nil {
+			st = o.File(g.fileIdx, ids)
+		}
 		if g.fileIdx >= 0 && g.fileIdx < len(d.Files) {
-			out = append(out, view.RenderFileHeader(d.Files[g.fileIdx], g.fileIdx, add, del, th, width))
+			out = append(out, view.RenderFileHeaderState(d.Files[g.fileIdx], g.fileIdx, add, del, ids, st, th, width))
+		} else {
+			st.Folded = false // nothing to unfold from
+		}
+		if st.Folded {
+			continue
 		}
 		// A hunk whose FileIdx is out of range (only possible for a
 		// hand-built Diff) keeps its hunks but gets no header.
 		for _, h := range g.hunks {
 			out = append(out, RenderHunk(h, th, HunkOpts{
-				Width:  width,
-				Marked: marked[h.ID],
-				Path:   hunkPath(h),
+				Width:   width,
+				Marked:  o.Marked[h.ID],
+				Path:    hunkPath(h),
+				Numbers: o.Numbers,
 			})...)
 		}
 	}
@@ -390,6 +492,31 @@ func baseStyle(th view.Theme, kind view.LineKind) lipgloss.Style {
 	default:
 		return th.Context
 	}
+}
+
+// lineStyle is the background tint for a whole "+" or "-" line; false for
+// other kinds and under the plain theme.
+func lineStyle(th view.Theme, kind view.LineKind) (lipgloss.Style, bool) {
+	if th.Plain {
+		return lipgloss.Style{}, false
+	}
+	switch kind {
+	case view.KindAdd:
+		return th.AddLine, true
+	case view.KindDel:
+		return th.DelLine, true
+	}
+	return lipgloss.Style{}, false
+}
+
+// padLine is the run of spaces that carries a tinted line's background to
+// width columns ("" when width <= 0).
+func padLine(plain string, width int) string {
+	n := width - lipgloss.Width(plain)
+	if width <= 0 || n <= 0 {
+		return ""
+	}
+	return strings.Repeat(" ", n)
 }
 
 // wordStyle is the theme's style for changed words on a body line.

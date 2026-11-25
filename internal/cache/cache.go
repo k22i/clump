@@ -7,6 +7,7 @@
 //	summaries/<key[0:2]>/<key>.json      tier-2 per-file summaries (Summary)
 //	overrides/<hash[0:2]>/<hash>.json    user edits keyed by diff hash (Override)
 //	calibration.json                     provider name -> bytes per token
+//	reviewed/<key[0]>.json               reviewed hunks by content (reviewed.go)
 //
 // Every write goes to a temp file in the same directory, then os.Rename. A
 // cache hit is exactly one ReadFile of the entry file, nothing else.
@@ -68,8 +69,8 @@ type Store struct {
 	noCache bool
 	fs      FS
 
-	// mu serialises the read-modify-write of calibration.json, the only
-	// multi-field file written by the Store.
+	// mu serialises the read-modify-write of calibration.json and of the
+	// reviewed shards, the multi-entry files written by the Store.
 	mu sync.Mutex
 }
 

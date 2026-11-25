@@ -101,19 +101,23 @@ type Model struct {
 	scroll  int  // first visible line
 	dcur    int  // cursor line in the diff pane
 
-	marks     map[string]bool
-	visual    bool
-	visualAt  string // hunk ID where visual mode started
-	query     string
-	matches   []int
-	ov        overlay
-	confirm   confirmState
-	target    targetState
-	input     inputState
-	menu      menuState
-	pick      pickState
-	searchBox lineInput
-	spin      spinner.Model
+	marks    map[string]bool
+	reviewed map[string]bool // by gitdiff.Hunk.ReviewKey
+	fold     map[foldKey]bool
+	// lineNumbers draws old/new line numbers (config line_numbers, #).
+	lineNumbers bool
+	visual      bool
+	visualAt    string // hunk ID where visual mode started
+	query       string
+	matches     []int
+	ov          overlay
+	confirm     confirmState
+	target      targetState
+	input       inputState
+	menu        menuState
+	pick        pickState
+	searchBox   lineInput
+	spin        spinner.Model
 
 	flash    string
 	flashErr bool
@@ -129,6 +133,7 @@ func New(ctx context.Context, o Options) *Model {
 	sb := lineInput{prompt: "/"}
 	sp := spinner.New(spinner.WithSpinner(spinner.MiniDot))
 	m := &Model{o: o, ctx: ctx, th: o.Theme, provider: o.Provider, marks: map[string]bool{}, searchBox: sb, spin: sp,
+		reviewed: map[string]bool{}, fold: map[foldKey]bool{}, lineNumbers: o.Cfg != nil && o.Cfg.LineNumbers,
 		width: 100, height: 30}
 	if o.Watch != nil {
 		m.watch = newWatchState(o.Watch)
@@ -198,8 +203,13 @@ func (m *Model) loadCmd(load func(context.Context) (*gitdiff.Loaded, error)) tea
 // open shows a freshly loaded diff: override, else cache, else (maybe) a
 // provider call. auto=false never calls the provider (watch with auto off).
 func (m *Model) open(l *gitdiff.Loaded, auto bool) tea.Cmd {
+	if m.o.Engine != nil {
+		m.o.Engine.MarkGenerated(m.ctx, l.Diff, m.o.Repo)
+	}
 	m.doc = newDoc(l)
 	m.cursor, m.scroll, m.dcur, m.marks, m.visual = 0, 0, 0, map[string]bool{}, false
+	m.fold = map[foldKey]bool{}
+	m.loadReviewed()
 	m.linesOK = false
 	if m.mode == modeAll {
 		m.focus = focusDiff
@@ -331,6 +341,7 @@ func (m *Model) applyGrouped(msg groupedMsg) tea.Cmd {
 	}
 	d.setBase(msg.out.Result.Grouping, msg.out.Key, msg.out.Provider, false, msg.out.Result.Fallback, msg.out.Result.Notices)
 	m.cursor, m.linesOK = 0, false
+	m.fold = map[foldKey]bool{} // group IDs mean other groups now
 	return m.status("done", plural(len(msg.out.Result.Groups), "group"))
 }
 

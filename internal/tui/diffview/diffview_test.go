@@ -485,3 +485,38 @@ func TestPerf(t *testing.T) {
 		t.Fatal("first body line was not styled")
 	}
 }
+
+func TestLineTint(t *testing.T) {
+	h := &gitdiff.Hunk{
+		ID:       "h1",
+		Header:   "@@ -1,2 +1,2 @@",
+		OldStart: 1, NewStart: 1,
+		Lines: []string{" same", "-old", "+new"},
+	}
+	th := view.NewTheme(true)
+	addBg := th.AddLine.Render("x")
+	delBg := th.DelLine.Render("x")
+	addSeq, delSeq := addBg[:strings.Index(addBg, "x")], delBg[:strings.Index(delBg, "x")]
+
+	lines := diffview.RenderHunk(h, th, diffview.HunkOpts{Width: 40})
+	ctx, del, add := lines[1], lines[2], lines[3]
+	if !strings.Contains(add.Text, addSeq) || !strings.Contains(del.Text, delSeq) {
+		t.Fatalf("+/- lines are not tinted:\n%q\n%q", add.Text, del.Text)
+	}
+	if strings.Contains(ctx.Text, addSeq) || strings.Contains(ctx.Text, delSeq) {
+		t.Fatalf("context line is tinted: %q", ctx.Text)
+	}
+	for _, l := range []view.Line{add, del} {
+		if w := lipgloss.Width(l.Plain); w != 40 {
+			t.Errorf("tinted line is %d wide, want the full 40: %q", w, l.Plain)
+		}
+	}
+
+	// No width: no padding. Plain theme: no tint and no padding.
+	if l := diffview.RenderHunk(h, th, diffview.HunkOpts{})[3]; l.Plain != "  +new" {
+		t.Errorf("width 0: Plain = %q", l.Plain)
+	}
+	if l := diffview.RenderHunk(h, view.PlainTheme(), diffview.HunkOpts{Width: 40})[3]; l.Text != "  +new" {
+		t.Errorf("plain theme: Text = %q", l.Text)
+	}
+}

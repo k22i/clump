@@ -270,11 +270,16 @@ results/<key[0:2]>/<key>.json        Entry{version, key, diff_hash, provider, mo
 summaries/<key[0:2]>/<key>.json      Summary{version, key, path, summary, created_at}
 overrides/<hash[0:2]>/<hash>.json    Override (user edits; §8)
 calibration.json                     {"<provider>": bytes_per_token}
+reviewed/<key[0]>.json               {"version":1,"hunks":{"<ReviewKey>":"<time>"}} (16 shards)
 ```
 
 - `Key = sha256(diffHash \0 provider \0 modelID \0 PromptVersion \0 max_groups)`, plus
   `\0 skip=<generated.Signature>` when the diff has generated files (`KeyWith`; without any
   the key is unchanged). `modelID` is `model`, else the argv, else `base_url`.
+- Reviewed marks are keyed by `Hunk.ReviewKey() = sha256(DisplayPath \0 body lines)` (the
+  header for a pseudo-hunk; no line numbers), so they follow a change across diffs and reset
+  when its text changes. `SetReviewed` re-reads each shard before writing it and drops marks
+  older than 180 days; a corrupt shard reads as empty.
 - Writes: temp file in the same dir, then rename (atomic). Files 0600, dirs 0700.
 - A hit is exactly one `ReadFile` (tested with a counting FS).
 - `--no-cache` / `r`: reads miss, writes still happen. Overrides are never bypassed.
@@ -343,6 +348,15 @@ Markdown, `r` regroup, `m` provider, `?` help, `q` quit. Editing: `x` mark hunk,
 `M` move marks, `n` new group (while a search query is active, `n`/`N` are next/previous match
 instead; `esc` clears the query), `R` rename/explain, `d` delete, `J`/`K` reorder, `g` merge (one-shot) / group now
 (watch, when nothing is grouped yet), `u` undo, `ctrl+r` redo. Watch: `A` auto-group toggle.
+
+Review: `c` marks the file block under the diff cursor (or the selected group, from the list)
+reviewed. A finished group moves the cursor to the next group that is not reviewed, wrapping
+around. The Generated files group and empty groups are not counted in the header's `N/M reviewed`.
+A file block is folded by default when it is generated or fully reviewed. `z` (block) and `Z` (pane)
+flip that, remembered per `(group ID, file)` (`""` in the all view) until the block's reviewed
+state changes, and reset on a new grouping. A folded header carries `BlockHunks`, so `x`, `e`,
+`}`/`{` act on it. `#` toggles the line-number gutter (`line_numbers`, default on). `Line.Gutter`
+excludes the gutter from search.
 
 Theme: `CLUMP_THEME=light|dark`, else the `CSI ? 996 n` query (DA1 sentinel, 100 ms) before
 Bubble Tea starts; Rex answers `ESC[?997;1n` (dark) in 0.2 ms (C-rex.md).
@@ -530,3 +544,7 @@ Verified in C-rex.md (Rex server 0.1.0-preview.21, app 0.1.0 (2061)):
   model never sees their bodies. The built-in list leaves out files a tool writes but people still
   read for intent (Django migrations, Jest snapshots, `go.mod`). A `generated/` directory pattern
   was rejected: it caught clump's own `internal/generated` package.
+- **Reviewed is per hunk content, toggled per file or group.** A file or group is the unit you
+  check off, as on GitHub. Storing marks per hunk by content lets them survive regrouping and
+  carry over from a commit to the branch range that contains it, and makes them reset when the
+  hunk changes. `c` was free (`v`, GitHub's "viewed" key, is visual mode here).

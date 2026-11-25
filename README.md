@@ -109,6 +109,7 @@ and a `[providers.<name>]` table it defines replaces the built-in provider of th
 | `auto_group` | `true` | watch mode groups every followed selection without asking |
 | `follow_worktree` | `false` | watch mode also follows lazygit's working-tree/staged diffs |
 | `then` | `""` | diff renderer `clump lazygit install` keeps behind `clump push`, e.g. `"delta --paging=never"` |
+| `line_numbers` | `true` | show old/new line numbers beside the diff (`#` toggles them in the TUI) |
 
 ### Generated files
 
@@ -117,6 +118,8 @@ follow from a change somewhere else, and that change is what you review. clump d
 hunks to the model, so you pay for fewer tokens and the groups have less noise. The model is told
 only their paths ("generated files also changed: …"), so it can still title the schema change that
 a migration came from. In the TUI they sit in a **Generated files** group at the end of the list.
+They are folded, each header says why the file was skipped, and `z` unfolds one when you want to
+look.
 
 A file is generated when, in this order:
 
@@ -353,6 +356,7 @@ Results live under `$XDG_CACHE_HOME/clump` (else `~/.cache/clump`):
 results/<key[0:2]>/<key>.json      one cached grouping
 summaries/<key[0:2]>/<key>.json    one cached per-file summary
 overrides/<hash[0:2]>/<hash>.json  your edits for one diff
+reviewed/<k>.json                  hunks you marked reviewed, by content
 calibration.json                   bytes-per-token per provider
 ```
 
@@ -367,6 +371,12 @@ that diff shows them marked `edited` with no provider call, even without a cache
 survives a restart (e2e: edit, close the pane, reopen, back to the commit, still `edited`). Undo is
 per session; undoing back to the model's grouping deletes the override, so the next open shows the
 cached result again.
+
+Reviewed marks (`c`) are kept per hunk, keyed by the file path and the hunk's lines without line
+numbers, not by diff. So a hunk you checked off while stepping through commits in watch mode is
+already checked when you open the branch range (`clump --branch`). It stays checked after a
+regroup, an edit, a provider switch or a rebase that only moves it, and is unchecked again as soon
+as its text changes. Marks older than 180 days are dropped.
 
 `r` with edits asks first: `d` discards them and regroups, `s` keeps them as a snapshot (`before
 regroup <time>`) and regroups, `esc` cancels; after a regroup only the snapshots remain. `--json`
@@ -387,6 +397,20 @@ Press `?` for the same list inside the TUI.
 | `}/{` | next/previous hunk (diff pane) |
 | `ctrl+d/ctrl+u` | half page down/up |
 | `a` | toggle grouped / all hunks in file order |
+
+**Review**
+
+| key | action |
+|---|---|
+| `c` | mark the file under the cursor (diff pane) or the whole group (list) reviewed; when the group is done, move on to the next unreviewed one. `c` again unmarks |
+| `z` | fold/unfold the file under the cursor (diff pane) or every file of the group (list) |
+| `Z` | fold/unfold every file in the pane |
+| `#` | line numbers on/off |
+
+Reviewed files fold, their header gets a `✓`, and the list shows `2/5h` for a group you have partly
+reviewed and `✓` for one you have finished. The header shows `3/7 reviewed`, which does not count
+the Generated files group. Generated files start folded. `}`/`{` stop at folded files, and `x` or `e`
+on a folded header act on its hunks.
 
 **Search & tools**
 

@@ -483,6 +483,16 @@ func TestOverCeilingAsks(t *testing.T) {
 	}
 }
 
+// The hint after declining says "press g", so g must send it (not merge).
+func TestOverCeilingDeclinedThenG(t *testing.T) {
+	h := newHarness(t, nil, func(c *config.Config) { c.Ceiling = 10 })
+	h.load(testPatch)
+	h.keys("n", "g")
+	if h.fake.Calls() != 1 || h.m.doc.state != stGrouped {
+		t.Fatalf("calls %d state %v flash %q", h.fake.Calls(), h.m.doc.state, h.m.flash)
+	}
+}
+
 func TestProviderSwitch(t *testing.T) {
 	h := newHarness(t, nil, nil)
 	h.load(testPatch)

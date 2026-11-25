@@ -110,6 +110,9 @@ func (m *Model) setDcur(i int) {
 // line), "" if none.
 func (m *Model) hunkAt(i int) string {
 	lines := m.ensureLines()
+	if i >= 0 && i < len(lines) && len(lines[i].BlockHunks) > 0 {
+		return lines[i].BlockHunks[0] // a file header: its first hunk
+	}
 	for j := i; j >= 0 && j < len(lines); j++ {
 		if lines[j].HunkID != "" {
 			return lines[j].HunkID
@@ -159,7 +162,10 @@ func (m *Model) toggleMark() {
 			ids = g.Hunks
 		}
 	default:
-		if id := m.cursorHunk(); id != "" {
+		lines := m.ensureLines()
+		if m.dcur >= 0 && m.dcur < len(lines) && lines[m.dcur].Kind == view.KindFile {
+			ids = lines[m.dcur].BlockHunks // x on a file header marks the file
+		} else if id := m.cursorHunk(); id != "" {
 			ids = []string{id}
 		}
 	}
