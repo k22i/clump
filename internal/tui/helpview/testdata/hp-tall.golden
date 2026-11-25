@@ -1,0 +1,17 @@
+clump keys (? or esc to close)
+
+Navigate
+  j/k    next/previous group
+  enter  focus the diff pane
+  ]/[    next/previous group from anywhere
+  a      grouped / all hunks
+
+Search
+  /    search
+  n/N  next/previous match
+
+Edit
+  x         mark hunk
+  M         move marked hunks
+  R         rename group
+  u/ctrl+r  undo/redo
