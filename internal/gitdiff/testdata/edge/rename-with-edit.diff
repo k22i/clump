@@ -1,0 +1,10 @@
+diff --git a/src/x.go b/lib/x.go
+similarity index 80%
+rename from src/x.go
+rename to lib/x.go
+index 1..2 100644
+--- a/src/x.go
++++ b/lib/x.go
+@@ -1 +1 @@
+-a
++b

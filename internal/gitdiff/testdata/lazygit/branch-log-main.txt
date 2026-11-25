@@ -1,0 +1,25 @@
+* [33mcommit 6bdf738[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m
+[31m|[m Author: tester <t@example.com>
+[31m|[m Date:   2 minutes ago
+[31m|[m 
+[31m|[m     Binary, mode change, no-newline file
+[31m|[m 
+* [33mcommit bdd913d[m
+[31m|[m Author: tester <t@example.com>
+[31m|[m Date:   2 minutes ago
+[31m|[m 
+[31m|[m     Rename old.txt to new.txt and append
+[31m|[m 
+* [33mcommit 67a7d22[m
+[31m|[m Author: tester <t@example.com>
+[31m|[m Date:   2 minutes ago
+[31m|[m 
+[31m|[m     Mixed: fmt in main, readme tweak
+[31m|[m     
+[31m|[m     Body line explaining the change.
+[31m|[m 
+* [33mcommit 8b38cb5[m
+  Author: tester <t@example.com>
+  Date:   2 minutes ago
+  
+      Initial commit

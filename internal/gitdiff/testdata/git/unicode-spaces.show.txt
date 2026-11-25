@@ -1,0 +1,14 @@
+diff --git a/café.txt b/café.txt
+new file mode 100644
+index 0000000..572eb43
+--- /dev/null
++++ b/café.txt
+@@ -0,0 +1 @@
++café
+diff --git a/dir a/f b.txt b/dir a/f b.txt
+new file mode 100644
+index 0000000..bd4269f
+--- /dev/null
++++ b/dir a/f b.txt	
+@@ -0,0 +1 @@
++spaced

@@ -1,0 +1,22 @@
+diff --git a/README.md b/README.md
+index 6f90a26..0c37b71 100644
+--- a/README.md
++++ b/README.md
+@@ -1,3 +1,3 @@
+ # Fixture
+ 
+-A scratch repo.
++A scratch repo for clump tests.
+diff --git a/src/main.go b/src/main.go
+index d8fa929..a80fe4b 100644
+--- a/src/main.go
++++ b/src/main.go
+@@ -3,5 +3,7 @@ package main
+ import "fmt"
+ 
+ func main() {
+-	fmt.Println("hello")
++	fmt.Println("hello, world")
+ }
++
++func add(a, b int) int { return a + b }

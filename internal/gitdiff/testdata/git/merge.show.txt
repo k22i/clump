@@ -1,0 +1,11 @@
+diff --git a/src/feature.go b/src/feature.go
+new file mode 100644
+index 0000000..8cac064
+--- /dev/null
++++ b/src/feature.go
+@@ -0,0 +1,5 @@
++package main
++
++func feature() string { return "feature" }
++
++func feature2() int { return 2 }

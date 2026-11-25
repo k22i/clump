@@ -1,0 +1,13 @@
+diff --git a/src/main.go b/src/main_copy.go
+similarity index 92%
+copy from src/main.go
+copy to src/main_copy.go
+index a80fe4b..2376774 100755
+--- a/src/main.go
++++ b/src/main_copy.go
+@@ -7,3 +7,5 @@ func main() {
+ }
+ 
+ func add(a, b int) int { return a + b }
++
++// copy

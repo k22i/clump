@@ -1,0 +1,2 @@
+c7c514fa: 10 files, 26 hunks, ~7375 tokens (cap -1, 0 hunks truncated) -> opencode:opencode/deepseek-v4.1-flash-free
+latency=27093ms in=22732 out=416 cost=$0.00000 (reported) groups=5 notices=0

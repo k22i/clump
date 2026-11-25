@@ -1,0 +1,19 @@
+[33mcommit 3fc2e4ad9133fd05cee81258803a51ae8a1997ff[m
+Author: Fixture Bot <fixture@example.invalid>
+Date:   Thu Jan 1 00:00:00 2026 +0000
+
+    Rename old.txt to new.txt and append
+---
+ docs/{old.txt => new.txt} | 1 [32m+[m
+ 1 file changed, 1 insertion(+)
+
+[1mdiff --git a/docs/old.txt b/docs/new.txt[m
+[1msimilarity index 57%[m
+[1mrename from docs/old.txt[m
+[1mrename to docs/new.txt[m
+[1mindex 33194a0..e060e8e 100644[m
+[1m--- a/docs/old.txt[m
+[1m+++ b/docs/new.txt[m
+[36m@@ -1 +1,2 @@[m
+ old content[m
+[32m+[m[32mappended[m

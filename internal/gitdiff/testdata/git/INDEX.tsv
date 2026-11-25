@@ -1,0 +1,10 @@
+name	source	description
+mixed	0cf1d65695bfd676341eab80814142c547844a71	Mixed: greet the world, add helper, readme tweak
+rename	3fc2e4ad9133fd05cee81258803a51ae8a1997ff	Rename old.txt to new.txt and append
+binary-mode	44b46f1c5501aa0bd0060f9a403b4a1fe76847ce	Binary, mode change, no-newline file
+unicode-spaces	8514dd19ed223ae4b60637117bdbb039738e0b78	Unicode and spaced paths
+delete	95a035d011109792fd056c5298bc7f70b3400fac	Delete nonl.txt
+merge	944948eefd28d2a2c883f1a4e10b211892ae8a4b	Merge branch 'feature'
+copy	30e2521464c515d2fed96f21ecd9cd61b3eb9f81	Copy main.go, shown with --find-copies-harder
+range-main-feature2	main...feature2	git diff main...feature2
+merge-cc	(merge)	git show -c of the merge: combined diff (may be empty for a clean merge)

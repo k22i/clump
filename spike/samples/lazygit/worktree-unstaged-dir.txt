@@ -1,0 +1,9 @@
+diff --git a/src/main.go b/src/main.go
+index 930255e..5d76d94 100755
+--- a/src/main.go
++++ b/src/main.go
+@@ -7,3 +7,4 @@ func main() {
+ }
+ 
+ func helper() int { return 42 }
++dirty

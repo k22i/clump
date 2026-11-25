@@ -1,0 +1,9 @@
+[33mcommit 944948eefd28d2a2c883f1a4e10b211892ae8a4b[m
+Merge: 4adbb10 75ed002
+Author: Fixture Bot <fixture@example.invalid>
+Date:   Thu Jan 1 00:00:00 2026 +0000
+
+    Merge branch 'feature'
+
+ src/feature.go | 5 [32m+++++[m
+ 1 file changed, 5 insertions(+)

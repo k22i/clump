@@ -1,0 +1,102 @@
+# clump configuration: ~/.config/clump/config.toml
+#
+# Every key is optional; these are the defaults. Diffs are sent to whichever
+# provider you choose here. API keys are never stored in this file: an HTTP
+# provider names the environment variable that holds its key (api_key_env).
+
+# Provider (name or alias) used by one-shot mode (`clump <rev>`).
+default = "cheap"
+
+# Aliases. Watch mode auto-groups with "cheap". `m` in the TUI switches.
+cheap = "claude-haiku"
+strong = "claude-sonnet"
+
+# Ask before sending a prompt estimated above this many tokens. Watch mode
+# never auto-sends above it; it shows "press g to group (~N tokens)".
+ceiling = 40000
+
+# Token budget for one prompt. Bigger diffs are truncated (hunk bodies only,
+# never the catalog or headers) or summarised per file first.
+budget = 60000
+
+# Most groups the model may return.
+max_groups = 12
+
+# Watch mode: group every followed selection automatically (toggle with A).
+auto_group = true
+
+# Watch mode: also follow lazygit's working-tree / staged file diffs.
+follow_worktree = false
+
+# Diff renderer that `clump lazygit install` keeps for lazygit's own panel,
+# e.g. "delta --paging=never". Empty means plain coloured git output.
+then = ""
+
+# The claude CLI, using your existing login. The prompt goes on stdin and the
+# command runs in the temp dir so it never sees repo context.
+[providers.claude-haiku]
+type = "command"
+argv = ["claude", "-p", "--model", "haiku", "--output-format", "json", "--tools", "", "--setting-sources", "", "--strict-mcp-config", "--exclude-dynamic-system-prompt-sections", "--no-session-persistence", "--system-prompt", "You are a JSON API. Follow the user message exactly and output only JSON."]
+format = "claude-json"
+model = "haiku"
+input_price = 0.10      # USD per million tokens
+output_price = 0.50
+bytes_per_token = 2.0   # Claude tokenises diffs at ~2 bytes/token
+overhead_tokens = 650   # the CLI's own per-call input
+timeout = 180
+
+[providers.claude-sonnet]
+type = "command"
+argv = ["claude", "-p", "--model", "sonnet", "--output-format", "json", "--tools", "", "--setting-sources", "", "--strict-mcp-config", "--exclude-dynamic-system-prompt-sections", "--no-session-persistence", "--system-prompt", "You are a JSON API. Follow the user message exactly and output only JSON."]
+format = "claude-json"
+model = "sonnet"
+input_price = 2.0
+output_price = 10.0
+bytes_per_token = 2.0
+overhead_tokens = 650
+timeout = 300
+
+# More examples (uncomment one, then point an alias at it, e.g. cheap = "deepseek"):
+#
+# Anthropic Messages API directly (about half the cost of `claude -p`):
+# [providers.anthropic-haiku]
+# type = "anthropic"
+# model = "claude-haiku-5-5"
+# api_key_env = "ANTHROPIC_API_KEY"
+# input_price = 0.10
+# output_price = 0.50
+# bytes_per_token = 2.0
+#
+# DeepSeek (OpenAI-compatible):
+# [providers.deepseek]
+# type = "openai"
+# base_url = "https://api.deepseek.com/v1"
+# model = "deepseek-chat"
+# api_key_env = "DEEPSEEK_API_KEY"
+# input_price = 0.27
+# output_price = 1.10
+# bytes_per_token = 3.3
+#
+# OpenRouter:
+# [providers.openrouter]
+# type = "openai"
+# base_url = "https://openrouter.ai/api/v1"
+# model = "deepseek/deepseek-chat"
+# api_key_env = "OPENROUTER_API_KEY"
+#
+# Ollama (local, no key):
+# [providers.ollama]
+# type = "openai"
+# base_url = "http://localhost:11434/v1"
+# model = "qwen3:8b"
+#
+# opencode CLI:
+# [providers.opencode]
+# type = "command"
+# argv = ["opencode", "run", "-m", "opencode/deepseek-v4.1-flash-free", "--format", "json"]
+# format = "opencode-json"
+# model = "deepseek-v4.1-flash-free"
+#
+# A fake provider (no model, deterministic groups by directory) for trying clump out:
+# [providers.fake]
+# type = "fake"

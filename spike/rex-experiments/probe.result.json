@@ -1,0 +1,23 @@
+{
+  "csi996": {
+    "reply": "\u001b[?997;1n\u001b[?62;22c",
+    "ms": 0.2
+  },
+  "osc7501": {
+    "reply": "\u001b]7501;?:states=idle,working,done,blocked,error:kinds=permission,question,auth\u001b\\\u001b[?62;22c",
+    "ms": 0.1
+  },
+  "osc11_bg": {
+    "reply": "\u001b]11;rgb:0d0d/1111/1717\u001b\\\u001b[?62;22c",
+    "ms": 0.1
+  },
+  "env": {
+    "REX_SERVER": "unix:///Users/kevinmallari/Library/Application%20Support/rex/server.sock",
+    "TERM": "xterm-256color",
+    "COLORTERM": "truecolor",
+    "TERM_PROGRAM": "rex",
+    "REX_SESSION": "session:01a21098-b941-7c87-8b37-1d3ab736e92a",
+    "REX_BLOCK": "block:01a211b6-3684-72fd-ade6-57942617eefe",
+    "REX_BIN_DIR": "/Users/kevinmallari/Library/Application Support/com.superlogical.rex/RexServer/Versions/Current/Rex Server.app/Contents/MacOS"
+  }
+}

@@ -1,0 +1,5 @@
+diff --git a/bad.txt b/bad.txt
+--- a/bad.txt
++++ b/bad.txt
+@@ -x +1 @@
++a

@@ -1,0 +1,6 @@
+diff --git a/bad.txt b/bad.txt
+--- a/bad.txt
++++ b/bad.txt
+@@ -1,2 +1,2 @@
+ a
+GARBAGE LINE

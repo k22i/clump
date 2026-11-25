@@ -1,0 +1,26 @@
+commit 6bdf738591d3bd3c8e57a24b7d885f492633294b (HEAD -> main)
+Author: tester <t@example.com>
+Date:   Wed Nov 25 15:52:41 2026 +0800
+
+    Binary, mode change, no-newline file
+---
+ logo.bin    | Bin 0 -> 2048 bytes
+ nonl.txt    |   1 +
+ src/main.go |   0
+ 3 files changed, 1 insertion(+)
+
+diff --git a/logo.bin b/logo.bin
+new file mode 100644
+index 0000000..8317895
+Binary files /dev/null and b/logo.bin differ
+diff --git a/nonl.txt b/nonl.txt
+new file mode 100644
+index 0000000..20cbb4d
+--- /dev/null
++++ b/nonl.txt
+@@ -0,0 +1 @@
++no newline
+\ No newline at end of file
+diff --git a/src/main.go b/src/main.go
+old mode 100644
+new mode 100755

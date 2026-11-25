@@ -1,0 +1,4 @@
+git:
+  diffRenderers:
+    - command: <spike>/bin/pushproto push
+      name: clump-push

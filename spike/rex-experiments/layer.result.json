@@ -1,0 +1,19 @@
+{
+  "layer": {
+    "block_ids": [
+      "block:01a211b6-9bf0-731c-8748-3c06fd72da76"
+    ],
+    "layer_id": "layer:01a211b6-9bff-7d2f-b77d-322906f49598",
+    "revision": 4000000041
+  },
+  "layer_label": "clump-oneshot",
+  "layer_screen": "FLOAT pwd=/private/tmp/claude-501/-Users-kevinmallari-Developer/2ef7ba5b-cbdf-48\nb0-acc5-62d7254a84f0/scratchpad/lgrepo",
+  "split_label_after_title": "clump-watch:LABELTEST",
+  "split_title": {
+    "owner": {
+      "name": "login",
+      "pid": 23638
+    },
+    "title": "some program title"
+  }
+}

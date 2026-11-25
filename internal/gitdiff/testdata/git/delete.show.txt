@@ -1,0 +1,8 @@
+diff --git a/nonl.txt b/nonl.txt
+deleted file mode 100644
+index 2802503..0000000
+--- a/nonl.txt
++++ /dev/null
+@@ -1 +0,0 @@
+-no newline at end
+\ No newline at end of file

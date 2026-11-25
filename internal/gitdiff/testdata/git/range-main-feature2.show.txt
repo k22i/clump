@@ -1,0 +1,10 @@
+diff --git a/src/two.go b/src/two.go
+new file mode 100644
+index 0000000..2dd6fdc
+--- /dev/null
++++ b/src/two.go
+@@ -0,0 +1,4 @@
++package main
++
++// Feature two.
++func two() int { return 2 }

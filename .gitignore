@@ -1,0 +1,6 @@
+spike/bin/
+/clump
+/dist/
+*.test
+*.out
+.DS_Store

@@ -1,0 +1,10 @@
+diff --git a/docs/old.txt b/docs/new.txt
+similarity index 57%
+rename from docs/old.txt
+rename to docs/new.txt
+index 33194a0..e060e8e 100644
+--- a/docs/old.txt
++++ b/docs/new.txt
+@@ -1 +1,2 @@
+ old content
++appended

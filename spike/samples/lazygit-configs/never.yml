@@ -1,0 +1,5 @@
+git:
+  diffRenderers:
+    - command: <spike>/bin/lgcapture --width={{width}} --scheme={{colorScheme}}
+      colorArg: never
+      name: capture-never

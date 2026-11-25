@@ -1,0 +1,20 @@
+ logo.bin    | Bin 2048 -> 0 bytes
+ nonl.txt    |   1 -
+ src/main.go |   0
+ 3 files changed, 1 deletion(-)
+
+diff --git a/logo.bin b/logo.bin
+deleted file mode 100644
+index 8317895..0000000
+Binary files a/logo.bin and /dev/null differ
+diff --git a/nonl.txt b/nonl.txt
+deleted file mode 100644
+index 20cbb4d..0000000
+--- a/nonl.txt
++++ /dev/null
+@@ -1 +0,0 @@
+-no newline
+\ No newline at end of file
+diff --git a/src/main.go b/src/main.go
+old mode 100755
+new mode 100644

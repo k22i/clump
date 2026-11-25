@@ -1,0 +1,15 @@
+diff --git a/logo.bin b/logo.bin
+new file mode 100644
+index 0000000..8317895
+Binary files /dev/null and b/logo.bin differ
+diff --git a/nonl.txt b/nonl.txt
+new file mode 100644
+index 0000000..20cbb4d
+--- /dev/null
++++ b/nonl.txt
+@@ -0,0 +1 @@
++no newline
+\ No newline at end of file
+diff --git a/src/main.go b/src/main.go
+old mode 100644
+new mode 100755

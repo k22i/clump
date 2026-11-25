@@ -1,0 +1,4 @@
+git:
+  diffRenderers:
+    - command: <spike>/bin/lgcapture --width={{width}} --scheme={{colorScheme}} --col={{columnWidth}}
+      name: capture-always

@@ -1,0 +1,32 @@
+[33mcommit 0cf1d65695bfd676341eab80814142c547844a71[m
+Author: Fixture Bot <fixture@example.invalid>
+Date:   Thu Jan 1 00:00:00 2026 +0000
+
+    Mixed: greet the world, add helper, readme tweak
+---
+ README.md   | 2 [32m+[m[31m-[m
+ src/main.go | 4 [32m+++[m[31m-[m
+ 2 files changed, 4 insertions(+), 2 deletions(-)
+
+[1mdiff --git a/README.md b/README.md[m
+[1mindex 6f90a26..0c37b71 100644[m
+[1m--- a/README.md[m
+[1m+++ b/README.md[m
+[36m@@ -1,3 +1,3 @@[m
+ # Fixture[m
+ [m
+[31m-A scratch repo.[m
+[32m+[m[32mA scratch repo for clump tests.[m
+[1mdiff --git a/src/main.go b/src/main.go[m
+[1mindex d8fa929..a80fe4b 100644[m
+[1m--- a/src/main.go[m
+[1m+++ b/src/main.go[m
+[36m@@ -3,5 +3,7 @@[m [mpackage main[m
+ import "fmt"[m
+ [m
+ func main() {[m
+[31m-	fmt.Println("hello")[m
+[32m+[m	[32mfmt.Println("hello, world")[m
+ }[m
+[32m+[m
+[32m+[m[32mfunc add(a, b int) int { return a + b }[m
