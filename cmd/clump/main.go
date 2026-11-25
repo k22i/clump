@@ -49,6 +49,8 @@ func run(args []string, stdin *os.File, stdout, stderr io.Writer) int {
 		err = runRex(args[1:], stdin, stdout)
 	case "lazygit":
 		err = runLazygit(args[1:], stdin, stdout)
+	case "doctor":
+		err = runDoctor(stdout)
 	case "version", "--version":
 		fmt.Fprintln(stdout, "clump", version)
 		return 0
