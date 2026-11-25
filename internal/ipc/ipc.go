@@ -16,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"syscall"
 	"time"
 
 	"golang.org/x/sys/unix"
@@ -108,11 +109,23 @@ func SocketDir() string {
 }
 
 // SocketPath is SocketDir()/<first 16 hex chars of sha256(repoRoot)>.sock.
+//
+// Unix socket paths are limited to 104 bytes on darwin (108 on linux). When
+// SocketDir() would make the path longer than MaxSocketPath, the socket goes
+// in /tmp/clump-<uid> instead (Listen checks that directory's owner).
 func SocketPath(repoRoot string) string {
 	sum := sha256.Sum256([]byte(repoRoot))
 	name := hex.EncodeToString(sum[:])[:16] + ".sock"
-	return filepath.Join(SocketDir(), name)
+	p := filepath.Join(SocketDir(), name)
+	if len(p) > MaxSocketPath {
+		p = filepath.Join("/tmp", fmt.Sprintf("clump-%d", os.Getuid()), name)
+	}
+	return p
 }
+
+// MaxSocketPath is the longest socket path SocketPath returns (darwin's
+// sun_path holds 104 bytes including the terminating NUL).
+const MaxSocketPath = 103
 
 // FindRepoRoot walks up from dir to the first directory containing a
 // ".git" entry (directory or file, so worktrees work) and returns it, or ""
@@ -153,6 +166,9 @@ func Listen(path string) (*Listener, error) {
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return nil, fmt.Errorf("ipc: create socket dir: %w", err)
+	}
+	if err := checkOwnDir(dir); err != nil {
+		return nil, err
 	}
 	if err := os.Chmod(dir, 0o700); err != nil {
 		return nil, fmt.Errorf("ipc: chmod socket dir: %w", err)
@@ -316,4 +332,20 @@ func Send(path string, m Msg, dialTimeout, writeTimeout time.Duration) error {
 // error.
 func ParentArgv() []string {
 	return parentArgv()
+}
+
+// checkOwnDir refuses a socket directory that is a symlink or that another
+// user owns (the /tmp fallback is shared, so a squatter could pre-create it).
+func checkOwnDir(dir string) error {
+	fi, err := os.Lstat(dir)
+	if err != nil {
+		return fmt.Errorf("ipc: socket dir: %w", err)
+	}
+	if fi.Mode()&os.ModeSymlink != 0 || !fi.IsDir() {
+		return fmt.Errorf("ipc: socket dir %s is not a directory", dir)
+	}
+	if st, ok := fi.Sys().(*syscall.Stat_t); ok && int(st.Uid) != os.Getuid() {
+		return fmt.Errorf("ipc: socket dir %s is owned by uid %d, not %d", dir, st.Uid, os.Getuid())
+	}
+	return nil
 }
