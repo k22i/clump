@@ -45,6 +45,8 @@ func runDoctor(stdout io.Writer) error {
 			fmt.Fprintf(stdout, "provider    %-16s %-9s %s%s\n", pc.Name, pc.Type, pc.ModelID(), note)
 		}
 		fmt.Fprintf(stdout, "limits      ceiling=%d budget=%d max_groups=%d auto_group=%v\n", cfg.Ceiling, cfg.Budget, cfg.MaxGroups, cfg.AutoGroup)
+		g := cfg.Generated
+		fmt.Fprintf(stdout, "generated   detect=%v builtin=%v patterns=%d review=%d\n", g.Detect, g.Builtin, len(g.Patterns), len(g.Review))
 	}
 	if d, err := cache.DefaultDir(); err == nil {
 		fmt.Fprintf(stdout, "cache       %s\n", d)

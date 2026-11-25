@@ -28,6 +28,42 @@ const UngroupedID = "ungrouped"
 // UngroupedTitle is the title of the Ungrouped group.
 const UngroupedTitle = "Ungrouped"
 
+// GeneratedID is the reserved group ID of the "Generated files" group: the
+// hunks of files gitdiff.File.Generated marks, which are never sent to the
+// model. It is placed last by Validate and FallbackPerFile; after that it is
+// an ordinary group the user may edit.
+const GeneratedID = "generated"
+
+// GeneratedTitle is the title of the Generated files group.
+const GeneratedTitle = "Generated files"
+
+// generatedDesc is the Generated files group's description.
+const generatedDesc = "Lock files, codegen output and vendored code. Not sent to the model."
+
+// GeneratedHunks returns the IDs of the hunks of d's generated files, in
+// diff order.
+func GeneratedHunks(d *gitdiff.Diff) []string {
+	var out []string
+	for _, h := range d.Hunks {
+		if IsGenerated(h) {
+			out = append(out, h.ID)
+		}
+	}
+	return out
+}
+
+// IsGenerated reports whether h belongs to a generated file.
+func IsGenerated(h *gitdiff.Hunk) bool { return h.File != nil && h.File.Generated != "" }
+
+// generatedGroup is the Generated files group for d, if d has any.
+func generatedGroup(d *gitdiff.Diff) (Group, bool) {
+	ids := GeneratedHunks(d)
+	if len(ids) == 0 {
+		return Group{}, false
+	}
+	return Group{ID: GeneratedID, Title: GeneratedTitle, Description: generatedDesc, Hunks: ids}, true
+}
+
 // Group is one logical change.
 type Group struct {
 	// ID is stable for the life of the grouping: "g1", "g2", ... or

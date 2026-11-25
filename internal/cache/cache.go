@@ -113,6 +113,16 @@ func Key(diffHash, providerName, modelID string, maxGroups int) string {
 	return hashFields(diffHash, providerName, modelID, group.PromptVersion, strconv.Itoa(maxGroups))
 }
 
+// KeyWith is Key for a request that left some files out (generated files):
+// skip names them (generated.Signature). An empty skip gives Key, so caches
+// written before files could be left out stay valid.
+func KeyWith(diffHash, providerName, modelID string, maxGroups int, skip string) string {
+	if skip == "" {
+		return Key(diffHash, providerName, modelID, maxGroups)
+	}
+	return hashFields(diffHash, providerName, modelID, group.PromptVersion, strconv.Itoa(maxGroups), "skip="+skip)
+}
+
 // SummaryKey keys a tier-2 summary: SHA-256 hex of
 // fileHash + "\x00" + providerName + "\x00" + modelID + "\x00" + group.PromptVersion.
 func SummaryKey(fileHash, providerName, modelID string) string {

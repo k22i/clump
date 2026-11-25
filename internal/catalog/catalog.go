@@ -52,7 +52,8 @@ func (u Unit) HunkIDs() []string {
 // directory, the extension and the status, and the hunks have the same +a
 // and -d counts. A set of near-identical hunks collapses when it has at least
 // CollapseMin members from at least CollapseMin distinct files. Collapsed
-// units are numbered c1, c2, ... in order.
+// units are numbered c1, c2, ... in order. Hunks of generated files
+// (gitdiff.File.Generated) are left out: they are never sent to the model.
 func Units(d *gitdiff.Diff, o Options) []Unit {
 	min := o.CollapseMin
 	if min == 0 {
@@ -72,6 +73,9 @@ func Units(d *gitdiff.Diff, o Options) []Unit {
 		return key{path.Dir(p), path.Ext(p), h.File.Status, h.Add, h.Del}, true
 	}
 	for _, h := range d.Hunks {
+		if skipped(h) {
+			continue
+		}
 		if k, ok := keyOf(h); ok {
 			sets[k] = append(sets[k], h)
 		}
@@ -90,6 +94,9 @@ func Units(d *gitdiff.Diff, o Options) []Unit {
 	emitted := map[key]bool{}
 	c := 0
 	for _, h := range d.Hunks {
+		if skipped(h) {
+			continue
+		}
 		k, ok := keyOf(h)
 		if ok && collapse[k] {
 			if emitted[k] {
@@ -113,6 +120,9 @@ func Units(d *gitdiff.Diff, o Options) []Unit {
 	}
 	return out
 }
+
+// skipped reports whether h is left out of the catalog (a generated file).
+func skipped(h *gitdiff.Hunk) bool { return h.File != nil && h.File.Generated != "" }
 
 // Aliases maps each collapsed unit ID to its member hunk IDs (for
 // group.ValidateOpts.Aliases). Single-hunk units are not included.

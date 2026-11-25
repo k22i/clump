@@ -50,8 +50,13 @@ type File struct {
 	NewMode    string `json:"new_mode,omitempty"`
 	Binary     bool   `json:"binary,omitempty"`
 	// Index is the value of the "index" line ("abc123..def456 100644"), "" if absent.
-	Index string  `json:"index,omitempty"`
-	Hunks []*Hunk `json:"-"`
+	Index string `json:"index,omitempty"`
+	// Generated, when not "", says why the file is skipped from review
+	// (set by generated.Detector.Mark, never by the parser): e.g.
+	// "pattern go.sum", "linguist-generated", "marker @generated". Its
+	// hunks are not sent to the model. It is not part of Canonical.
+	Generated string  `json:"generated,omitempty"`
+	Hunks     []*Hunk `json:"-"`
 }
 
 // Path is the file's current path: NewPath, or OldPath for a deleted file.

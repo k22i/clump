@@ -174,13 +174,14 @@ func runOneShot(args []string, stdin *os.File, stdout, stderr io.Writer) error {
 	if interactive || o.pick {
 		return runTUI(ctx, a, o, stdin, providerName)
 	}
-	l, _, err := loadInput(ctx, o, stdin)
+	l, repo, err := loadInput(ctx, o, stdin)
 	if err != nil {
 		return err
 	}
 	if len(l.Diff.Hunks) == 0 {
 		return errors.New("the diff is empty")
 	}
+	a.eng.MarkGenerated(ctx, l.Diff, repo)
 	in := engine.Input{Diff: l.Diff, Context: l.Context}
 	if o.dryRun {
 		j, err := a.eng.Prepare(in, providerName)

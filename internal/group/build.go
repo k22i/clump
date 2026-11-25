@@ -159,6 +159,7 @@ func buildHunks(units []catalog.Unit, capLines int) (text string, truncated, dro
 // exceeds Budget, it plans tier 2. See DESIGN.md "Large diffs".
 func Build(d *gitdiff.Diff, o BuildOpts) *Plan {
 	o = o.buildNorm()
+	o.Context = withGeneratedNote(o.Context, d)
 	units := catalog.Units(d, catalog.Options{CollapseMin: o.CollapseMin})
 	p := &Plan{Tier: 1, Units: units, Aliases: catalog.Aliases(units), BodyCap: -1, opts: o}
 	cat := buildCatalog(units)
@@ -217,6 +218,9 @@ func buildTier2(d *gitdiff.Diff, p *Plan, o BuildOpts, catalogOnly string) {
 	}
 	var blocks []fb
 	for i, f := range d.Files {
+		if f.Generated != "" {
+			continue
+		}
 		t, _ := catalog.FileBlock(d, i, -1)
 		capLines := -1
 		if !o.fits(o.buildRenderSummary(nonce, t)) {
@@ -276,11 +280,41 @@ func buildTier2(d *gitdiff.Diff, p *Plan, o BuildOpts, catalogOnly string) {
 	final, _ := p.BuildFromSummaries(d, pending)
 	p.FinalEstTokens = o.buildEst(final)
 	p.EstTokens = p.FinalEstTokens
+	files := 0
 	for _, c := range p.Summaries {
 		p.EstTokens += c.EstTokens
+		files += len(c.Files)
 	}
 	p.Notices = append(p.Notices, fmt.Sprintf("large diff: summarising %d files in %d calls first, then grouping over the summaries",
-		len(d.Files), len(p.Summaries)))
+		files, len(p.Summaries)))
+}
+
+// maxGeneratedNote caps the generated paths listed in the prompt context.
+const maxGeneratedNote = 40
+
+// withGeneratedNote appends to the prompt context the paths of the generated
+// files left out of the request, so the model knows they changed (a schema
+// change and its migration, say) without paying for their bodies.
+func withGeneratedNote(ctx string, d *gitdiff.Diff) string {
+	var paths []string
+	for _, f := range d.Files {
+		if f.Generated != "" {
+			paths = append(paths, f.DisplayPath())
+		}
+	}
+	if len(paths) == 0 {
+		return ctx
+	}
+	more := ""
+	if len(paths) > maxGeneratedNote {
+		more = fmt.Sprintf(", and %d more", len(paths)-maxGeneratedNote)
+		paths = paths[:maxGeneratedNote]
+	}
+	note := "Generated files also changed (left out of this request; do not group them): " + strings.Join(paths, ", ") + more
+	if strings.TrimSpace(ctx) == "" {
+		return note
+	}
+	return strings.TrimRight(ctx, "\n") + "\n\n" + note
 }
 
 // BuildFromSummaries renders the tier-2 grouping prompt: the full catalog plus
@@ -292,6 +326,9 @@ func (p *Plan) BuildFromSummaries(d *gitdiff.Diff, summaries map[int]string) (pr
 	var b strings.Builder
 	b.WriteString("FILE SUMMARIES (written by an earlier pass; hunk bodies omitted):\n")
 	for i, f := range d.Files {
+		if f.Generated != "" {
+			continue
+		}
 		s, ok := summaries[i]
 		if !ok || strings.TrimSpace(s) == "" {
 			s = "(no summary)"

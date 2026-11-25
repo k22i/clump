@@ -55,9 +55,10 @@ func Validate(d *gitdiff.Diff, text string, o ValidateOpts) Result {
 		return FallbackPerFile(d, "invalid JSON: "+err.Error())
 	}
 
+	// Generated hunks were not in the prompt; the model cannot place them.
 	known := make(map[string]bool, len(d.Hunks))
 	for _, h := range d.Hunks {
-		known[h.ID] = true
+		known[h.ID] = !IsGenerated(h)
 	}
 
 	var groups []Group
@@ -138,7 +139,7 @@ func Validate(d *gitdiff.Diff, text string, o ValidateOpts) Result {
 
 	var missing []string
 	for _, h := range d.Hunks {
-		if !seen[h.ID] {
+		if !seen[h.ID] && !IsGenerated(h) {
 			missing = append(missing, h.ID)
 		}
 	}
@@ -152,9 +153,13 @@ func Validate(d *gitdiff.Diff, text string, o ValidateOpts) Result {
 		notices = append(notices, fmt.Sprintf("repaired: %d hunks missing from the model output; put in Ungrouped", len(missing)))
 	}
 
+	if gen, ok := generatedGroup(d); ok {
+		groups = append(groups, gen)
+	}
+
 	k := 0
 	for i := range groups {
-		if groups[i].ID != UngroupedID {
+		if groups[i].ID != UngroupedID && groups[i].ID != GeneratedID {
 			k++
 			groups[i].ID = fmt.Sprintf("g%d", k)
 		}
@@ -164,16 +169,33 @@ func Validate(d *gitdiff.Diff, text string, o ValidateOpts) Result {
 	return Result{Grouping: Grouping{Groups: groups}, Notices: notices}
 }
 
+// AllGenerated is the result for a diff whose every hunk is generated: the
+// Generated files group alone, with no model call. ok is false when d has a
+// hunk to review.
+func AllGenerated(d *gitdiff.Diff) (Result, bool) {
+	for _, h := range d.Hunks {
+		if !IsGenerated(h) {
+			return Result{}, false
+		}
+	}
+	g, ok := generatedGroup(d)
+	if !ok {
+		return Result{}, false
+	}
+	return Result{Grouping: Grouping{Groups: []Group{g}}}, true
+}
+
 // FallbackPerFile returns one group per file of d (files with their hunks in
 // diff order), with Fallback set and the notice
-// "fallback: one group per file (<why>)".
+// "fallback: one group per file (<why>)". Generated files share one
+// Generated files group at the end instead.
 func FallbackPerFile(d *gitdiff.Diff, why string) Result {
 	r := Result{
 		Fallback: true,
 		Notices:  []string{"fallback: one group per file (" + why + ")"},
 	}
 	for _, f := range d.Files {
-		if len(f.Hunks) == 0 {
+		if len(f.Hunks) == 0 || f.Generated != "" {
 			continue
 		}
 		g := Group{
@@ -185,6 +207,9 @@ func FallbackPerFile(d *gitdiff.Diff, why string) Result {
 			g.Hunks = append(g.Hunks, h.ID)
 		}
 		r.Groups = append(r.Groups, g)
+	}
+	if gen, ok := generatedGroup(d); ok {
+		r.Groups = append(r.Groups, gen)
 	}
 	return r
 }

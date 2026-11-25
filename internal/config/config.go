@@ -20,6 +20,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 
+	"github.com/k22i/clump/internal/generated"
 	"github.com/k22i/clump/internal/provider"
 )
 
@@ -53,9 +54,33 @@ type Config struct {
 	// Then is the diff renderer `clump lazygit install` wraps
 	// (`clump push --then '<Then>'`), e.g. "delta --paging=never". Default "".
 	Then string `toml:"then"`
+	// Generated configures which files are skipped from review.
+	Generated Generated `toml:"generated"`
 
 	// Providers by name, in file order (built-ins first).
 	Providers []provider.Config `toml:"-"`
+}
+
+// Generated is the [generated] table: files whose hunks are not sent to the
+// model and that the TUI shows folded in a "Generated files" group. See
+// package generated for the detection rules.
+type Generated struct {
+	// Detect turns detection on (patterns, .gitattributes linguist-generated
+	// and generator markers). Default true.
+	Detect bool `toml:"detect"`
+	// Builtin uses clump's built-in patterns (lock files, codegen output,
+	// migration snapshots, minified bundles, vendored code). Default true.
+	Builtin bool `toml:"builtin"`
+	// Patterns are more paths to skip (gitignore-style globs).
+	Patterns []string `toml:"patterns"`
+	// Review are paths that are always reviewed, even when another rule
+	// says they are generated.
+	Review []string `toml:"review"`
+}
+
+// Options returns g as generated.Options.
+func (g Generated) Options() generated.Options {
+	return generated.Options{Detect: g.Detect, Builtin: g.Builtin, Patterns: g.Patterns, Review: g.Review}
 }
 
 // pathEnv and pathXDG are the environment variables Path honours.
@@ -93,6 +118,7 @@ type rawConfig struct {
 	AutoGroup      bool                       `toml:"auto_group"`
 	FollowWorktree bool                       `toml:"follow_worktree"`
 	Then           string                     `toml:"then"`
+	Generated      Generated                  `toml:"generated"`
 	Providers      map[string]provider.Config `toml:"providers"`
 }
 
@@ -124,6 +150,7 @@ func Default() *Config {
 		AutoGroup:      true,
 		FollowWorktree: false,
 		Then:           "",
+		Generated:      Generated{Detect: true, Builtin: true},
 		Providers: []provider.Config{
 			{
 				Name:           "claude-haiku",
@@ -230,12 +257,32 @@ func Parse(name, text string) (*Config, error) {
 	if md.IsDefined("then") {
 		cfg.Then = raw.Then
 	}
+	if md.IsDefined("generated", "detect") {
+		cfg.Generated.Detect = raw.Generated.Detect
+	}
+	if md.IsDefined("generated", "builtin") {
+		cfg.Generated.Builtin = raw.Generated.Builtin
+	}
+	if md.IsDefined("generated", "patterns") {
+		cfg.Generated.Patterns = nilIfEmpty(raw.Generated.Patterns)
+	}
+	if md.IsDefined("generated", "review") {
+		cfg.Generated.Review = nilIfEmpty(raw.Generated.Review)
+	}
 	cfg.Providers = overlayProviders(cfg.Providers, raw.Providers, md.Keys())
 
 	if err := cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("%s: %w", name, err)
 	}
 	return cfg, nil
+}
+
+// nilIfEmpty makes `key = []` equal to leaving the key out.
+func nilIfEmpty(s []string) []string {
+	if len(s) == 0 {
+		return nil
+	}
+	return s
 }
 
 // overlayProviders applies the provider tables the file defines to base: a
@@ -300,6 +347,16 @@ func (c *Config) Validate() error {
 	}
 	if c.MaxGroups < 1 || c.MaxGroups > 50 {
 		return errors.New("max_groups: must be between 1 and 50")
+	}
+	for _, p := range c.Generated.Patterns {
+		if _, err := generated.Compile(p); err != nil {
+			return fmt.Errorf("generated.patterns: %w", err)
+		}
+	}
+	for _, p := range c.Generated.Review {
+		if _, err := generated.Compile(p); err != nil {
+			return fmt.Errorf("generated.review: %w", err)
+		}
 	}
 	for _, p := range c.Providers {
 		if err := validateProvider(p); err != nil {

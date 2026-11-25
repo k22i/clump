@@ -9,10 +9,12 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/k22i/clump/internal/cache"
 	"github.com/k22i/clump/internal/config"
+	"github.com/k22i/clump/internal/generated"
 	"github.com/k22i/clump/internal/gitdiff"
 	"github.com/k22i/clump/internal/group"
 	"github.com/k22i/clump/internal/provider"
@@ -26,6 +28,10 @@ type Engine struct {
 	Store *cache.Store
 	// Now is time.Now unless a test replaces it.
 	Now func() time.Time
+
+	detOnce sync.Once
+	det     *generated.Detector
+	detErr  error
 }
 
 // New returns an Engine.
@@ -108,7 +114,23 @@ func (e *Engine) ResultKey(d *gitdiff.Diff, providerName string) (key, name stri
 		return "", "", provider.Config{}, err
 	}
 	pc, _ = e.Cfg.Provider(name)
-	return cache.Key(d.Hash(), name, pc.ModelID(), e.maxGroups()), name, pc, nil
+	return cache.KeyWith(d.Hash(), name, pc.ModelID(), e.maxGroups(), generated.Signature(d)), name, pc, nil
+}
+
+// MarkGenerated sets gitdiff.File.Generated on d's files from the
+// [generated] config (repo is for .gitattributes; "" skips it). Call it once
+// after loading a diff and before Lookup or Prepare.
+func (e *Engine) MarkGenerated(ctx context.Context, d *gitdiff.Diff, repo string) {
+	if e == nil || e.Cfg == nil {
+		return
+	}
+	e.detOnce.Do(func() {
+		e.det, e.detErr = generated.New(e.Cfg.Generated.Options())
+	})
+	if e.detErr != nil {
+		return // patterns are validated with the config; nothing to mark
+	}
+	e.det.Mark(ctx, d, repo)
 }
 
 func (e *Engine) maxGroups() int {
@@ -167,6 +189,9 @@ func (e *Engine) Prepare(in Input, providerName string) (*Job, error) {
 
 func (e *Engine) estimate(j *Job, bpt float64) Estimate {
 	est := Estimate{Provider: j.Provider, Tier: j.Plan.Tier, Ceiling: e.Cfg.Ceiling, BytesPerToken: bpt}
+	if len(j.Plan.Units) == 0 {
+		return est // every hunk is generated: no call
+	}
 	addCall := func(promptTokens, out int) {
 		est.Calls++
 		est.Tokens += promptTokens + j.PCfg.OverheadTokens
@@ -220,6 +245,11 @@ func (e *Engine) Run(ctx context.Context, j *Job, progress func(Progress)) (*Out
 		return nil, err
 	}
 	out := &Outcome{Provider: j.Provider, Key: j.Key, DiffHash: j.DiffHash}
+	if res, ok := group.AllGenerated(j.In.Diff); ok {
+		// Nothing to send. Not cached: it costs nothing to rebuild.
+		out.Result, out.Elapsed = res, e.Now().Sub(start)
+		return out, nil
+	}
 	report := func(what string) {
 		if progress != nil {
 			progress(Progress{Step: out.Calls + 1, Steps: j.Est.Calls, What: what})
@@ -333,6 +363,15 @@ func (e *Engine) DryRun(j *Job) string {
 		j.Provider, j.Plan.Tier, j.Est, e.Cfg.Budget, e.Cfg.Ceiling)
 	for _, n := range j.Plan.Notices {
 		fmt.Fprintf(&b, "# %s\n", n)
+	}
+	for _, f := range j.In.Diff.Files {
+		if f.Generated != "" {
+			fmt.Fprintf(&b, "# not sent (generated, %s): %s\n", f.Generated, f.DisplayPath())
+		}
+	}
+	if len(j.Plan.Units) == 0 {
+		b.WriteString("\n# every file is generated: nothing would be sent\n")
+		return b.String()
 	}
 	if j.Plan.Tier == 2 {
 		for i, c := range j.Plan.Summaries {

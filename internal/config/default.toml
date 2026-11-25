@@ -32,6 +32,22 @@ follow_worktree = false
 # e.g. "delta --paging=never". Empty means plain coloured git output.
 then = ""
 
+# Generated files: their hunks are not sent to the model (cheaper, less
+# noise) and the TUI puts them in a "Generated files" group at the end of the
+# list, folded. A file is generated when .gitattributes marks it
+# linguist-generated or linguist-vendored, when it matches a pattern below or
+# a built-in one (lock files, codegen output such as *.pb.go, __generated__/,
+# *.gen.ts and GraphQL codegen, drizzle and prisma migrations, minified
+# bundles, vendor/), or when its first lines say so ("Code generated ... DO
+# NOT EDIT", "@generated", drizzle's "--> statement-breakpoint").
+# Patterns are gitignore-style: no "/" matches a name at any depth, a "/"
+# anchors at the repo root, "**" spans directories, a trailing "/" is a tree.
+[generated]
+detect = true     # false sends and reviews everything
+builtin = true    # false uses only the patterns below and .gitattributes
+patterns = []     # more paths to skip, e.g. ["src/api/client/", "*.snap"]
+review = []       # paths always reviewed, e.g. ["db/structure.sql"]
+
 # The claude CLI, using your existing login. The prompt goes on stdin and the
 # command runs in the temp dir so it never sees repo context.
 [providers.claude-haiku]
