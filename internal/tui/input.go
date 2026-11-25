@@ -108,4 +108,3 @@ func (l *lineInput) view(width int, th view.Theme, active bool) string {
 	}
 	return l.prompt + before + th.Style(th.Selected, cur) + view.Truncate(after, max(0, width-len([]rune(l.prompt+before))-1))
 }
-
