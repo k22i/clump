@@ -96,6 +96,9 @@ type Outcome struct {
 	Calls    int  // provider calls made
 	Cached   bool // served from the result cache, no call
 	Elapsed  time.Duration
+	// Raw is the grouping call's raw answer (empty for cache hits); for
+	// logs when the validator had to repair or fall back.
+	Raw string
 }
 
 // ResultKey resolves the provider and returns the result cache key for d.
@@ -247,6 +250,7 @@ func (e *Engine) Run(ctx context.Context, j *Job, progress func(Progress)) (*Out
 	if err != nil {
 		return nil, err
 	}
+	out.Raw = text
 	res := group.Validate(j.In.Diff, text, group.ValidateOpts{MaxGroups: e.maxGroups(), Aliases: j.Plan.Aliases})
 	res.Notices = append(append(append([]string(nil), j.Plan.Notices...), notices...), res.Notices...)
 	out.Result = res

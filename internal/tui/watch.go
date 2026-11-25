@@ -287,6 +287,13 @@ func (w *watchState) onGrouped(m *Model, msg groupedMsg) tea.Cmd {
 	default:
 		w.logf("call end hash=%s groups=%d calls=%d cost=%.6f source=%s elapsed=%s",
 			msg.hash[:12], len(msg.out.Result.Groups), msg.out.Calls, msg.out.Usage.CostUSD, msg.out.Usage.CostSource, msg.out.Elapsed.Round(time.Millisecond))
+		if msg.out.Result.Fallback || len(msg.out.Result.Notices) > 0 {
+			raw := msg.out.Raw
+			if len(raw) > 400 {
+				raw = raw[:400] + "…"
+			}
+			w.logf("call notices=%q raw=%q", msg.out.Result.Notices, raw)
+		}
 	}
 	var cmds []tea.Cmd
 	if m.doc != nil && m.doc.Hash == msg.hash && m.doc.state == stGrouping {
