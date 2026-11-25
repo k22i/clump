@@ -1,0 +1,4 @@
+git:
+  diffRenderers:
+    - command: delta
+      colorArg: never

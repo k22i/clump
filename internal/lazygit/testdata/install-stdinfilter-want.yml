@@ -1,0 +1,4 @@
+git:
+  diffRenderers:
+    - type: stdinFilter
+      command: "clump push --then 'delta'"

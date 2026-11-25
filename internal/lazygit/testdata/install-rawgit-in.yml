@@ -1,0 +1,5 @@
+git:
+  diffRenderers:
+    - type: rawGit
+      args: [--color-words]
+      name: color-words

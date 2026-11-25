@@ -1,0 +1,6 @@
+gui:
+  theme: dark
+git:
+  diffRenderers:
+    - command: "clump push"
+      name: clump

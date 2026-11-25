@@ -1,0 +1,13 @@
+# my lazygit config
+gui:
+  theme: dark
+
+# git settings
+git:
+  # fetch settings
+  autoFetch: false
+
+  # how diffs render
+  # (none yet)
+other:
+  x: 1

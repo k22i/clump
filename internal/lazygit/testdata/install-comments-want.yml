@@ -1,0 +1,16 @@
+# my lazygit config
+gui:
+  theme: dark
+
+# git settings
+git:
+  diffRenderers:
+    - command: "clump push"
+      name: clump
+  # fetch settings
+  autoFetch: false
+
+  # how diffs render
+  # (none yet)
+other:
+  x: 1

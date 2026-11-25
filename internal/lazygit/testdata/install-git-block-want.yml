@@ -1,0 +1,5 @@
+git:
+  diffRenderers:
+    - command: "clump push"
+      name: clump
+  autoFetch: false

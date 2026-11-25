@@ -1,0 +1,6 @@
+git:
+  diffRenderers:
+    - command: "clump push"
+      name: clump
+    - type: extDiff
+      command: difft
