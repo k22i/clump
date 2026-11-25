@@ -51,6 +51,11 @@ func runDoctor(stdout io.Writer) error {
 	if d, err := cache.DefaultDir(); err == nil {
 		fmt.Fprintf(stdout, "cache       %s\n", d)
 	}
+	if path, err := exec.LookPath("gh"); err == nil {
+		fmt.Fprintf(stdout, "github      gh at %s (--pr fetches through it)\n", path)
+	} else {
+		fmt.Fprint(stdout, "github      gh is not on PATH (--pr needs the GitHub CLI)\n")
+	}
 	if wd, err := os.Getwd(); err == nil {
 		if root := ipc.FindRepoRoot(wd); root != "" {
 			sock := ipc.SocketPath(root)

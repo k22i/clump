@@ -1,0 +1,15 @@
+{
+  "number": 42,
+  "title": "Add the retry policy",
+  "body": "Fixes #7.\n\nThe client now tries an operation up to three times before giving up, with a short pause between attempts.",
+  "commits": [
+    {
+      "oid": "8b4e081e1c2ad3b6f9d0a7c5e39110fedcb2a641",
+      "messageHeadline": "fail before retry"
+    },
+    {
+      "oid": "d12c05fa9e61b8d47c3096ab1e2f3c4d5e6f7a8b",
+      "messageHeadline": "retry: attempt up to three times"
+    }
+  ]
+}

@@ -3,6 +3,7 @@
 //
 //	clump [flags] [<rev> | <base>...<head> | <from>..<to>]   one commit or range (default HEAD)
 //	clump --branch                                          this branch vs its default base
+//	clump --pr 123 | --pr OWNER/REPO#123 | --pr <pr-url>    a GitHub pull request
 //	git diff | clump                                        a patch on stdin
 //	clump watch [--repo DIR]                                follow lazygit's selection
 //	clump push [--then CMD]                                 lazygit diff filter (forwards to watch)
@@ -75,6 +76,7 @@ func run(args []string, stdin *os.File, stdout, stderr io.Writer) int {
 const usage = `usage:
   clump [flags] [<rev> | <base>...<head> | <from>..<to>]
   clump --branch [flags]
+  clump --pr 123 | --pr OWNER/REPO#123 | --pr <pr-url> [flags]
   git diff | clump [flags]
   clump watch [--repo DIR] [--log FILE]
   clump push [--then 'CMD']
@@ -85,6 +87,9 @@ const usage = `usage:
 flags:
   --repo DIR        repository (default: the current directory)
   --branch          compare the current branch with its default base
+  --pr SPEC         a GitHub pull request: 123, #123, OWNER/REPO#123 or its
+                    URL (needs the gh CLI; a number is looked up in
+                    origin's repository, the other forms work anywhere)
   --provider NAME   provider or alias (default: config "default")
   --json            print the groups as JSON
   --plain           print a Markdown summary

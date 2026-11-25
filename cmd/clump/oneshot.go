@@ -32,7 +32,7 @@ func fileIsTerminal(w io.Writer) bool { f, ok := w.(*os.File); return ok && isTe
 
 // oneShotOpts are the one-shot flags.
 type oneShotOpts struct {
-	repo, providerName             string
+	repo, providerName, pr         string
 	branch, jsonOut, plain, dryRun bool
 	noCache, yes, pick             bool
 	args                           []string
@@ -44,6 +44,7 @@ func parseOneShot(args []string) (oneShotOpts, error) {
 	fs.SetOutput(io.Discard)
 	fs.StringVar(&o.repo, "repo", "", "")
 	fs.StringVar(&o.providerName, "provider", "", "")
+	fs.StringVar(&o.pr, "pr", "", "")
 	fs.BoolVar(&o.branch, "branch", false, "")
 	fs.BoolVar(&o.jsonOut, "json", false, "")
 	fs.BoolVar(&o.plain, "plain", false, "")
@@ -70,6 +71,20 @@ func parseOneShot(args []string) (oneShotOpts, error) {
 	}
 	if o.jsonOut && o.plain {
 		return o, usageError{"--json and --plain are exclusive"}
+	}
+	if o.pr != "" {
+		if len(o.args) > 0 {
+			return o, usageError{"--pr takes no revision"}
+		}
+		if o.branch {
+			return o, usageError{"--branch and --pr are exclusive"}
+		}
+		if o.pick {
+			return o, usageError{"--pick and --pr are exclusive"}
+		}
+		if _, err := gitdiff.ParsePRSpec(o.pr); err != nil {
+			return o, usageError{err.Error()}
+		}
 	}
 	return o, nil
 }
@@ -116,6 +131,13 @@ func resolveRepo(ctx context.Context, dir string) (string, error) {
 
 // loadInput loads the diff the arguments name.
 func loadInput(ctx context.Context, o oneShotOpts, stdin *os.File) (*gitdiff.Loaded, string, error) {
+	if o.pr != "" {
+		// Best-effort root: OWNER/REPO#N and URL specs name their repository,
+		// so --pr also works outside a clone.
+		repo, _ := resolveRepo(ctx, o.repo)
+		l, err := gitdiff.LoadPR(ctx, repo, o.pr)
+		return l, repo, err
+	}
 	if len(o.args) == 0 && !o.branch && !isTerminal(stdin) {
 		b, err := io.ReadAll(stdin)
 		if err != nil {

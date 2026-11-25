@@ -1,0 +1,21 @@
+diff --git a/src/retry.go b/src/retry.go
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/src/retry.go
+@@ -0,0 +1,3 @@
++package retry
++
++// Retry calls f until it stops failing or the attempts run out.
+diff --git a/src/retry_test.go b/src/retry_test.go
+new file mode 100644
+index 0000000..2222222
+--- /dev/null
++++ b/src/retry_test.go
+@@ -0,0 +1,6 @@
++package retry
++
++import "testing"
++
++func TestRetry(t *testing.T) {
++}
