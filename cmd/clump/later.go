@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"io"
 	"os"
@@ -19,8 +18,4 @@ func runRex(args []string, stdin *os.File, stdout io.Writer) error {
 
 func runLazygit(args []string, stdin *os.File, stdout io.Writer) error {
 	return errors.New("lazygit: not built yet")
-}
-
-func runTUI(ctx context.Context, a *app, o oneShotOpts, stdin *os.File, providerName string) error {
-	return errors.New("the TUI is not built yet; use --plain, --json or --dry-run")
 }
