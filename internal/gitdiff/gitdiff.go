@@ -5,7 +5,13 @@
 // The same parser serves the one-shot, watch and push paths.
 package gitdiff
 
-import "errors"
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"strings"
+)
 
 // Status is a file's change kind, as one upper-case letter.
 type Status string
@@ -98,7 +104,36 @@ type Hunk struct {
 // "(mode change 100644 -> 100755)", "(rename, mode 100644 -> 100755)",
 // "(binary change)", "(new file)".
 func PseudoHeader(f *File) string {
-	panic("gitdiff: PseudoHeader not implemented")
+	desc := "no text changes"
+	switch f.Status {
+	case Added:
+		desc = "new file"
+	case Deleted:
+		desc = "deleted file"
+	case Renamed:
+		desc = "rename"
+	case Copied:
+		desc = "copy"
+	case ModeOnly:
+		desc = "mode change"
+	}
+	if f.Binary {
+		if f.Status == Added || f.Status == Deleted || f.Status == Renamed ||
+			f.Status == Copied || f.Status == ModeOnly {
+			desc = "binary " + desc
+		} else {
+			desc = "binary change"
+		}
+	}
+	modes := ""
+	if f.OldMode != "" && f.NewMode != "" && f.OldMode != f.NewMode {
+		if f.Status == ModeOnly {
+			modes = fmt.Sprintf(" %s -> %s", f.OldMode, f.NewMode)
+		} else {
+			modes = fmt.Sprintf(", mode %s -> %s", f.OldMode, f.NewMode)
+		}
+	}
+	return "(" + desc + modes + ")"
 }
 
 // Diff is a parsed patch.
@@ -143,31 +178,60 @@ func (d *Diff) Stats() (add, del int) {
 // The one-shot loaders and lazygit's output for the same change therefore
 // produce the same Canonical text and the same Hash.
 func (d *Diff) Canonical() string {
-	panic("gitdiff: Canonical not implemented")
+	var b strings.Builder
+	for _, f := range d.Files {
+		b.WriteString(fileCanonical(f))
+	}
+	return b.String()
+}
+
+// fileCanonical renders one file's section of Canonical.
+func fileCanonical(f *File) string {
+	oldPath, newPath := f.OldPath, f.NewPath
+	if oldPath == "" {
+		oldPath = f.NewPath
+	}
+	if newPath == "" {
+		newPath = f.OldPath
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "diff --git a/%s b/%s\n", oldPath, newPath)
+	fmt.Fprintf(&b, "status %s %d\n", f.Status, f.Similarity)
+	fmt.Fprintf(&b, "mode %s %s\n", f.OldMode, f.NewMode)
+	if f.Binary {
+		fmt.Fprintf(&b, "binary %s\n", f.Index)
+	}
+	for _, h := range f.Hunks {
+		if h.Pseudo {
+			continue
+		}
+		b.WriteString(h.Header)
+		b.WriteString("\n")
+		for _, l := range h.Lines {
+			b.WriteString(l)
+			b.WriteString("\n")
+		}
+	}
+	return b.String()
+}
+
+// sha256Hex is the lower-case hex SHA-256 of s.
+func sha256Hex(s string) string {
+	sum := sha256.Sum256([]byte(s))
+	return hex.EncodeToString(sum[:])
 }
 
 // Hash is the lower-case hex SHA-256 of Canonical(). It is the diff hash used
 // for cache keys and overrides.
 func (d *Diff) Hash() string {
-	panic("gitdiff: Hash not implemented")
+	return sha256Hex(d.Canonical())
 }
 
 // FileHash is the lower-case hex SHA-256 of one file's section of
 // Canonical(). It keys per-file summaries.
 func (d *Diff) FileHash(fileIdx int) string {
-	panic("gitdiff: FileHash not implemented")
-}
-
-// StripSGR removes ANSI SGR sequences (ESC [ <digits and ;> m) from s.
-func StripSGR(s string) string {
-	panic("gitdiff: StripSGR not implemented")
-}
-
-// Parse parses git's unified diff output. It strips SGR colour first. It
-// accepts an optional git show commit header (with or without a --stat block)
-// before the first "diff --git" line. Input with no "diff --git" line (for
-// example a git log --graph) parses to a Diff with no files and no error.
-// A combined merge diff returns an error wrapping ErrCombined.
-func Parse(text string) (*Diff, error) {
-	panic("gitdiff: Parse not implemented")
+	if fileIdx < 0 || fileIdx >= len(d.Files) {
+		return ""
+	}
+	return sha256Hex(fileCanonical(d.Files[fileIdx]))
 }
