@@ -6,13 +6,13 @@ package diffview
 import (
 	"sort"
 	"strings"
+	"sync"
 	"unicode/utf8"
 
 	"charm.land/lipgloss/v2"
 	"github.com/alecthomas/chroma/v2"
-	"github.com/alecthomas/chroma/v2/lexers"
-	"github.com/alecthomas/chroma/v2/styles"
 
+	"github.com/k22i/clump/internal/chromalexers"
 	"github.com/k22i/clump/internal/gitdiff"
 	"github.com/k22i/clump/internal/tui/view"
 )
@@ -434,14 +434,11 @@ type highlighter struct {
 // newHighlighter returns the highlighter for path, whose lexer is nil when
 // the path has no known lexer.
 func newHighlighter(th view.Theme, path string) *highlighter {
-	lx := lexers.Match(path)
+	lx := chromalexers.Match(path)
 	if lx == nil {
 		return &highlighter{}
 	}
-	st := styles.Get(th.ChromaStyle)
-	if st == nil {
-		st = styles.Fallback
-	}
+	st := palette(strings.Contains(th.ChromaStyle, "dark"))
 	return &highlighter{
 		lexer:       chroma.Coalesce(lx),
 		style:       st,
@@ -611,4 +608,65 @@ func hunkPath(h *gitdiff.Hunk) string {
 		return ""
 	}
 	return h.File.Path()
+}
+
+// clump builds its two syntax palettes in code (after GitHub's light and dark
+// themes) instead of importing chroma/v2/styles, whose package init parses
+// every bundled style (~3.6 ms on every start, including `clump push`).
+var (
+	paletteOnce           sync.Once
+	darkStyle, lightStyle *chroma.Style
+)
+
+func palette(dark bool) *chroma.Style {
+	paletteOnce.Do(func() {
+		darkStyle = chroma.MustNewStyle("clump-dark", chroma.StyleEntries{
+			chroma.Comment:           "italic #8b949e",
+			chroma.CommentPreproc:    "#ff7b72",
+			chroma.Keyword:           "#ff7b72",
+			chroma.KeywordConstant:   "#79c0ff",
+			chroma.KeywordType:       "#ffa657",
+			chroma.Operator:          "#ff7b72",
+			chroma.Name:              "",
+			chroma.NameBuiltin:       "#ffa657",
+			chroma.NameClass:         "bold #f0883e",
+			chroma.NameFunction:      "#d2a8ff",
+			chroma.NameTag:           "#7ee787",
+			chroma.NameAttribute:     "#79c0ff",
+			chroma.NameConstant:      "#79c0ff",
+			chroma.NameDecorator:     "#d2a8ff",
+			chroma.LiteralString:     "#a5d6ff",
+			chroma.LiteralNumber:     "#79c0ff",
+			chroma.GenericHeading:    "bold #79c0ff",
+			chroma.GenericSubheading: "bold #79c0ff",
+			chroma.GenericEmph:       "italic",
+			chroma.GenericStrong:     "bold",
+		})
+		lightStyle = chroma.MustNewStyle("clump-light", chroma.StyleEntries{
+			chroma.Comment:           "italic #6e7781",
+			chroma.CommentPreproc:    "#cf222e",
+			chroma.Keyword:           "#cf222e",
+			chroma.KeywordConstant:   "#0550ae",
+			chroma.KeywordType:       "#953800",
+			chroma.Operator:          "#cf222e",
+			chroma.Name:              "",
+			chroma.NameBuiltin:       "#953800",
+			chroma.NameClass:         "bold #953800",
+			chroma.NameFunction:      "#8250df",
+			chroma.NameTag:           "#116329",
+			chroma.NameAttribute:     "#0550ae",
+			chroma.NameConstant:      "#0550ae",
+			chroma.NameDecorator:     "#8250df",
+			chroma.LiteralString:     "#0a3069",
+			chroma.LiteralNumber:     "#0550ae",
+			chroma.GenericHeading:    "bold #0550ae",
+			chroma.GenericSubheading: "bold #0550ae",
+			chroma.GenericEmph:       "italic",
+			chroma.GenericStrong:     "bold",
+		})
+	})
+	if dark {
+		return darkStyle
+	}
+	return lightStyle
 }
