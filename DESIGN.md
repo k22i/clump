@@ -24,7 +24,11 @@ internal/engine      the pipeline: cache -> Build -> estimate -> calls -> Valida
 internal/ipc         push <-> watch protocol, socket path, listener, client, parent argv
 internal/lazygit     classify lazygit's git argv into selections; lazygit install
 internal/rex         OSC 7501 status, theme query, rex install
-internal/tui         Bubble Tea UI (one-shot and watch)
+internal/tui         Bubble Tea UI (one-shot and watch): state, message flow, keymap, layouts
+internal/tui/view    shared render types (Theme, Line, ListRow, HelpSection), file headers
+internal/tui/{diffview,rawview,listview,helpview,sys}  pure render helpers, clipboard/editor glue
+internal/report      Markdown (y, --plain) and JSON (--json) output of a grouped diff
+internal/chromalexers  vendored chroma/v2/lexers with a lazily built registry (see §14)
 rex/                 init.lua (Rex actions) + embed.go (package rexlua)
 scripts/             mkfixture.sh (scratch test repo), mkgolden.sh (parser golden fixtures)
 ```
@@ -33,7 +37,8 @@ Import graph (arrows point at dependencies; no cycles):
 
 ```
 cmd/clump -> tui, engine, config, cache, provider, gitdiff, ipc, lazygit, rex, rexlua
-tui       -> engine, group, catalog, gitdiff, cache, provider, config, lazygit, ipc, rex
+tui       -> engine, group, gitdiff, cache, config, lazygit, ipc, report, tui/*
+tui/diffview -> chromalexers, chroma/v2 (core), view;  report -> gitdiff, group, cache
 engine    -> group, catalog, gitdiff, provider, cache, config
 group     -> catalog, gitdiff
 catalog   -> gitdiff
@@ -284,8 +289,8 @@ Saved after every edit, keyed by diff hash, separate from model results:
 - Opening a diff with an override shows the override, marked `edited`, without a model call
   (even when there is no cached result). An override that fails `Check` is ignored with a
   notice (it cannot happen for a matching hash, but the file is user-editable).
-- `u` back to the model's grouping still leaves an override equal to it; the marker is shown
-  when the grouping differs from the base result.
+- The undo stack is per session. Undoing back to the model's grouping deletes the override
+  (when no snapshots are kept), so the next open shows the cached result, not "edited".
 - `r` regroup with edits asks: `d` discard edits, `s` keep them as a snapshot
   (`before regroup <time>`) and regroup, `esc` cancel. After a regroup the override's
   `grouping` is empty (no active edits) and only its `snapshots` remain.
@@ -460,3 +465,33 @@ Verified in C-rex.md (Rex server 0.1.0-preview.21, app 0.1.0 (2061)):
 - `push` reads no config; `then` in config.toml is only used by `clump lazygit install`.
 - Copies are only detected when git reports them (the loaders do not pass `--find-copies`), to
   match lazygit's diffs and keep hashes equal.
+- **TUI split into sub-packages** (`internal/tui/view`, `diffview`, `rawview`, `listview`,
+  `helpview`, `sys`) so render workers could build and test in parallel without breaking each
+  other's builds. The root model (`internal/tui`) owns all state.
+- **No `bubbles/textinput`**: it pulls in `github.com/atotto/clipboard`, outside the agreed
+  dependency set. `internal/tui/input.go` is a 100-line line editor. Bubbles is used for the
+  spinner only.
+- **`internal/report`** holds the Markdown and JSON renderers (needed by `--plain` in Phase 1,
+  before the TUI existed); the clipboard part lives in `tui/sys`.
+- **Key conflicts resolved**: `n`/`N` are next/previous match only while a search query is active
+  (else `n` is "new group"); `g` is "group now" in watch when nothing is grouped yet, else merge.
+- **`push` start-up time.** Every package `init` runs before `main`, and the binary links the
+  TUI. `chroma/v2/styles` (3.6 ms) and `chroma/v2/lexers` (3.5 ms, plus three analyser `init`s
+  that force the registry) made `push` 11.5 ms slower than `cat`. Fixes: the two syntax palettes
+  are built in code (`diffview.palette`, GitHub light/dark colours), and `chroma/v2/lexers` is
+  vendored as `internal/chromalexers` (MIT, LICENSE kept) with the registry built on first use,
+  the analysers run then, and its Rule/Token literals keyed for `go vet`. No new module:
+  `github.com/dlclark/regexp2/v2` (already chroma's dependency) becomes a direct requirement
+  because the vendored code imports it. Result: push adds 4.7 ms p50 over `cat`
+  (`TestPushLatency`; asserted with `CLUMP_PUSH_LATENCY=1`).
+- **Socket path length.** Unix socket paths are limited to 104 bytes on macOS. When
+  `SocketDir()` would exceed that, `SocketPath` uses `/tmp/clump-<uid>/`; `Listen` refuses a
+  socket directory that is a symlink or owned by another user (the fallback dir is shared).
+- **Watch resolves titles itself**: `gitdiff.CommitMessage`, `RangeContext`, `CommitContext` and
+  `ShortRev` were added so watch can title and contextualise lazygit's pushed diff without
+  re-running the diff.
+- **`clump --pick`** shows clump's own picker (this branch vs default, 50 recent commits, type to
+  filter); `clump_pick` falls back to it whenever `rex.ui.pick` cannot show a picker.
+- **Rex module configuration**: `CLUMP_BIN` and `CLUMP_NO_BINDINGS` globals set before `dofile`;
+  every action also takes `block`/`repo` args (used by `rex do --action` tests, where `ctx` has
+  no `block_id`). Default bindings: `ctrl+alt+g` pick, `ctrl+alt+w` watch, `ctrl+alt+q` close.
