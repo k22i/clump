@@ -53,9 +53,10 @@ const (
 )
 
 type Comment struct {
-	ID   string    `json:"id"`
-	Text string    `json:"text"`
-	At   time.Time `json:"at"`
+	ID        string    `json:"id"`
+	Text      string    `json:"text"`
+	At        time.Time `json:"at"`
+	HandedOff time.Time `json:"handed_off,omitempty"`
 }
 
 type Anchor struct {
@@ -173,15 +174,16 @@ func Resolve(anchors []Anchor, comments map[string][]Comment) []Resolved {
 }
 
 type Placed struct {
-	Kind    Kind      `json:"kind"`
-	GroupID string    `json:"group,omitempty"`
-	Path    string    `json:"path,omitempty"`
-	Side    string    `json:"side,omitempty"`
-	Line    int       `json:"line,omitempty"`
-	Text    string    `json:"text"`
-	ID      string    `json:"id"`
-	At      time.Time `json:"at"`
-	Anchor  string    `json:"anchor"`
+	Kind      Kind      `json:"kind"`
+	GroupID   string    `json:"group,omitempty"`
+	Path      string    `json:"path,omitempty"`
+	Side      string    `json:"side,omitempty"`
+	Line      int       `json:"line,omitempty"`
+	Text      string    `json:"text"`
+	ID        string    `json:"id"`
+	At        time.Time `json:"at"`
+	HandedOff time.Time `json:"handed_off,omitempty"`
+	Anchor    string    `json:"anchor"`
 }
 
 func Place(res []Resolved, d *gitdiff.Diff, g group.Grouping) []Placed {
@@ -204,7 +206,7 @@ func Place(res []Resolved, d *gitdiff.Diff, g group.Grouping) []Placed {
 	for _, r := range res {
 		for _, c := range r.Comments {
 			p := Placed{Kind: r.Kind, Path: r.Path, Side: r.Side, Line: r.Line, GroupID: r.GroupID,
-				Text: c.Text, ID: c.ID, At: c.At, Anchor: r.Key}
+				Text: c.Text, ID: c.ID, At: c.At, HandedOff: c.HandedOff, Anchor: r.Key}
 			if r.Kind == KindLine {
 				p.GroupID = hunkGroup[r.HunkID]
 			} else if r.Kind == KindFile {

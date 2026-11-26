@@ -42,6 +42,26 @@ line_numbers = true
 # s in the TUI).
 side_by_side = false
 
+# Handoff (H in the TUI, `clump handoff` on the CLI) sends the review's
+# comments to a coding agent CLI as its initial prompt and gets out of the
+# way. Built in: claude, codex and opencode; handoff = "" (the default) picks
+# the first whose binary is on PATH. clump never owns the agent process.
+handoff = ""
+
+# Coding agents, deliberately NOT providers: a provider runs isolated in a
+# temp dir so it cannot see the project, while a handoff agent must run in the
+# repository. argv names the cli (the prompt is appended as its last element,
+# e.g. opencode wants ["opencode", "--prompt"]); where it launches:
+#   replace  clump exits and its process becomes the agent in this terminal
+#   pane     a new split (rex, else tmux) runs the agent; clump stays open
+#   print    the prompt is printed, nothing is launched
+# Before handing off, clump stamps the comments it sent (clump comments --open
+# shows the ones not yet handed off).
+#
+# [agents.aider]
+# argv = ["aider"]
+# where = "pane"
+
 # Generated files: their hunks are not sent to the model (cheaper, less
 # noise) and the TUI puts them in a "Generated files" group at the end of the
 # list, folded. A file is generated when .gitattributes marks it

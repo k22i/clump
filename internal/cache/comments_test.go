@@ -3,11 +3,10 @@ package cache
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/k22i/clump/internal/comment"
 )
 
 func key(hex byte) string { return strings.Repeat(string(hex), 64) }
@@ -158,5 +157,73 @@ func TestCommentShardVersionMismatch(t *testing.T) {
 	if err != nil || len(got) != 0 {
 		t.Fatalf("other version should read as empty: %v %v", got, err)
 	}
-	var _ comment.Kind
+}
+
+func TestStampHandoffMarksExistingCommentsOnlyOnce(t *testing.T) {
+	s, _ := Open(Options{Dir: t.TempDir()})
+	a, b := key('a'), key('b')
+	now := time.Date(2026, 3, 4, 5, 6, 7, 0, time.UTC)
+	if _, err := s.AddComment(a, "one", now); err != nil {
+		t.Fatal(err)
+	}
+	later := now.Add(time.Hour)
+	if _, err := s.AddComment(b, "two", later); err != nil {
+		t.Fatal(err)
+	}
+	stampAt := now.Add(2 * time.Hour)
+	n, err := s.StampHandoff([]string{a, key('c')}, stampAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 1 {
+		t.Fatalf("stamped %d, want 1", n)
+	}
+	got, _ := s.Comments([]string{a, b})
+	if got[a][0].HandedOff.IsZero() {
+		t.Fatalf("a was not stamped: %+v", got[a])
+	}
+	if want := stampAt.UTC().Truncate(time.Second); got[a][0].HandedOff != want {
+		t.Fatalf("HandedOff = %v, want %v", got[a][0].HandedOff, want)
+	}
+	if !got[b][0].HandedOff.IsZero() {
+		t.Fatalf("b was stamped without being asked: %+v", got[b])
+	}
+	n, err = s.StampHandoff([]string{a, b}, stampAt.Add(time.Minute))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 1 {
+		t.Fatalf("second pass stamped %d, want only b", n)
+	}
+	got, _ = s.Comments([]string{a})
+	if got[a][0].HandedOff != stampAt.UTC().Truncate(time.Second) {
+		t.Fatalf("re-stamping moved the first record: %+v", got[a])
+	}
+	all, _ := s.AllComments(later.Add(24 * time.Hour))
+	if all[b][0].HandedOff.IsZero() {
+		t.Fatalf("AllComments lost the stamp: %+v", all[b])
+	}
+}
+
+func TestCommentShardWithoutHandedOffStillLoads(t *testing.T) {
+	dir := t.TempDir()
+	old := "{\"version\":" + strconv.Itoa(FormatVersion) + ",\"comments\":{\"" + key('a') + "\":[{\"id\":\"ab12cd\",\"text\":\"before handoff existed\",\"at\":\"2026-01-02T03:04:05Z\"}]}}"
+	if err := os.Mkdir(filepath.Join(dir, "comments"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "comments", "a.json"), []byte(old), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	s, err := Open(Options{Dir: dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := s.Comments([]string{key('a')})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cs := got[key('a')]
+	if len(cs) != 1 || cs[0].ID != "ab12cd" || !cs[0].HandedOff.IsZero() {
+		t.Fatalf("old shard read: %+v", cs)
+	}
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/BurntSushi/toml"
 
 	"github.com/k22i/clump/internal/generated"
+	"github.com/k22i/clump/internal/handoff"
 	"github.com/k22i/clump/internal/provider"
 )
 
@@ -33,8 +34,10 @@ type Config struct {
 	LineNumbers    bool      `toml:"line_numbers"`
 	SideBySide     bool      `toml:"side_by_side"`
 	Generated      Generated `toml:"generated"`
+	Handoff        string    `toml:"handoff"`
 
 	Providers []provider.Config `toml:"-"`
+	Agents    []handoff.Agent   `toml:"-"`
 }
 
 type Generated struct {
@@ -61,6 +64,8 @@ const (
 
 const providerPrefix = "providers"
 
+const agentsPrefix = "agents"
+
 var envVarName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 
 var secretKeyParts = []string{"api_key", "key", "token", "secret"}
@@ -78,7 +83,9 @@ type rawConfig struct {
 	LineNumbers    bool                       `toml:"line_numbers"`
 	SideBySide     bool                       `toml:"side_by_side"`
 	Generated      Generated                  `toml:"generated"`
+	Handoff        string                     `toml:"handoff"`
 	Providers      map[string]provider.Config `toml:"providers"`
+	Agents         map[string]handoff.Agent   `toml:"agents"`
 }
 
 func Path() (string, error) {
@@ -109,6 +116,8 @@ func Default() *Config {
 		LineNumbers:    true,
 		SideBySide:     false,
 		Generated:      Generated{Detect: true, Builtin: true},
+		Handoff:        "",
+		Agents:         handoff.DefaultAgents(),
 		Providers: []provider.Config{
 			{
 				Name:           "claude-haiku",
@@ -222,7 +231,11 @@ func Parse(name, text string) (*Config, error) {
 	if md.IsDefined("generated", "review") {
 		cfg.Generated.Review = nilIfEmpty(raw.Generated.Review)
 	}
+	if md.IsDefined("handoff") {
+		cfg.Handoff = raw.Handoff
+	}
 	cfg.Providers = overlayProviders(cfg.Providers, raw.Providers, md.Keys())
+	cfg.Agents = overlayAgents(cfg.Agents, raw.Agents, md.Keys())
 
 	if err := cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("%s: %w", name, err)
@@ -269,6 +282,39 @@ func providerIndex(ps []provider.Config, name string) int {
 	return -1
 }
 
+func overlayAgents(base []handoff.Agent, from map[string]handoff.Agent, keys []toml.Key) []handoff.Agent {
+	out := make([]handoff.Agent, len(base), len(base)+len(from))
+	copy(out, base)
+	seen := make(map[string]bool, len(from))
+	for _, key := range keys {
+		if len(key) < 2 || key[0] != agentsPrefix || seen[key[1]] {
+			continue
+		}
+		name := key[1]
+		seen[name] = true
+		a := from[name]
+		a.Name = name
+		if a.Where == "" {
+			a.Where = handoff.WhereReplace
+		}
+		if i := agentIndex(out, name); i >= 0 {
+			out[i] = a
+			continue
+		}
+		out = append(out, a)
+	}
+	return out
+}
+
+func agentIndex(as []handoff.Agent, name string) int {
+	for i, a := range as {
+		if a.Name == name {
+			return i
+		}
+	}
+	return -1
+}
+
 func unknownKeyError(key toml.Key) error {
 	dotted := key.String()
 	last := key[len(key)-1]
@@ -305,10 +351,64 @@ func (c *Config) Validate() error {
 			return err
 		}
 	}
+	for _, a := range c.Agents {
+		if err := validateAgent(a); err != nil {
+			return err
+		}
+	}
+	if c.Handoff != "" && agentIndex(c.Agents, c.Handoff) < 0 {
+		return fmt.Errorf("handoff: no agent %q in [agents] (have %s)", c.Handoff, agentNames(c.Agents))
+	}
 	if _, err := provider.NewRegistry(c.Providers, c.Aliases()); err != nil {
 		return aliasError(err)
 	}
 	return nil
+}
+
+func validateAgent(a handoff.Agent) error {
+	if len(a.Argv) == 0 || a.Argv[0] == "" {
+		return fmt.Errorf("%s.%s.argv: required, the prompt becomes its last element", agentsPrefix, a.Name)
+	}
+	if !handoff.ValidWhere(a.Where) {
+		return fmt.Errorf("%s.%s.where: must be one of %s, %s, %s (got %q)",
+			agentsPrefix, a.Name, handoff.WhereReplace, handoff.WherePane, handoff.WherePrint, a.Where)
+	}
+	return nil
+}
+
+func agentNames(as []handoff.Agent) string {
+	names := make([]string, 0, len(as))
+	for _, a := range as {
+		names = append(names, a.Name)
+	}
+	return strings.Join(names, ", ")
+}
+
+func (c *Config) Agent(name string) (handoff.Agent, bool) {
+	if i := agentIndex(c.Agents, name); i >= 0 {
+		return c.Agents[i], true
+	}
+	return handoff.Agent{}, false
+}
+
+func (c *Config) ResolveHandoffAgent(name string, lookPath func(string) (string, error)) (handoff.Agent, error) {
+	if name == "" {
+		name = c.Handoff
+	}
+	if name != "" {
+		a, ok := c.Agent(name)
+		if !ok {
+			return handoff.Agent{}, fmt.Errorf("no handoff agent %q in the config", name)
+		}
+		return a, nil
+	}
+	for _, a := range c.Agents {
+		if _, err := lookPath(a.Argv[0]); err == nil {
+			return a, nil
+		}
+	}
+	return handoff.Agent{}, errors.New("no handoff agent found on PATH: install one of " +
+		agentNames(c.Agents) + ", or configure [agents.<name>] and set handoff = \"<name>\" (clump doctor lists what it finds)")
 }
 
 func haveHTTPURLScheme(u string) bool {

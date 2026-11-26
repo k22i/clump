@@ -22,9 +22,10 @@ type commentShard struct {
 }
 
 type commentStored struct {
-	ID   string    `json:"id"`
-	Text string    `json:"text"`
-	At   time.Time `json:"at"`
+	ID        string    `json:"id"`
+	Text      string    `json:"text"`
+	At        time.Time `json:"at"`
+	HandedOff time.Time `json:"handed_off,omitempty"`
 }
 
 func (s *Store) commentsPath(shard byte) string {
@@ -63,7 +64,7 @@ func (s *Store) Comments(keys []string) (map[string][]comment.Comment, error) {
 			}
 			cs := make([]comment.Comment, 0, len(sh.Comments[k]))
 			for _, c := range sh.Comments[k] {
-				cs = append(cs, comment.Comment{ID: c.ID, Text: c.Text, At: c.At})
+				cs = append(cs, comment.Comment{ID: c.ID, Text: c.Text, At: c.At, HandedOff: c.HandedOff})
 			}
 			out[k] = cs
 		}
@@ -126,6 +127,40 @@ func (s *Store) DeleteComment(key, id string) error {
 	return s.writeCommentShard(shard, sh)
 }
 
+func (s *Store) StampHandoff(keys []string, now time.Time) (int, error) {
+	shards, err := byShard(keys)
+	if err != nil {
+		return 0, err
+	}
+	at := now.UTC().Truncate(time.Second)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	stamped := 0
+	for shard, ks := range shards {
+		sh := s.readCommentShard(shard)
+		changed := false
+		for _, k := range ks {
+			if len(sh.Comments[k]) == 0 {
+				continue
+			}
+			for i, c := range sh.Comments[k] {
+				if c.HandedOff.IsZero() {
+					sh.Comments[k][i].HandedOff = at
+					stamped++
+				}
+			}
+			changed = true
+		}
+		if !changed {
+			continue
+		}
+		if err := s.writeCommentShard(shard, sh); err != nil {
+			return stamped, err
+		}
+	}
+	return stamped, nil
+}
+
 func (s *Store) AllComments(now time.Time) (map[string][]comment.Comment, error) {
 	out := map[string][]comment.Comment{}
 	for _, shard := range []byte("0123456789abcdef") {
@@ -135,7 +170,7 @@ func (s *Store) AllComments(now time.Time) (map[string][]comment.Comment, error)
 				if now.Sub(c.At) > CommentTTL {
 					continue
 				}
-				out[k] = append(out[k], comment.Comment{ID: c.ID, Text: c.Text, At: c.At})
+				out[k] = append(out[k], comment.Comment{ID: c.ID, Text: c.Text, At: c.At, HandedOff: c.HandedOff})
 			}
 		}
 	}

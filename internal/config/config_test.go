@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/k22i/clump/internal/handoff"
 	"github.com/k22i/clump/internal/provider"
 )
 
@@ -486,5 +487,110 @@ func TestProviderLookup(t *testing.T) {
 	}
 	if p, ok := cfg.Provider("nope"); ok {
 		t.Errorf("Provider(\"nope\") = %+v, true; want not found", p)
+	}
+}
+
+func TestHandoffAgentsBuiltInAndOverlaid(t *testing.T) {
+	cfg, err := Parse("t.toml", `[agents.aider]
+argv = ["aider"]
+where = "pane"
+`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Handoff != "" {
+		t.Errorf("Handoff = %q, want empty default", cfg.Handoff)
+	}
+	aid, ok := cfg.Agent("aider")
+	if !ok || aid.Where != handoff.WherePane || aid.Argv[0] != "aider" {
+		t.Fatalf("aider = %+v", aid)
+	}
+	if c, _ := cfg.Agent("claude"); c.Argv[0] != "claude" || c.Where != handoff.WhereReplace {
+		t.Errorf("built-in claude = %+v", c)
+	}
+	if _, ok := cfg.Agent("nope"); ok {
+		t.Error("unknown agent found")
+	}
+}
+
+func TestHandoffAgentsReplaceBuiltinAndDefaultWhere(t *testing.T) {
+	cfg, err := Parse("t.toml", `[agents.claude]
+argv = ["claude", "--model", "sonnet"]
+`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c, _ := cfg.Agent("claude")
+	if c.Where != handoff.WhereReplace {
+		t.Errorf("where default = %q", c.Where)
+	}
+	if len(c.Argv) != 3 || c.Argv[1] != "--model" {
+		t.Errorf("claude argv = %q", c.Argv)
+	}
+}
+
+func TestHandoffAgentsValidation(t *testing.T) {
+	cases := []struct{ text, want string }{
+		{"[agents.x]\nwhere = \"print\"\n", "agents.x.argv: required"},
+		{"[agents.x]\nargv = [\"x\"]\nwhere = \"sidecar\"\n", "agents.x.where: must be one of"},
+		{"handoff = \"nope\"\n[agents.claude]\nargv = [\"claude\"]\n", "handoff: no agent \"nope\""},
+		{"[agents.x]\nargh = 1\n", "unknown key"},
+	}
+	for _, c := range cases {
+		if _, err := Parse("t.toml", c.text); err == nil || !strings.Contains(err.Error(), c.want) {
+			t.Errorf("Parse(%q) error = %v, want it to contain %q", c.text, err, c.want)
+		}
+	}
+}
+
+func TestHandoffAgentsStaySeparateFromProviders(t *testing.T) {
+	cfg, err := Parse("t.toml", `[agents.cheap]
+argv = ["aider"]
+where = "print"
+`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := cfg.Provider("cheap"); ok {
+		t.Error("[agents.cheap] leaked into the provider table")
+	}
+	if len(cfg.Providers) != len(Default().Providers) {
+		t.Errorf("providers = %q", providerNames(cfg.Providers))
+	}
+}
+
+func TestResolveHandoffAgent(t *testing.T) {
+	cfg, err := Parse("t.toml", `[agents.slow]
+argv = ["slowcli"]
+where = "pane"
+`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	missing := func(string) (string, error) { return "", os.ErrNotExist }
+	if _, err := cfg.ResolveHandoffAgent("", missing); err == nil || !strings.Contains(err.Error(), "no handoff agent found on PATH") {
+		t.Errorf("auto with nothing on PATH = %v", err)
+	}
+	found := func(name string) (string, error) {
+		if name == "codex" || name == "slowcli" {
+			return "/bin/" + name, nil
+		}
+		return "", os.ErrNotExist
+	}
+	a, err := cfg.ResolveHandoffAgent("", found)
+	if err != nil || a.Name != "codex" {
+		t.Fatalf("auto should keep order (claude missing, codex found), got %+v (%v)", a, err)
+	}
+	if _, err := cfg.ResolveHandoffAgent("nope", found); err == nil || !strings.Contains(err.Error(), "no handoff agent \"nope\"") {
+		t.Errorf("explicit unknown = %v", err)
+	}
+	cfg.Handoff = "slow"
+	a, err = cfg.ResolveHandoffAgent("", found)
+	if err != nil || a.Name != "slow" {
+		t.Fatalf("handoff config = %+v (%v)", a, err)
+	}
+	a, err = cfg.ResolveHandoffAgent("claude", found)
+	if err != nil || a.Name != "claude" {
+		t.Fatalf("--agent should win over the config: %+v (%v)", a, err)
 	}
 }
