@@ -1,0 +1,16 @@
+<svg fill="#ffffff" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 725 256"><title>clump</title>
+<g transform="translate(0 0)"><rect x="74.3" y="27" width="143.7" height="22" rx="9" fill="#ffffff"/>
+<rect x="44.2" y="57" width="151.8" height="22" rx="9" fill="#ffffff"/>
+<rect x="30.3" y="87" width="56.5" height="22" rx="9" fill="#ffffff"/>
+<rect x="26.0" y="117" width="52.0" height="22" rx="9" fill="#ffffff"/>
+<rect x="30.3" y="147" width="56.5" height="22" rx="9" fill="#ffffff"/>
+<rect x="44.2" y="177" width="139.8" height="22" rx="9" fill="#ffffff"/>
+<rect x="74.3" y="207" width="135.7" height="22" rx="9" fill="#ffffff"/></g>
+<g transform="translate(250 90.8) scale(0.62)" fill="none" stroke="#ffffff" stroke-width="22" stroke-linecap="round" stroke-linejoin="round">
+<path transform="translate(0 0)" d="M103.2 18.3A60 60 0 1 0 103.2 101.7"/>
+<path transform="translate(164 0)" d="M0 -66V120"/>
+<path transform="translate(208 0)" d="M0 0V60A60 60 0 0 0 120 60V0M120 60V120"/>
+<path transform="translate(372 0)" d="M0 0V120M0 50A50 50 0 0 1 100 50V120M100 50A50 50 0 0 1 200 50V120"/>
+<path transform="translate(616 0)" d="M0 0V190M60 0A60 60 0 1 1 60 120A60 60 0 1 1 60 0Z"/>
+</g>
+</svg>
