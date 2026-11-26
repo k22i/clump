@@ -13,11 +13,14 @@ strong = "claude-sonnet"
 
 # Ask before sending a prompt estimated above this many tokens. Watch mode
 # never auto-sends above it; it shows "press g to group (~N tokens)".
-ceiling = 40000
+# A prompt is fitted to `budget`, and the estimate adds each call's
+# overhead_tokens, so keep ceiling a little above budget: a diff that fits the
+# budget is then sent without asking. 0 turns the check off.
+ceiling = 125000
 
 # Token budget for one prompt. Bigger diffs are truncated (hunk bodies only,
 # never the catalog or headers) or summarised per file first.
-budget = 60000
+budget = 120000
 
 # Most groups the model may return.
 max_groups = 12

@@ -40,9 +40,10 @@ type Config struct {
 	Strong string `toml:"strong"`
 
 	// Ceiling is the token estimate above which one-shot mode asks before
-	// sending and watch mode never auto-sends. Default 40000.
+	// sending and watch mode never auto-sends. Default 125000, a little over
+	// Budget so that a prompt fitted to the budget is sent without asking.
 	Ceiling int `toml:"ceiling"`
-	// Budget is the token budget for one prompt. Default 60000.
+	// Budget is the token budget for one prompt. Default 120000.
 	Budget int `toml:"budget"`
 	// MaxGroups caps the model's groups. Default 12. Range 1..50.
 	MaxGroups int `toml:"max_groups"`
@@ -152,8 +153,8 @@ func Default() *Config {
 		Default:        aliasCheap,
 		Cheap:          "claude-haiku",
 		Strong:         "claude-sonnet",
-		Ceiling:        40000,
-		Budget:         60000,
+		Ceiling:        125000,
+		Budget:         120000,
 		MaxGroups:      12,
 		AutoGroup:      true,
 		FollowWorktree: false,

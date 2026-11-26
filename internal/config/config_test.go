@@ -75,8 +75,8 @@ func TestOverlayTopLevel(t *testing.T) {
 	if cfg.AutoGroup {
 		t.Error("AutoGroup = true, want false")
 	}
-	if cfg.Budget != 60000 {
-		t.Errorf("Budget = %d, want the default 60000", cfg.Budget)
+	if cfg.Budget != 120000 {
+		t.Errorf("Budget = %d, want the default 120000", cfg.Budget)
 	}
 	if want := Default().Providers; !reflect.DeepEqual(cfg.Providers, want) {
 		t.Errorf("Providers = %+v, want the defaults %+v", cfg.Providers, want)

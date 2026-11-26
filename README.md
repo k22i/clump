@@ -116,8 +116,8 @@ and a `[providers.<name>]` table it defines replaces the built-in provider of th
 | `default` | `"cheap"` | provider or alias one-shot mode uses when `--provider` is not given |
 | `cheap` | `"claude-haiku"` | alias: the cheap provider. Watch mode auto-groups with it |
 | `strong` | `"claude-sonnet"` | alias: the stronger provider, for big branches |
-| `ceiling` | `40000` | estimated tokens above which one-shot asks first and watch never auto-sends |
-| `budget` | `60000` | token budget for one prompt; larger diffs are truncated or summarised |
+| `ceiling` | `125000` | estimated tokens above which one-shot asks first and watch never auto-sends (`0` disables the check) |
+| `budget` | `120000` | token budget for one prompt; larger diffs are truncated or summarised |
 | `max_groups` | `12` | most groups the model may return (1–50) |
 | `auto_group` | `true` | watch mode groups every followed selection without asking |
 | `follow_worktree` | `false` | watch mode also follows lazygit's working-tree/staged diffs |
@@ -656,7 +656,7 @@ UI starts (Rex answers in about 0.2 ms); `CLUMP_THEME=light` or `dark` overrides
 config      /Users/you/.config/clump/config.toml
 aliases     default=cheap cheap=claude-haiku strong=claude-sonnet
 provider    claude-haiku     command   haiku (runs /usr/local/bin/claude)
-limits      ceiling=40000 budget=60000 max_groups=12 auto_group=true
+limits      ceiling=125000 budget=120000 max_groups=12 auto_group=true
 generated   detect=true builtin=true patterns=0 review=0
 repo        /Users/you/src/project
 socket      /var/folders/.../clump/1a2b3c4d5e6f7a8b.sock (no watch running)
