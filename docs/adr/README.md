@@ -72,6 +72,7 @@ real trade-off. Behaviour that is fully expressed by a test stays in the test.
 | [0009](0009-report-package-owns-outputs.md) | `internal/report` owns the Markdown and JSON outputs |
 | [0018](0018-reviewed-per-hunk-content.md) | Reviewed is per hunk content, toggled per file or group |
 | [0017](0017-review-comments-content-anchored.md) | Review comments are content-anchored, like reviewed marks |
+| [0058](0058-handoff-to-agent-cli.md) | Handing review comments off to a coding agent CLI |
 | [0040](0040-no-pending-reviews.md) | `clump submit` posts finished reviews, not pending ones |
 
 ## lazygit, watch and Rex

@@ -42,11 +42,27 @@ the groups replace them when the answer arrives.
 `--json`, `--plain` and `--dry-run` print and exit instead of opening the TUI; they are what you use
 in a script. An empty diff is an error, not an empty screen.
 
-## Comments and submit
+## Comments, handoff and submit
+
+```
+clump handoff [REV | A..B | --branch | --pr SPEC] [--agent NAME]
+              [--where replace|pane|print] [--yes] [--dry-run]
+```
+
+`clump handoff` sends the diff's stored review comments to a coding agent CLI — `claude`,
+`codex`, `opencode` or an `[agents.<name>]` entry — as the agent's initial prompt, and gets out of
+the way: it does not own the agent process. `--agent NAME` picks the config entry (the `handoff`
+config value, else the first of `claude`, `codex`, `opencode` on PATH); `--where` picks the launch
+shape — `replace` turns the clump process into the agent in this terminal (stdin must be a
+terminal), `pane` opens a split for it (`rex split` inside Rex, else `tmux split-window`), `print`
+writes the prompt and launches nothing; the default is the agent's configured `where`, else
+`replace`. The comments that went out are stamped (`clump comments --open` lists the rest);
+`--dry-run` prints the exact command and the prompt, launching and stamping nothing; `--yes`
+skips the confirm question. See [reviews.md](reviews.md#handing-off-to-a-coding-agent).
 
 See [reviews.md](reviews.md) for `clump comments` (read and write review comments from scripts and
-coding agents, no TUI, no provider call) and `clump submit` (post a pull request's stored comments to
-GitHub as one review).
+coding agents, no TUI, no provider call — `--open` lists the ones not yet handed off) and
+`clump submit` (post a pull request's stored comments to GitHub as one review).
 
 ## Watch and installers
 

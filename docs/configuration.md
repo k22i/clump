@@ -22,6 +22,30 @@ and a `[providers.<name>]` table it defines replaces the built-in provider of th
 | `then` | `""` | diff renderer `clump lazygit install` keeps behind `clump push`, e.g. `"delta --paging=never"` |
 | `line_numbers` | `true` | show old/new line numbers beside the diff (`#` toggles them in the TUI) |
 | `side_by_side` | `false` | draw the diff old-left / new-right (`s` toggles it in the TUI) |
+| `handoff` | `""` | agent `H` (TUI) and `clump handoff` use; empty picks the first of `claude`, `codex`, `opencode` whose binary is on PATH |
+
+## Coding agents (handoff)
+
+`H` in the TUI and `clump handoff` send the review's comments to a coding agent CLI as its initial
+prompt and then get out of the way. Agents live in `[agents.<name>]`, deliberately separate from
+`[providers.<name>]`: a provider runs isolated in a temp dir so it cannot see the repository, while
+a handoff agent must run in it, with your environment and your login. The built-ins are `claude`,
+`codex` and `opencode`; a table replacing one of them must, like providers, set everything itself.
+
+| key | required | meaning |
+|---|---|---|
+| `argv` | yes | the cli to launch: the prompt is appended as its **last** element (`opencode` wants `["opencode", "--prompt"]`) |
+| `where` | no | `replace` (default: clump exits, its process becomes the agent in this terminal), `pane` (a new `rex split`, else `tmux split-window`; clump stays open — the only shape watch mode offers), or `print` (the prompt on stdout, nothing launched) |
+
+```
+[agents.aider]
+argv = ["aider"]
+where = "pane"
+```
+
+The comments that go out are stamped (`clump comments --open` lists the rest); nothing about the
+agent is supervised, streamed or waited on. See
+[ADR-0058](adr/0058-handoff-to-agent-cli.md) for the shape of the whole contract.
 
 ## Generated files
 

@@ -40,6 +40,12 @@ the cursor. Comments show as `✎` rows under their line, file header or group b
 like the diff, and travel with the `y` summary, `--json` and `--plain` (each group's section lists
 its line, file and group comments, numbered).
 
+Every time comments leave clump for a coding agent (`H`, `clump handoff`), each comment record
+written by that handoff gains a `handed_off` timestamp: `clump comments --open` lists the ones not
+yet handed off, `--json` carries `handed_off`, and the plain list marks them `(handed off)`. There
+is no undo for it — handing off again re-sends the whole review, so nothing can silently pretend a
+comment was covered.
+
 `r` with edits asks first: `d` discards them and regroups, `s` keeps them as a snapshot (`before
 regroup <time>`) and regroups, `esc` cancels; after a regroup only the snapshots remain. `--json`
 and `--plain` print the effective grouping, override included.
@@ -49,7 +55,7 @@ and `--plain` print the effective grouping, override included.
 `clump comments` reads and writes them without the TUI, for scripts and coding agents:
 
 ```
-clump comments [REV | A..B | A...B | --branch | --pr SPEC] [--json]
+clump comments [REV | A..B | A...B | --branch | --pr SPEC] [--json] [--open]
 clump comments add --file PATH [--line N --side old|new] [--rev REV|--branch|--pr SPEC] TEXT
 clump comments add --group ID [--rev REV|…] TEXT     # a saved grouping must exist
 clump comments delete --id ID
@@ -79,3 +85,36 @@ to post and asks first; `--dry-run` prints the JSON payload and sends nothing.
 In the TUI opened with `--pr`, `P` does the same: it shows what would be posted
 ("Post review of `<ref>`: 2 line comments, …") and the three events to pick from; `enter` posts,
 `esc` cancels. A diff opened any other way answers `P` with a hint to use `--pr`.
+
+## Handing off to a coding agent
+
+`clump handoff` sends the diff's review comments to a coding agent CLI — `claude`, `codex`,
+`opencode`, or an `[agents.<name>]` entry of the config — as the agent's initial prompt, and clump
+then gets out of the way: it never owns the agent process, streams nothing, waits for nothing.
+
+```
+clump handoff [REV | A..B | --branch | --pr SPEC] [--agent NAME]
+              [--where replace|pane|print] [--yes] [--dry-run]
+```
+
+The prompt is the numbered comments with their targets — `path:line (side)`, `path (file)`,
+`group "<title>"` — under a header naming the ref, and it travels in argv, so the agent's stdin
+stays its UI. Three launch shapes:
+
+| where | what happens |
+|---|---|
+| `replace` | clump exits and its process becomes the agent in the same terminal (needs stdin to be a terminal) |
+| `pane` | a new split for the agent — `rex split` when clump is in Rex, else `tmux split-window` — and clump stays open |
+| `print` | the prompt is printed, nothing is launched: the fallback for any agent clump does not know |
+
+The agent is resolved with `LookPath` before anything starts; if it cannot start, clump prints the
+prompt and the exact command on stdout instead of dying quietly, and `clump doctor` shows every
+configured agent with a `--version` smoke test so a broken binary is visible before the handoff.
+In the TUI, `H` opens the same picker; watch mode only offers `pane` (replacing would kill the
+pane lazygit pushes to) and never prints-and-quits.
+
+On config: `[agents.<name>]` with `argv` (the prompt becomes its last element) and `where`
+(default `replace`), plus the top-level `handoff` key for the default agent — deliberately
+separate from `[providers.<name>]`, whose isolation rules are the opposite (a provider runs in a
+temp dir so it cannot see the repo; a handoff agent runs in it). See
+[configuration.md](configuration.md) and [ADR-0058](adr/0058-handoff-to-agent-cli.md).

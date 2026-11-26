@@ -7,7 +7,7 @@ what keeps `clump push` free of config, provider and TUI setup (ADR-0005), and `
 render packages stay pure so they can be golden-tested without a terminal (ADR-0007).
 
 ```
-cmd/clump            CLI: flags, subcommands (watch, push, comments, submit, config init, rex install, lazygit install)
+cmd/clump            CLI: flags, subcommands (watch, push, comments, submit, handoff, config init, rex install, lazygit install)
 internal/gitdiff     unified-diff parser, canonical form + hash, git loaders
 internal/comment    review-comment anchors: kinds, content keys, placement
 internal/forge      post a review to GitHub: comment -> review payload, `gh api` submit
@@ -15,6 +15,7 @@ internal/catalog     catalog lines, hunk blocks, near-identical hunk collapsing
 internal/group       prompt Build (tier 1/2), Validate/repair, Check, edit ops, History
 internal/provider    Provider interface; command, OpenAI-compatible, Anthropic, fake; Registry; Redact
 internal/cache       results, summaries, overrides, calibration on disk
+internal/handoff    review comments -> a coding agent: prompt, argv, pane wrapping (ADR-0058)
 internal/config      config.toml load/validate, embedded default.toml
 internal/engine      the pipeline: cache -> Build -> estimate -> calls -> Validate -> cache
 internal/ipc         push <-> watch protocol, socket path, listener, client, parent argv
@@ -33,15 +34,16 @@ scripts/             mkfixture.sh (scratch test repo), mkgolden.sh (parser golde
 Import graph (arrows point at dependencies; no cycles):
 
 ```
-cmd/clump -> tui, engine, config, cache, provider, gitdiff, ipc, lazygit, rex, rexlua, comment, forge, update
-tui       -> engine, group, gitdiff, cache, config, lazygit, ipc, report, tui/*
+cmd/clump -> tui, engine, config, cache, provider, gitdiff, ipc, lazygit, rex, rexlua, comment, forge, handoff, update
+tui       -> engine, group, gitdiff, cache, config, lazygit, ipc, report, handoff, tui/*
 tui/diffview -> chromalexers, chroma/v2 (core), view;  report -> gitdiff, group, cache
 engine    -> group, catalog, gitdiff, provider, cache, config
 group     -> catalog, gitdiff
 catalog   -> gitdiff
 comment   -> gitdiff, group
 cache     -> group, provider, comment
-config    -> provider
+config    -> provider, handoff
+handoff   -> comment
 forge     -> comment, gitdiff
 update    -> stdlib
 gitdiff, provider, ipc, lazygit, rex -> stdlib (+ golang.org/x/sys for ipc, rex)

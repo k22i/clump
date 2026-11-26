@@ -28,7 +28,7 @@ context the model can cancel.
 
 Keys: `j/k` groups, `⏎` focus diff pane (`esc` back), `]`/`[` next/prev group anywhere, `a`
 grouped/all, `/` search, `n`/`N` next/prev match, `e` open `$EDITOR` at `+line file`, `y` copy
-Markdown, `r` regroup, `m` provider, `?` help, `q` quit, `s` side-by-side/unified diff. Editing:
+Markdown, `H` hand the review's comments to a coding agent (ADR-0058), `r` regroup, `m` provider, `?` help, `q` quit, `s` side-by-side/unified diff. Editing:
 `x` mark hunk, `v` visual range,
 `M` move marks, `n` new group (while a search query is active, `n`/`N` are next/previous match
 instead; `esc` clears the query), `R` rename/explain, `d` delete, `J`/`K` reorder, `g` merge (one-shot) / group now

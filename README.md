@@ -77,6 +77,9 @@ clump watch                     # the pane; auto-groups with the cheap provider
 
 Anything is editable in the TUI: press `?` for the key map, or read [docs/keys.md](docs/keys.md).
 Groups are the model's first draft — `M` moves hunks between groups, `R` renames, `u` undoes.
+Review comments (`C`) can be handed to a coding agent CLI with `H` (or `clump handoff`):
+clump ships the prompt and gets out of the way
+([docs/reviews.md](docs/reviews.md#handing-off-to-a-coding-agent)).
 
 ## Privacy
 
@@ -93,7 +96,7 @@ every error clump prints goes through a secret redactor.
 |---|---|
 | [docs/cli.md](docs/cli.md) | every command and flag: ranges, `--pr SPEC` formats, `--pick`, `--dry-run`, subcommands |
 | [docs/configuration.md](docs/configuration.md) | the config file, every key, providers and aliases, API keys, costs, limits and the large-diff tiers |
-| [docs/reviews.md](docs/reviews.md) | caching, your edits, reviewed marks, `clump comments` and posting a PR review |
+| [docs/reviews.md](docs/reviews.md) | caching, your edits, reviewed marks, `clump comments`, posting a PR review and handing off to a coding agent |
 | [docs/keys.md](docs/keys.md) | every key in the TUI |
 | [docs/lazygit-watch.md](docs/lazygit-watch.md) | watch mode: how `clump push` works, setup, what lazygit selections are followed |
 | [docs/rex.md](docs/rex.md) | the Rex module: actions, bindings, program status |
