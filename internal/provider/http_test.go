@@ -76,10 +76,19 @@ func (rec *recorder) only(t *testing.T) capturedRequest {
 	return reqs[0]
 }
 
-func writeJSON(w http.ResponseWriter, status int, body string) {
+func writeJSONThenHangUp(w http.ResponseWriter, status int, body string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_, _ = io.WriteString(w, body)
+}
+
+func writeJSON(t *testing.T, w http.ResponseWriter, status int, body string) {
+	t.Helper()
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	if _, err := io.WriteString(w, body); err != nil {
+		t.Errorf("the test server could not answer: %v", err)
+	}
 }
 
 func objectList(t *testing.T, body map[string]any, key string) []map[string]any {
@@ -141,7 +150,7 @@ func TestOpenAIRequestAndResponse(t *testing.T) {
 	rec := newRecorder()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rec.add(t, r)
-		writeJSON(w, http.StatusOK, openAISuccessBody)
+		writeJSON(t, w, http.StatusOK, openAISuccessBody)
 	}))
 	defer srv.Close()
 
@@ -225,7 +234,7 @@ func TestOpenAINoKeyEnv(t *testing.T) {
 	rec := newRecorder()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rec.add(t, r)
-		writeJSON(w, http.StatusOK, openAISuccessBody)
+		writeJSON(t, w, http.StatusOK, openAISuccessBody)
 	}))
 	defer srv.Close()
 
@@ -246,7 +255,7 @@ func TestOpenAIMissingKey(t *testing.T) {
 	rec := newRecorder()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rec.add(t, r)
-		writeJSON(w, http.StatusOK, openAISuccessBody)
+		writeJSON(t, w, http.StatusOK, openAISuccessBody)
 	}))
 	defer srv.Close()
 
@@ -270,10 +279,10 @@ func TestOpenAIRetryWithoutResponseFormat(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rec.add(t, r)
 		if rec.count() == 1 {
-			writeJSON(w, http.StatusBadRequest, `{"error":{"message":"response_format not supported"}}`)
+			writeJSON(t, w, http.StatusBadRequest, `{"error":{"message":"response_format not supported"}}`)
 			return
 		}
-		writeJSON(w, http.StatusOK, openAISuccessBody)
+		writeJSON(t, w, http.StatusOK, openAISuccessBody)
 	}))
 	defer srv.Close()
 
@@ -307,7 +316,7 @@ func TestOpenAIRetryWithoutResponseFormat(t *testing.T) {
 
 func TestOpenAIHTTPErrorParsesMessage(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusTooManyRequests, `{"error":{"message":"slow down","type":"rate_limit","code":429}}`)
+		writeJSON(t, w, http.StatusTooManyRequests, `{"error":{"message":"slow down","type":"rate_limit","code":429}}`)
 	}))
 	defer srv.Close()
 
@@ -328,7 +337,7 @@ func TestOpenAIHTTPErrorRawBody(t *testing.T) {
 		t.Fatalf("test body is %d bytes, want 1002", len(raw))
 	}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusInternalServerError, raw)
+		writeJSON(t, w, http.StatusInternalServerError, raw)
 	}))
 	defer srv.Close()
 
@@ -348,7 +357,7 @@ func TestOpenAIRedactsKey(t *testing.T) {
 	t.Setenv("CLUMP_TEST_LEAK_KEY", key)
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusUnauthorized,
+		writeJSON(t, w, http.StatusUnauthorized,
 			`{"error":{"message":"invalid key `+r.Header.Get("Authorization")+`"}}`)
 	}))
 	defer srv.Close()
@@ -380,7 +389,7 @@ func TestOpenAINoChoicesAndBadJSON(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				writeJSON(w, http.StatusOK, tc.body)
+				writeJSON(t, w, http.StatusOK, tc.body)
 			}))
 			defer srv.Close()
 
@@ -433,7 +442,7 @@ func TestOpenAICancel(t *testing.T) {
 func TestOpenAIBodyTooLarge(t *testing.T) {
 	huge := strings.Repeat("x", 9<<20)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, huge)
+		writeJSONThenHangUp(w, http.StatusOK, huge)
 	}))
 	defer srv.Close()
 
@@ -491,7 +500,7 @@ func TestAnthropicRequestAndResponse(t *testing.T) {
 	rec := newRecorder()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rec.add(t, r)
-		writeJSON(w, http.StatusOK, anthropicSuccessBody)
+		writeJSON(t, w, http.StatusOK, anthropicSuccessBody)
 	}))
 	defer srv.Close()
 
@@ -625,7 +634,7 @@ func TestAnthropicRefusal(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Setenv("ANTHROPIC_API_KEY", "sk-ant-test-abcdefghijklmnop")
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				writeJSON(w, http.StatusOK, tc.body)
+				writeJSON(t, w, http.StatusOK, tc.body)
 			}))
 			defer srv.Close()
 
@@ -644,7 +653,7 @@ func TestAnthropicRefusal(t *testing.T) {
 func TestAnthropicNoText(t *testing.T) {
 	t.Setenv("ANTHROPIC_API_KEY", "sk-ant-test-abcdefghijklmnop")
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK,
+		writeJSON(t, w, http.StatusOK,
 			`{"content":[{"type":"thinking","thinking":"hmm","signature":"sig"}],"stop_reason":"end_turn",`+
 				`"usage":{"input_tokens":5,"output_tokens":1}}`)
 	}))
@@ -663,7 +672,7 @@ func TestAnthropicNoText(t *testing.T) {
 func TestAnthropicErrorShape(t *testing.T) {
 	t.Setenv("ANTHROPIC_API_KEY", "sk-ant-test-abcdefghijklmnop")
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusUnauthorized,
+		writeJSON(t, w, http.StatusUnauthorized,
 			`{"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"}}`)
 	}))
 	defer srv.Close()
@@ -684,7 +693,7 @@ func TestAnthropicMissingKey(t *testing.T) {
 	rec := newRecorder()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rec.add(t, r)
-		writeJSON(w, http.StatusOK, anthropicSuccessBody)
+		writeJSON(t, w, http.StatusOK, anthropicSuccessBody)
 	}))
 	defer srv.Close()
 
@@ -707,7 +716,7 @@ func TestAnthropicMaxTokensOverride(t *testing.T) {
 	rec := newRecorder()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rec.add(t, r)
-		writeJSON(w, http.StatusOK, anthropicSuccessBody)
+		writeJSON(t, w, http.StatusOK, anthropicSuccessBody)
 	}))
 	defer srv.Close()
 
@@ -775,7 +784,7 @@ func TestHTTPConcurrent(t *testing.T) {
 			t.Errorf("read request body: %v", err)
 			return
 		}
-		writeJSON(w, http.StatusOK, openAISuccessBody)
+		writeJSON(t, w, http.StatusOK, openAISuccessBody)
 	}))
 	defer srv.Close()
 
