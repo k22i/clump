@@ -149,7 +149,7 @@ func TestClickOnTheListSelectsTheGroup(t *testing.T) {
 	if h.m.focus != focusDiff {
 		t.Fatal("not on the diff pane")
 	}
-	h.send(clickMsg(tea.MouseLeft, 3, 1+1)) // second row of the list
+	h.send(clickMsg(tea.MouseLeft, 3, h.m.listRect().y+1)) // second row of the list
 	if h.m.cursor != 1 || h.m.focus != focusList {
 		t.Fatalf("cursor %d focus %v", h.m.cursor, h.m.focus)
 	}

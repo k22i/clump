@@ -20,10 +20,31 @@ import (
 // wideMin is the width from which the list and the diff sit side by side.
 const wideMin = 100
 
+const (
+	// padX is the breathing room on each side of a pane's content, so text
+	// never touches the separator or the edge of the terminal.
+	padX = 1
+	// minList and maxList bound the group list's width.
+	minList, maxList = 24, 48
+	// chrome is the number of rows the body does not get: the header, the
+	// rule under it, the rule above the footer and the footer itself.
+	chrome = 4
+)
+
 func (m *Model) wide() bool { return m.width >= wideMin }
 
-// listWidth is the group list's width in the wide layout.
-func (m *Model) listWidth() int { return max(24, min(48, m.width/3)) }
+// listWidth is the group list's width: enough for the longest title and its
+// counts, within 45% of the screen and the maxList cap.
+func (m *Model) listWidth() int {
+	want := minList
+	if m.doc != nil && m.doc.L != nil {
+		want = listview.NaturalWidth(m.listRows(), minList) + 2*padX
+	}
+	return max(minList, min(want, min(maxList, m.width*9/20)))
+}
+
+// listInnerWidth is the list's content width: the pane minus its padding.
+func (m *Model) listInnerWidth() int { return max(4, m.listWidth()-2*padX) }
 
 // diffWidth is the diff pane's width.
 func (m *Model) diffWidth() int {
@@ -33,33 +54,40 @@ func (m *Model) diffWidth() int {
 	return max(10, m.width)
 }
 
+// diffInnerWidth is the diff pane's content width: the pane minus its padding.
+// Everything the pane draws into lines is measured against it.
+func (m *Model) diffInnerWidth() int { return max(8, m.diffWidth()-2*padX) }
+
 // listHeight is the list's height in the narrow layout.
 func (m *Model) listHeight() int {
-	h := m.height - 2
+	h := m.height - chrome
 	return max(1, min(len(m.groups()), max(3, h/3)))
 }
 
 // bodyHeight is the diff pane's height.
 func (m *Model) bodyHeight() int {
-	h := m.height - 2 // header + footer
+	h := m.height - chrome // header, two rules, footer
 	if !m.wide() {
 		h -= m.listHeight() + 1
 	}
 	return max(1, h)
 }
 
+// rule is the dim horizontal line that frames the body above and below.
+func (m *Model) rule() string { return m.th.Style(m.th.Border, strings.Repeat("─", m.width)) }
+
 // ensureLines (re)builds the diff pane's lines when stale.
 func (m *Model) ensureLines() []view.Line {
-	if m.linesOK {
+	w := m.diffInnerWidth()
+	if m.linesOK && m.linesW == w {
 		return m.lines
 	}
-	m.linesOK = true
+	m.linesOK, m.linesW = true, w
 	m.lines = nil
 	if m.doc == nil || m.doc.L == nil {
 		return nil
 	}
 	d := m.doc.L.Diff
-	w := m.diffWidth()
 	nw := m.numberWidth()
 	if m.mode == modeAll {
 		m.lines = rawview.RenderAllOpts(d, m.doc.hist.Current(), m.th, w, func(h *gitdiff.Hunk, width int) []view.Line {
@@ -91,7 +119,7 @@ func (m *Model) groupBlock(g group.Group, w int) []view.Line {
 		title = g.Title
 	}
 	out := []view.Line{mk(title, m.th.Title)}
-	stats := fmt.Sprintf("%s · %d hunks · +%d −%d", plural(files, "file"), len(g.Hunks), add, del)
+	stats := fmt.Sprintf("%s · %s · +%d −%d", plural(files, "file"), plural(len(g.Hunks), "hunk"), add, del)
 	switch r := m.countReviewed(g.Hunks); {
 	case len(g.Hunks) > 0 && r == len(g.Hunks):
 		stats += " · ✓ reviewed"
@@ -100,9 +128,13 @@ func (m *Model) groupBlock(g group.Group, w int) []view.Line {
 	}
 	out = append(out, mk(stats, m.th.Dim))
 	if desc := strings.TrimSpace(g.Description); desc != "" && m.doc.grouped() {
+		// A blank line, then the prose indented off the title's column: the
+		// explanation reads as commentary on the group, not as more diff.
+		const indent = "  "
+		out = append(out, view.Line{Kind: view.KindBlank, FileIdx: -1})
 		for _, para := range strings.Split(desc, "\n") {
-			for _, l := range wrap(para, w) {
-				out = append(out, mk(l, m.th.Context))
+			for _, l := range wrap(strings.TrimSpace(para), w-lipgloss.Width(indent)) {
+				out = append(out, mk(indent+l, m.th.Context))
 			}
 		}
 	}
@@ -166,7 +198,7 @@ func (m *Model) render() string {
 	}
 	header := m.header()
 	footer := m.footer()
-	bodyH := m.height - 2
+	bodyH := m.height - chrome
 	var body string
 	switch {
 	case m.ov == ovPick:
@@ -197,7 +229,8 @@ func (m *Model) render() string {
 		body = m.renderBody(bodyH)
 	}
 	body = fitLines(body, m.width, bodyH)
-	return header + "\n" + body + "\n" + footer
+	rule := m.rule()
+	return header + "\n" + rule + "\n" + body + "\n" + rule + "\n" + footer
 }
 
 func errText(err error) string {
@@ -241,28 +274,35 @@ func (m *Model) renderChoice(title string, items []string, cursor, h int) string
 	return strings.Join(lines, "\n")
 }
 
-// renderBody is the list plus the diff pane.
+// renderBody is the list plus the diff pane, each padded away from the
+// separator and the edges of the screen.
 func (m *Model) renderBody(bodyH int) string {
 	rows := m.listRows()
-	dw := m.diffWidth()
+	pad := strings.Repeat(" ", padX)
 	if m.wide() {
-		lw := m.listWidth()
+		lw, iw := m.listInnerWidth(), m.diffInnerWidth()
 		list := listview.Render(rows, m.cursor, lw, bodyH, m.listTheme())
-		diff := m.renderDiff(dw, bodyH)
+		diff := m.renderDiff(iw, bodyH)
 		ll := padLines(list, lw, bodyH)
-		dl := padLines(diff, dw, bodyH)
+		dl := padLines(diff, iw, bodyH)
 		sep := m.th.Style(m.th.Border, "│")
 		out := make([]string, bodyH)
 		for i := range out {
-			out[i] = ll[i] + sep + dl[i]
+			out[i] = pad + ll[i] + pad + sep + pad + dl[i] + pad
 		}
 		return strings.Join(out, "\n")
 	}
+	iw := max(1, m.width-2*padX)
 	lh := m.listHeight()
-	list := listview.Render(rows, m.cursor, m.width, lh, m.listTheme())
-	sep := m.th.Style(m.th.Border, strings.Repeat("─", m.width))
-	diff := m.renderDiff(dw, bodyH-lh-1)
-	return strings.Join(padLines(list, m.width, lh), "\n") + "\n" + sep + "\n" + diff
+	list := padLines(listview.Render(rows, m.cursor, iw, lh, m.listTheme()), iw, lh)
+	diff := padLines(m.renderDiff(iw, bodyH-lh-1), iw, bodyH-lh-1)
+	for i := range list {
+		list[i] = pad + list[i] + pad
+	}
+	for i := range diff {
+		diff[i] = pad + diff[i] + pad
+	}
+	return strings.Join(list, "\n") + "\n" + m.rule() + "\n" + strings.Join(diff, "\n")
 }
 
 // listTheme dims the list when it is not focused (keeps the cursor visible).
@@ -314,52 +354,82 @@ func (m *Model) renderDiff(w, h int) string {
 	return strings.Join(vis, "\n")
 }
 
-// header is the top line: subject, ref, provider and markers.
-func (m *Model) header() string {
-	var parts []string
-	state := ""
+// headPart is one styled segment of the header line.
+type headPart struct {
+	text  string
+	style lipgloss.Style
+}
+
+// headerParts are the header's segments: clump, the change, its ref and
+// provider, then the markers and any progress.
+func (m *Model) headerParts() []headPart {
+	dim := m.th.Dim
+	parts := []headPart{{"clump", dim}}
 	if m.doc != nil && m.doc.L != nil {
 		d := m.doc
 		if d.L.Title != "" {
-			parts = append(parts, d.L.Title)
+			parts = append(parts, headPart{d.L.Title, m.th.Title})
 		}
 		if d.L.Ref != "" {
-			parts = append(parts, d.L.Ref)
+			parts = append(parts, headPart{d.L.Ref, dim})
 		}
-		parts = append(parts, "→ "+m.providerLabel())
+		parts = append(parts, headPart{"→ " + m.providerLabel(), dim})
 		switch {
 		case d.edited():
-			parts = append(parts, "edited")
+			parts = append(parts, headPart{"edited", m.th.Notice})
 		case d.cached:
-			parts = append(parts, "cached")
+			parts = append(parts, headPart{"cached", dim})
 		}
 		if d.fallback {
-			parts = append(parts, "per-file fallback")
+			parts = append(parts, headPart{"per-file fallback", dim})
 		}
 		if d.grouped() {
 			if done, total := m.reviewProgress(); done > 0 {
-				parts = append(parts, fmt.Sprintf("%d/%d reviewed", done, total))
+				parts = append(parts, headPart{fmt.Sprintf("%d/%d reviewed", done, total), dim})
 			}
 		}
 		switch d.state {
 		case stGrouping:
-			state = fmt.Sprintf("%s grouping… %ds", m.spin.View(), int(m.o.Now().Sub(d.started)/time.Second))
+			parts = append(parts, headPart{
+				fmt.Sprintf("%s grouping… %ds", m.spin.View(), int(m.o.Now().Sub(d.started)/time.Second)), m.th.Notice})
 		case stNeedsConfirm:
 			if d.job != nil {
-				state = "press g to group (" + d.job.Est.String() + ")"
+				parts = append(parts, headPart{"press g to group (" + d.job.Est.String() + ")", m.th.Notice})
 			}
 		case stFailed:
-			state = "error"
+			parts = append(parts, headPart{"error", m.th.Error})
 		}
 	}
 	if m.watch != nil {
-		parts = append(parts, m.watch.headerTag())
+		parts = append(parts, headPart{m.watch.headerTag(), dim})
 	}
-	left := "clump · " + strings.Join(parts, " · ")
-	if state != "" {
-		left += "  " + state
+	return parts
+}
+
+// header is the top line: the change in bold, everything else dim, so the eye
+// lands on what is being reviewed rather than on clump.
+func (m *Model) header() string {
+	parts := m.headerParts()
+	var plain strings.Builder
+	for i, p := range parts {
+		if i > 0 {
+			plain.WriteString(" · ")
+		}
+		plain.WriteString(p.text)
 	}
-	return m.th.Style(m.th.Title, view.Truncate(left, m.width))
+	if lipgloss.Width(plain.String()) > m.width {
+		// Too many parts to style piecemeal: cut the joined line instead.
+		return m.th.Style(m.th.Title, view.Truncate(plain.String(), m.width))
+	}
+	sep := m.th.Style(m.th.Dim, " · ")
+	var b strings.Builder
+	for i, p := range parts {
+		if i > 0 {
+			b.WriteString(sep)
+		}
+		b.WriteString(m.th.Style(p.style, p.text))
+	}
+	return b.String()
 }
 
 func (m *Model) providerLabel() string {
@@ -405,14 +475,74 @@ func (m *Model) footer() string {
 			return m.th.Style(m.th.Notice, view.Truncate(strings.Join(m.doc.notices, " · "), w))
 		}
 	}
-	hint := "? keys · c reviewed · z fold · a all · s split · / search · x mark · M move · u undo · q quit"
+	switch {
+	case m.visual:
+		return m.renderHints(m.th.Style(m.th.Title, "VISUAL"))
+	case m.query != "":
+		return m.renderHints(m.th.Style(m.th.Dim, fmt.Sprintf("/%s: %d matches", m.query, len(m.matches))))
+	}
+	return m.renderHints("")
+}
+
+// hint is one key hint in the footer strip.
+type hint struct{ key, desc string }
+
+// footerHints are the keys worth showing in the current state, most useful
+// first: renderHints drops from the end, so the narrowest terminals keep the
+// primary affordance.
+func (m *Model) footerHints() []hint {
 	if m.visual {
-		hint = "VISUAL · move to extend · x mark · M move · esc"
+		return []hint{{"esc", "cancel"}, {"x", "mark"}, {"M", "move"}}
 	}
 	if m.query != "" {
-		hint = fmt.Sprintf("/%s: %d matches · n/N · esc clears", m.query, len(m.matches))
+		return []hint{{"n", "next"}, {"N", "prev"}, {"esc", "clear"}}
 	}
-	return m.th.Style(m.th.Dim, view.Truncate(hint, w))
+	return []hint{
+		{"?", "keys"}, {"/", "search"}, {"c", "reviewed"}, {"x", "mark"},
+		{"M", "move"}, {"z", "fold"}, {"a", "all"}, {"s", "split"},
+		{"u", "undo"}, {"q", "quit"},
+	}
+}
+
+// renderHints draws lead, then the key hints, separated by dim dots. A hint
+// that does not fit is left out whole, rather than cut mid-word.
+func (m *Model) renderHints(lead string) string {
+	type seg struct {
+		text string
+		w    int
+	}
+	var segs []seg
+	if lead != "" {
+		segs = append(segs, seg{lead, lipgloss.Width(lead)})
+	}
+	for _, h := range m.footerHints() {
+		segs = append(segs, seg{
+			m.th.Style(m.th.Key, h.key) + " " + m.th.Style(m.th.Dim, h.desc),
+			lipgloss.Width(h.key) + 1 + lipgloss.Width(h.desc),
+		})
+	}
+	const sepW = 3 // " · "
+	sep := m.th.Style(m.th.Dim, " · ")
+	var b strings.Builder
+	used := 0
+	for i, s := range segs {
+		need := s.w
+		if i > 0 {
+			need += sepW
+		}
+		if used+need > m.width {
+			break
+		}
+		if i > 0 {
+			b.WriteString(sep)
+		}
+		b.WriteString(s.text)
+		used += need
+	}
+	if b.Len() == 0 {
+		return view.Truncate(lead, m.width)
+	}
+	return b.String()
 }
 
 // padLines splits s into exactly h lines, each padded to w cells.

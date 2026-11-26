@@ -9,24 +9,31 @@ patch on stdin, and as a watch pane beside lazygit that follows lazygit's select
 
 ```
 clump · range 7cad34e2a144^..2a438fc11199 · → claude-haiku · auto on
-▸ Append log lines to docs/log.txt      +3 −0 1h│1. Append log lines to docs/log.txt
-  Add func f6 to src/fill.go            +1 −0 1h│1 file · 1 hunks · +3 −0
-                                                │Adds three new lines (line 6 through line 8)
-                                                │to the end of the log document.
-                                                │Documentation-only change with no code impact.
-                                                │
-                                                │── docs/log.txt (M +3 −0) ──────────────────────
-                                                │  @@ -3,3 +3,6 @@ line 2
-                                                │   line 5
-                                                │  +line 6
-                                                │  +line 7
-                                                │  +line 8
-? keys · a all · / search · x mark · M move · u undo · q quit
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ▸ Append log lines to docs/log.txt   +3 −0 1h │ 1. Append log lines to docs/log.txt
+   Add func f6 to src/fill.go         +1 −0 1h │ 1 file · 1 hunk · +3 −0
+                                               │
+                                               │   Adds three new lines (line 6 through line 8) to the end of
+                                               │   the log document. Documentation-only change with no code
+                                               │   impact.
+                                               │
+                                               │ ── docs/log.txt (M +3 −0) ──────────────────────────────────
+                                               │   @@ -3,3 +3,6 @@ line 2
+                                               │    3  3  line 3
+                                               │    4  4  line 4
+                                               │    5  5  line 5
+                                               │       6 +line 6
+                                               │       7 +line 7
+                                               │       8 +line 8
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+? keys · / search · c reviewed · x mark · M move · z fold · a all · s split · u undo · q quit
 ```
 
-(A real watch pane from the e2e run.) The list is on the left — title, `+added −deleted`, hunk count —
-and the selected group's explanation and hunks, grouped by file, on the right: side by side at 100
-columns or wider, stacked below that.
+(A watch pane, rendered at 110 columns; `docs/e2e` has the full run.) The header names the change and
+the provider, dimmed either side of the subject so the diff reads first, and a rule closes the body
+off from the key hints. The list is on the left — title, `+added −deleted`, hunk count — and the
+selected group's explanation, indented under its title, and its hunks, grouped by file, on the
+right: side by side at 100 columns or wider, stacked below that.
 
 ## Install
 

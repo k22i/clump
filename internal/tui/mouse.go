@@ -21,21 +21,21 @@ func (r rect) has(x, y int) bool {
 // listRect is the group list's rectangle on screen.
 func (m *Model) listRect() rect {
 	if m.wide() {
-		return rect{0, 1, m.listWidth(), m.height - 2}
+		return rect{0, 2, m.listWidth(), m.bodyHeight()}
 	}
-	return rect{0, 1, m.width, m.listHeight()}
+	return rect{0, 2, m.width, m.listHeight()}
 }
 
 // diffRect is the diff pane's rectangle on screen. It mirrors the layout of
 // renderBody: the pane starts under the header, right of the list and its
 // separator when wide, below the list and its rule when stacked.
 func (m *Model) diffRect() rect {
-	bodyH := m.height - 2 // header + footer
+	bodyH := m.bodyHeight()
 	if m.wide() {
-		return rect{m.listWidth() + 1, 1, m.diffWidth(), bodyH}
+		return rect{m.listWidth() + 1, 2, m.diffWidth(), bodyH}
 	}
 	lh := m.listHeight()
-	return rect{0, lh + 2, m.width, bodyH - lh - 1}
+	return rect{0, lh + 3, m.width, bodyH - lh - 1}
 }
 
 // onMouse routes a mouse event: the wheel scrolls the pane under the pointer

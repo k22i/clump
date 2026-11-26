@@ -131,7 +131,7 @@ func TestListNarrow(t *testing.T) {
 		right := fmt.Sprintf(" +%d −%d %dh", r.Add, r.Del, r.Hunks)
 		want := ""
 		if room := width - 2 - lipgloss.Width(right); room >= 1 {
-			title := view.Truncate(r.Title, room)
+			title := view.Truncate(r.Title, max(1, room-titleGap))
 			want = prefix + title + strings.Repeat(" ", room-lipgloss.Width(title)) + right
 		} else {
 			want = view.Truncate(prefix+r.Title+right, width)
@@ -152,8 +152,9 @@ func TestListLongTitle(t *testing.T) {
 	if strings.Contains(got, "\n") {
 		t.Fatalf("one row rendered as %q, want a single line", got)
 	}
-	if !strings.HasSuffix(got, "… +3 −1 2h") {
-		t.Fatalf("row = %q, want it to end with %q", got, "… +3 −1 2h")
+	// A cut title still keeps titleGap cells free before the counts.
+	if want := "…" + strings.Repeat(" ", titleGap) + " +3 −1 2h"; !strings.HasSuffix(got, want) {
+		t.Fatalf("row = %q, want it to end with %q", got, want)
 	}
 	if w := lipgloss.Width(got); w != 40 {
 		t.Fatalf("row is %d cells wide, want exactly 40", w)

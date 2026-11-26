@@ -13,6 +13,10 @@ import (
 // cursorMark starts the cursor row; every other row is indented by its width.
 const cursorMark = "▸ "
 
+// titleGap is the least space between a row's title and its counts, so the
+// two never read as one run of text.
+const titleGap = 2
+
 // Window returns the half-open range [start, end) of n rows to show in
 // height lines so that cursor is visible.
 //
@@ -55,8 +59,33 @@ func Render(rows []view.ListRow, cursor, width, height int, th view.Theme) strin
 	return strings.Join(lines, "\n")
 }
 
+// NaturalWidth is the width rows need to show every title whole beside its
+// counts: the widest row, but never less than minWidth. The caller adds the
+// padding; marks ("x2") are left out so marking a hunk does not resize the
+// list under the diff pane.
+func NaturalWidth(rows []view.ListRow, minWidth int) int {
+	w := max(minWidth, lipgloss.Width(cursorMark))
+	for _, r := range rows {
+		w = max(w, lipgloss.Width(cursorMark)+lipgloss.Width(r.Title)+titleGap+lipgloss.Width(counts(r)))
+	}
+	return w
+}
+
+// counts is a row's right-hand column: the added and deleted totals and the
+// hunk count, or the review progress while the group is being reviewed.
+func counts(r view.ListRow) string {
+	right := fmt.Sprintf(" +%d \u2212%d %dh", r.Add, r.Del, r.Hunks)
+	switch {
+	case r.Hunks > 0 && r.Reviewed >= r.Hunks:
+		right += " \u2713"
+	case r.Reviewed > 0:
+		right = fmt.Sprintf(" +%d \u2212%d %d/%dh", r.Add, r.Del, r.Reviewed, r.Hunks)
+	}
+	return right
+}
+
 // renderRow renders one list row in at most width cells: the cursor mark,
-// the title, then the "+a −d Nh" counts (and " xN" markers).
+// the title, then the " +a \u2212d Nh" counts (and " xN" markers).
 func renderRow(r view.ListRow, isCursor bool, width int, th view.Theme) string {
 	if width <= 0 {
 		return ""
@@ -65,24 +94,19 @@ func renderRow(r view.ListRow, isCursor bool, width int, th view.Theme) string {
 	if isCursor {
 		prefix = cursorMark
 	}
-	right := fmt.Sprintf(" +%d −%d %dh", r.Add, r.Del, r.Hunks)
+	right := counts(r)
 	done := r.Hunks > 0 && r.Reviewed >= r.Hunks
-	switch {
-	case done:
-		right += " ✓"
-	case r.Reviewed > 0:
-		right = fmt.Sprintf(" +%d −%d %d/%dh", r.Add, r.Del, r.Reviewed, r.Hunks)
-	}
 	if r.Marks > 0 {
 		right += fmt.Sprintf(" x%d", r.Marks)
 	}
+
 	// A reviewed group reads as done: dim, like Ungrouped.
 	dim := r.Ungrouped || done
 
 	// Everything up to the counts fits: pad the title to the free room so the
 	// counts are flush right and the row is exactly width cells.
 	if room := width - lipgloss.Width(prefix) - lipgloss.Width(right); room >= 1 {
-		title := view.Truncate(r.Title, room)
+		title := view.Truncate(r.Title, max(1, room-titleGap))
 		if pad := room - lipgloss.Width(title); pad > 0 {
 			title += strings.Repeat(" ", pad)
 		}

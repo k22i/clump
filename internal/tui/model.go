@@ -103,6 +103,7 @@ type Model struct {
 	// diff pane
 	lines   []view.Line
 	linesOK bool // lines match the current doc/cursor/mode/width
+	linesW  int  // the content width lines was built for
 	scroll  int  // first visible line
 	dcur    int  // cursor line in the diff pane
 

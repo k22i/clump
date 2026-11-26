@@ -365,10 +365,19 @@ Saved after every edit, keyed by diff hash, separate from model results:
 
 ## 9. TUI
 
-Layout: group list left (title, `+a −d`, hunk count, markers), right pane = selected group's
-title and explanation on top, its hunks below grouped by file. Side by side when the width is
-at least 100 columns, stacked (inline) below. Header line: subject, short ref, provider, `cached`
-/ `edited`; watch adds `auto` state and `dimmed`. Notices bar at the bottom.
+Layout: the body sits between two dim rules, one under the header and one above the key hints,
+so chrome and content never run together. Group list left (title, `+a −d`, hunk count, markers),
+right pane = selected group's title, its counts, its explanation (indented two cells under a blank
+line, so prose reads as commentary and not as more diff), then its hunks grouped by file. Side by
+side when the width is at least 100 columns, stacked (inline) below. Each pane keeps a cell of
+padding off the separator and the screen edge. The list is sized to its longest title and counts
+(capped at 48 cells and 45% of the width), so titles are not cut for no reason; `titleGap` cells
+always stay free before the counts, and marks are left out of the measurement so marking a hunk
+does not resize the list under the diff. Header: `clump`, the subject in bold, short ref, provider,
+`cached`/`edited`, `N/M reviewed` and any state — all dim except the subject, so the eye lands on
+what is being reviewed; watch adds `auto` and `dimmed`. The footer is the notices bar, or the key
+hints as `key description` pairs (keys in `th.Key`, descriptions dim): a hint that does not fit is
+dropped whole rather than cut mid-word, so the narrowest terminal still shows `? keys`.
 
 Async flow: the UI opens at once with a spinner; the raw file list (the `a` view) is browsable
 while the groups load; `groupsReadyMsg` fills them in. Provider calls run in `tea.Cmd`s with a

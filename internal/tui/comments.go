@@ -243,7 +243,7 @@ func (m *Model) deleteComment() {
 // m.commentAt for D.
 func (m *Model) insertCommentRows(lines []view.Line) []view.Line {
 	m.commentAt = map[int]commentRef{}
-	w := m.diffWidth()
+	w := m.diffInnerWidth()
 	out := make([]view.Line, 0, len(lines)+len(m.comments)*2)
 	// Group comments go after the group block's last line: find it once.
 	groupEnd := -1
