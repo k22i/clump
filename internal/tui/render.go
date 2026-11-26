@@ -204,6 +204,12 @@ func (m *Model) render() string {
 			labels = append(labels, it.label)
 		}
 		body = m.renderChoice(m.submit.title, labels, m.submit.cursor, bodyH)
+	case m.ov == ovHandoff:
+		var labels []string
+		for _, it := range m.handoff.items {
+			labels = append(labels, it.label)
+		}
+		body = m.renderChoice(m.handoff.title, labels, m.handoff.cursor, bodyH)
 	default:
 		body = m.renderBody(bodyH)
 	}
@@ -462,7 +468,7 @@ func (m *Model) footerHints() []hint {
 	return []hint{
 		{"?", "keys"}, {"/", "search"}, {"c", "reviewed"}, {"x", "mark"},
 		{"M", "move"}, {"z", "fold"}, {"a", "all"}, {"s", "split"},
-		{"u", "undo"}, {"q", "quit"},
+		{"u", "undo"}, {"H", "handoff"}, {"q", "quit"},
 	}
 }
 

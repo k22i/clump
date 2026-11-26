@@ -15,6 +15,7 @@ import (
 	"github.com/k22i/clump/internal/engine"
 	"github.com/k22i/clump/internal/gitdiff"
 	"github.com/k22i/clump/internal/group"
+	"github.com/k22i/clump/internal/handoff"
 	"github.com/k22i/clump/internal/tui/view"
 )
 
@@ -62,6 +63,7 @@ const (
 	ovProvider
 	ovPick
 	ovSubmit
+	ovHandoff
 )
 
 type Model struct {
@@ -106,6 +108,8 @@ type Model struct {
 	menu        menuState
 	pick        pickState
 	submit      submitState
+	handoff     handoffState
+	request     *handoff.Request
 	searchBox   lineInput
 	spin        spinner.Model
 
@@ -132,7 +136,7 @@ func New(ctx context.Context, o Options) *Model {
 	return m
 }
 
-func Run(ctx context.Context, o Options) error {
+func Run(ctx context.Context, o Options) (*handoff.Request, error) {
 	m := New(ctx, o)
 	opts := []tea.ProgramOption{tea.WithContext(ctx)}
 	p := tea.NewProgram(m, opts...)
@@ -143,13 +147,17 @@ func Run(ctx context.Context, o Options) error {
 	if errors.Is(err, tea.ErrProgramKilled) && ctx.Err() != nil {
 		err = nil
 	}
-	if fm, ok := final.(*Model); ok && fm.cancel != nil {
-		fm.cancel()
+	var req *handoff.Request
+	if fm, ok := final.(*Model); ok {
+		if fm.cancel != nil {
+			fm.cancel()
+		}
+		if fm.watch != nil {
+			fm.watch.close()
+		}
+		req = fm.request
 	}
-	if fm, ok := final.(*Model); ok && fm.watch != nil {
-		fm.watch.close()
-	}
-	return err
+	return req, err
 }
 
 func (m *Model) Init() tea.Cmd {

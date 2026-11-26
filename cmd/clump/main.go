@@ -43,6 +43,8 @@ func run(args []string, stdin *os.File, stdout, stderr io.Writer) int {
 		err = runComments(args[1:], stdin, stdout, stderr)
 	case "submit":
 		err = runSubmit(args[1:], stdin, stdout, stderr)
+	case "handoff":
+		err = runHandoff(args[1:], stdin, stdout, stderr)
 	case "version", "--version":
 		fmt.Fprintln(stdout, "clump", version)
 		return 0
@@ -76,6 +78,8 @@ const usage = `usage:
   clump comments [REV | RANGE | --branch | --pr SPEC] [--json]
   clump comments add --file PATH [--line N --side old|new] [--rev …] TEXT
   clump comments delete --id ID
+  clump handoff [REV | RANGE | --branch | --pr SPEC] \
+    [--agent NAME] [--where replace|pane|print] [--yes] [--dry-run]
   clump submit --pr SPEC --event comment|approve|request-changes \
     [--body TEXT | --body-file PATH] [--yes] [--dry-run]
   clump config init | path
@@ -115,6 +119,26 @@ submit:
   --body-file PATH  the summary from a file ("-" is stdin)
   --yes             post without the confirm question
   --dry-run         print the JSON that would be posted, send nothing
+
+handoff:
+  clump handoff sends the diff's stored review comments to a coding
+  agent CLI (claude, codex, opencode, or an [agents.<name>] entry of
+  your config) as its initial prompt and gets out of the way: clump
+  never owns the agent process. H in the TUI does the same through a
+  picker. The comments that went out are stamped; clump comments --open
+  lists the ones not yet handed off.
+
+  --agent NAME      agent from the config (default: the handoff config
+                    value, else the first of claude, codex, opencode
+                    found on PATH)
+  --where WHERE     replace: clump exits and becomes the agent in this
+                    terminal; pane: a new split (rex, else tmux) runs it
+                    and clump stays open; print: the prompt is printed,
+                    nothing is launched (default: the agent's where,
+                    else replace)
+  --yes             launch without the confirm question
+  --dry-run         print the exact command and the prompt, launch
+                    nothing, stamp nothing
 
 flags:
   --repo DIR        repository (default: the current directory)

@@ -185,7 +185,14 @@ func runOneShot(args []string, stdin *os.File, stdout, stderr io.Writer) error {
 	}
 	interactive := !o.jsonOut && !o.plain && !o.dryRun && fileIsTerminal(stdout)
 	if interactive || o.pick {
-		return runTUI(ctx, a, o, stdin, providerName)
+		req, err := runTUI(ctx, a, o, stdin, providerName)
+		if err != nil {
+			return err
+		}
+		if req == nil {
+			return nil
+		}
+		return deliverRequest(a, req, stdin, stdout)
 	}
 	l, repo, err := loadInput(ctx, o, stdin)
 	if err != nil {
@@ -208,6 +215,7 @@ func runOneShot(args []string, stdin *os.File, stdout, stderr io.Writer) error {
 	if err != nil {
 		return err
 	}
+	doc.Comments = placedCommentsForGrouping(a, l, doc.Grouping)
 	if o.jsonOut {
 		b, err := report.JSON(doc)
 		if err != nil {

@@ -61,8 +61,9 @@ func runWatch(args []string, stderr io.Writer) error {
 	if providerName == "" {
 		providerName = "cheap"
 	}
-	return tui.Run(ctx, tui.Options{
+	_, err = tui.Run(ctx, tui.Options{
 		Engine: a.eng, Store: a.store, Cfg: a.cfg, Repo: root, Provider: providerName, Theme: theme(), Status: statusFunc(),
 		Watch: &tui.WatchOptions{Repo: root, Listener: l, AutoGroup: a.cfg.AutoGroup, FollowWorktree: a.cfg.FollowWorktree, Log: logw},
 	})
+	return err
 }

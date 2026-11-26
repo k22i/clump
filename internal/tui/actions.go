@@ -600,6 +600,8 @@ func (m *Model) onSideMsg(msg tea.Msg) (tea.Cmd, bool) {
 		return nil, true
 	case submitMsg:
 		return m.onSubmitMsg(msg), true
+	case handoffMsg:
+		return m.onHandoffMsg(msg), true
 	case pickLoadedMsg:
 		m.onPickLoaded(msg)
 		return nil, true

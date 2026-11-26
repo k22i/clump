@@ -221,15 +221,16 @@ type JSONDoc struct {
 }
 
 type JSONComment struct {
-	Kind    string    `json:"kind"`
-	GroupID string    `json:"group,omitempty"`
-	Path    string    `json:"path,omitempty"`
-	Side    string    `json:"side,omitempty"`
-	Line    int       `json:"line,omitempty"`
-	Text    string    `json:"text"`
-	ID      string    `json:"id"`
-	At      time.Time `json:"at"`
-	Anchor  string    `json:"anchor"`
+	Kind      string    `json:"kind"`
+	GroupID   string    `json:"group,omitempty"`
+	Path      string    `json:"path,omitempty"`
+	Side      string    `json:"side,omitempty"`
+	Line      int       `json:"line,omitempty"`
+	Text      string    `json:"text"`
+	ID        string    `json:"id"`
+	At        time.Time `json:"at"`
+	HandedOff time.Time `json:"handed_off,omitempty"`
+	Anchor    string    `json:"anchor"`
 }
 
 type JSONSnap struct {
@@ -268,7 +269,7 @@ func JSON(doc Doc) ([]byte, error) {
 	}
 	for _, c := range doc.Comments {
 		out.Comments = append(out.Comments, JSONComment{Kind: c.Kind.String(), GroupID: c.GroupID,
-			Path: c.Path, Side: c.Side, Line: c.Line, Text: c.Text, ID: c.ID, At: c.At, Anchor: c.Anchor})
+			Path: c.Path, Side: c.Side, Line: c.Line, Text: c.Text, ID: c.ID, At: c.At, HandedOff: c.HandedOff, Anchor: c.Anchor})
 	}
 	b, err := json.MarshalIndent(out, "", "  ")
 	if err != nil {

@@ -1,18 +1,79 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"net"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/k22i/clump/internal/cache"
 	"github.com/k22i/clump/internal/config"
+	"github.com/k22i/clump/internal/handoff"
 	"github.com/k22i/clump/internal/ipc"
 	"github.com/k22i/clump/internal/rex"
 )
+
+const agentVersionTimeout = 3 * time.Second
+
+func handoffDefault(cfg *config.Config) string {
+	if cfg.Handoff != "" {
+		return cfg.Handoff
+	}
+	for _, a := range cfg.Agents {
+		if _, err := exec.LookPath(a.Argv[0]); err == nil {
+			return "auto (" + a.Name + ")"
+		}
+	}
+	return "auto (none found on PATH)"
+}
+
+func agentNote(a handoff.Agent) string {
+	path, err := exec.LookPath(a.Argv[0])
+	if err != nil {
+		return a.Argv[0] + " not on PATH"
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), agentVersionTimeout)
+	defer cancel()
+	var out, errb bytes.Buffer
+	cmd := exec.CommandContext(ctx, a.Argv[0], "--version")
+	cmd.Stdout, cmd.Stderr = &out, &errb
+	runErr := cmd.Run()
+	switch {
+	case ctx.Err() != nil:
+		return path + " (--version did not answer in " + agentVersionTimeout.String() + "; a handoff would still try)"
+	case runErr != nil:
+		note := "exited with " + runErr.Error()
+		if msg := firstLine(out.String(), errb.String()); msg != "" {
+			note = msg + " (" + note + ")"
+		}
+		return fmt.Sprintf("%s (--version %s: this agent may be broken)", path, note)
+	default:
+		return path + " --version ok" + firstVersionLine(out.String())
+	}
+}
+
+func firstLine(ss ...string) string {
+	for _, s := range ss {
+		for _, l := range strings.Split(s, "\n") {
+			if l = strings.TrimSpace(l); l != "" {
+				return l
+			}
+		}
+	}
+	return ""
+}
+
+func firstVersionLine(s string) string {
+	if l := firstLine(s); l != "" {
+		return ": " + l
+	}
+	return ""
+}
 
 func runDoctor(stdout io.Writer) error {
 	p, _ := config.Path()
@@ -53,6 +114,12 @@ func runDoctor(stdout io.Writer) error {
 		fmt.Fprintf(stdout, "github      gh at %s (--pr fetches through it)\n", path)
 	} else {
 		fmt.Fprint(stdout, "github      gh is not on PATH (--pr needs the GitHub CLI)\n")
+	}
+	if err == nil {
+		fmt.Fprintf(stdout, "handoff     default=%s\n", handoffDefault(cfg))
+		for _, ag := range cfg.Agents {
+			fmt.Fprintf(stdout, "agent       %-16s %-8s %s\n", ag.Name, ag.Where, agentNote(ag))
+		}
 	}
 	if wd, err := os.Getwd(); err == nil {
 		if root := ipc.FindRepoRoot(wd); root != "" {

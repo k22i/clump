@@ -12,6 +12,7 @@ import (
 	"github.com/k22i/clump/internal/comment"
 	"github.com/k22i/clump/internal/forge"
 	"github.com/k22i/clump/internal/gitdiff"
+	"github.com/k22i/clump/internal/group"
 )
 
 type submitOpts struct {
@@ -133,6 +134,10 @@ func readBodyFile(path string, stdin *os.File) (string, error) {
 
 func placedComments(a *app, l *gitdiff.Loaded) []comment.Placed {
 	g, _ := savedGrouping(a, l, a.cfg.Default)
+	return placedCommentsForGrouping(a, l, g)
+}
+
+func placedCommentsForGrouping(a *app, l *gitdiff.Loaded, g group.Grouping) []comment.Placed {
 	var groupIDs []string
 	for _, grp := range g.Groups {
 		groupIDs = append(groupIDs, grp.ID)

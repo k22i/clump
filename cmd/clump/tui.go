@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/k22i/clump/internal/gitdiff"
+	"github.com/k22i/clump/internal/handoff"
 	"github.com/k22i/clump/internal/tui"
 	"github.com/k22i/clump/internal/tui/view"
 )
@@ -14,7 +15,7 @@ func theme() view.Theme {
 	return view.NewTheme(detectDark())
 }
 
-func runTUI(ctx context.Context, a *app, o oneShotOpts, stdin *os.File, providerName string) error {
+func runTUI(ctx context.Context, a *app, o oneShotOpts, stdin *os.File, providerName string) (*handoff.Request, error) {
 	repo, _ := resolveRepo(ctx, o.repo)
 	topts := tui.Options{
 		Engine: a.eng, Store: a.store, Cfg: a.cfg, Repo: repo, Provider: providerName, Yes: o.yes,
@@ -24,7 +25,7 @@ func runTUI(ctx context.Context, a *app, o oneShotOpts, stdin *os.File, provider
 		if len(o.args) == 0 && !o.branch && !isTerminal(stdin) {
 			b, err := io.ReadAll(stdin)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			text := string(b)
 			topts.Load = func(context.Context) (*gitdiff.Loaded, error) { return gitdiff.LoadPatch(text) }

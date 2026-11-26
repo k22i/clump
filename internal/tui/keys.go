@@ -33,6 +33,7 @@ func HelpSections(watch bool) []view.HelpSection {
 			{Keys: "n/N", Desc: "next/previous match (while searching)"},
 			{Keys: "e", Desc: "open $EDITOR at the hunk"},
 			{Keys: "y", Desc: "copy a Markdown summary"},
+			{Keys: "H", Desc: "hand the review's comments to a coding agent"},
 			{Keys: "P", Desc: "post the comments as a review of the pull request (--pr)"},
 			{Keys: "g", Desc: "group now (when waiting to send)"},
 			{Keys: "r", Desc: "regroup (bypass the cache)"},
@@ -85,6 +86,8 @@ func (m *Model) onKey(k tea.KeyPressMsg) tea.Cmd {
 		return m.keyPick(k)
 	case ovSubmit:
 		return m.keySubmit(key)
+	case ovHandoff:
+		return m.keyHandoff(key)
 	}
 	if m.doc == nil {
 		if key == "q" {
@@ -129,6 +132,8 @@ func (m *Model) onKey(k tea.KeyPressMsg) tea.Cmd {
 		return m.copySummary()
 	case "P":
 		return m.openSubmit()
+	case "H":
+		return m.openHandoff()
 	case "r":
 		return m.regroup()
 	case "m":

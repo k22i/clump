@@ -19,7 +19,7 @@ import (
 
 type commentsOpts struct {
 	repo, pr, rev, file, side, groupID, id string
-	branch, jsonOut                        bool
+	branch, jsonOut, open                  bool
 	line                                   int
 	args                                   []string
 }
@@ -33,6 +33,7 @@ func parseCommentsFlags(args []string) (commentsOpts, error) {
 	fs.StringVar(&o.rev, "rev", "", "")
 	fs.BoolVar(&o.branch, "branch", false, "")
 	fs.BoolVar(&o.jsonOut, "json", false, "")
+	fs.BoolVar(&o.open, "open", false, "")
 	fs.StringVar(&o.file, "file", "", "")
 	fs.IntVar(&o.line, "line", 0, "")
 	fs.StringVar(&o.side, "side", "new", "")
@@ -255,6 +256,15 @@ func listComments(o commentsOpts, stdin *os.File, stdout io.Writer) error {
 		return err
 	}
 	placed := comment.Place(comment.Resolve(anchors, stored), l.Diff, g)
+	if o.open {
+		open := make([]comment.Placed, 0, len(placed))
+		for _, p := range placed {
+			if p.HandedOff.IsZero() {
+				open = append(open, p)
+			}
+		}
+		placed = open
+	}
 	if o.jsonOut {
 		out, err := json.MarshalIndent(struct {
 			Version  int              `json:"version"`
@@ -299,5 +309,9 @@ func commentTargetLabel(c comment.Placed) string {
 	default:
 		at = "the review"
 	}
-	return at + " — " + c.Text
+	label := at + " — " + c.Text
+	if !c.HandedOff.IsZero() {
+		label += " (handed off)"
+	}
+	return label
 }

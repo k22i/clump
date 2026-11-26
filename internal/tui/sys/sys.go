@@ -1,6 +1,7 @@
 package sys
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -204,3 +205,24 @@ func EditCmd(argv []string, dir string) tea.Cmd {
 	cmd.Dir = dir
 	return tea.ExecProcess(cmd, func(err error) tea.Msg { return EditedMsg{Err: err} })
 }
+
+type PaneMsg struct {
+	Err    error
+	Stderr string
+}
+
+func PaneCmd(argv []string, dir string, wrap func(PaneMsg) tea.Msg) tea.Cmd {
+	if wrap == nil {
+		wrap = func(pm PaneMsg) tea.Msg { return pm }
+	}
+	return func() tea.Msg {
+		cmd := exec.Command(argv[0], argv[1:]...)
+		cmd.Dir = dir
+		var errb bytes.Buffer
+		cmd.Stderr = &errb
+		err := cmd.Run()
+		return wrap(PaneMsg{Err: err, Stderr: errb.String()})
+	}
+}
+
+func LookPath(name string) (string, error) { return exec.LookPath(name) }
