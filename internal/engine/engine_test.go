@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -40,6 +42,11 @@ type fixture struct {
 
 func newFixture(t *testing.T, mut func(*config.Config)) fixture {
 	t.Helper()
+	return newFixtureFS(t, nil, mut)
+}
+
+func newFixtureFS(t *testing.T, fs cache.FS, mut func(*config.Config)) fixture {
+	t.Helper()
 	cfg := config.Default()
 	cfg.Providers = append(cfg.Providers, provider.Config{Name: "fake", Type: provider.TypeFake, InputPrice: 1, OutputPrice: 2, BytesPerToken: 2})
 	cfg.Cheap = "fake"
@@ -57,7 +64,7 @@ func newFixture(t *testing.T, mut func(*config.Config)) fixture {
 	if err := reg.Set("fake", fake); err != nil {
 		t.Fatal(err)
 	}
-	store, err := cache.Open(cache.Options{Dir: t.TempDir()})
+	store, err := cache.Open(cache.Options{Dir: t.TempDir(), FS: fs})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -177,17 +184,59 @@ func TestTier2SummariesCachedPerFile(t *testing.T) {
 
 func TestCalibrationSkipsFakeButUsesReportedCounts(t *testing.T) {
 	fx := newFixture(t, nil)
-	fx.e.calibrate("fake", provider.Config{Type: provider.TypeFake}, 10000, provider.Usage{InputTokens: 4000})
+	if err := fx.e.calibrate("fake", provider.Config{Type: provider.TypeFake}, 10000, provider.Usage{InputTokens: 4000}); err != nil {
+		t.Fatalf("calibrate on a fake provider = %v, want nil", err)
+	}
 	if _, ok := fx.e.Store.Calibration("fake"); ok {
 		t.Fatal("fake provider was calibrated")
 	}
 	pc := provider.Config{Type: provider.TypeCommand, Format: provider.FormatClaudeJSON, OverheadTokens: 650}
-	fx.e.calibrate("claude-haiku", pc, 2100, provider.Usage{InputTokens: 1650})
+	if err := fx.e.calibrate("claude-haiku", pc, 2100, provider.Usage{InputTokens: 1650}); err != nil {
+		t.Fatalf("calibrate claude-haiku: %v", err)
+	}
 	if v, ok := fx.e.Store.Calibration("claude-haiku"); !ok || v < 2.09 || v > 2.11 {
 		t.Fatalf("calibration = %v %v", v, ok)
 	}
 	if got := fx.e.BytesPerToken("claude-haiku", pc); got < 2.09 || got > 2.11 {
 		t.Fatalf("BytesPerToken = %v", got)
+	}
+}
+
+type refusingWrites struct{ cache.FS }
+
+func (refusingWrites) WriteFileAtomic(string, []byte) error { return errors.New("read-only file system") }
+
+func TestCalibrationFailureSurfacesOnceAsANotice(t *testing.T) {
+	script := filepath.Join(t.TempDir(), "claude.sh")
+	body := `#!/bin/sh
+printf '%s' '{"type":"result","is_error":false,"result":"{}","usage":{"input_tokens":4000,"output_tokens":10}}'
+`
+	if err := os.WriteFile(script, []byte(body), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	fx := newFixtureFS(t, refusingWrites{cache.OSFS()}, func(cfg *config.Config) {
+		cfg.Providers = append(cfg.Providers, provider.Config{
+			Name: "claude", Type: provider.TypeCommand, Format: provider.FormatClaudeJSON,
+			OverheadTokens: 650, Argv: []string{script},
+		})
+	})
+	d := testDiff(t, 4, 2, 3)
+	j, err := fx.e.Prepare(Input{Diff: d, Context: "COMMIT MESSAGE:\nx"}, "claude")
+	if err != nil {
+		t.Fatal(err)
+	}
+	notices := func() string {
+		out, err := fx.e.Run(context.Background(), j, nil)
+		if err != nil {
+			t.Fatalf("run: %v", err)
+		}
+		return strings.Join(out.Result.Notices, "\n")
+	}
+	if got := notices(); !strings.Contains(got, "token calibration stopped updating") {
+		t.Fatalf("notices after a failed calibration = %q, want the calibration warning", got)
+	}
+	if got := notices(); strings.Contains(got, "token calibration stopped updating") {
+		t.Fatalf("notices of the second run = %q, want the warning reported once only", got)
 	}
 }
 

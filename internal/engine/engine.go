@@ -25,6 +25,8 @@ type Engine struct {
 	detOnce sync.Once
 	det     *generated.Detector
 	detErr  error
+
+	calOnce sync.Once
 }
 
 func New(cfg *config.Config, reg *provider.Registry, store *cache.Store) *Engine {
@@ -224,6 +226,7 @@ func (e *Engine) Run(ctx context.Context, j *Job, progress func(Progress)) (*Out
 			progress(Progress{Step: out.Calls + 1, Steps: j.Est.Calls, What: what})
 		}
 	}
+	var notices []string
 	call := func(prompt, what string) (string, error) {
 		report(what)
 		text, u, err := p.Complete(ctx, prompt)
@@ -232,11 +235,14 @@ func (e *Engine) Run(ctx context.Context, j *Job, progress func(Progress)) (*Out
 			return "", fmt.Errorf("%s: %w", what, err)
 		}
 		out.Usage = out.Usage.Add(u)
-		e.calibrate(j.Provider, pc, len(prompt), u)
+		if cerr := e.calibrate(j.Provider, pc, len(prompt), u); cerr != nil {
+			if msg, first := e.calibrationNotice(cerr); first {
+				notices = append(notices, msg)
+			}
+		}
 		return text, nil
 	}
 	prompt := j.Plan.Prompt
-	var notices []string
 	if j.Plan.Tier == 2 {
 		summaries, sn, err := e.summarise(j, call)
 		if err != nil {
@@ -309,14 +315,26 @@ func (e *Engine) summarise(j *Job, call func(prompt, what string) (string, error
 	return out, notices, nil
 }
 
-func (e *Engine) calibrate(name string, pc provider.Config, promptBytes int, u provider.Usage) {
+func (e *Engine) calibrate(name string, pc provider.Config, promptBytes int, u provider.Usage) error {
 	if pc.Type == provider.TypeFake || (pc.Type == provider.TypeCommand && (pc.Format == "" || pc.Format == provider.FormatRaw)) {
-		return
+		return nil
 	}
 	if u.InputTokens <= 0 {
-		return
+		return nil
 	}
-	_, _ = e.Store.Calibrate(name, promptBytes, u.InputTokens, pc.OverheadTokens)
+	if _, err := e.Store.Calibrate(name, promptBytes, u.InputTokens, pc.OverheadTokens); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (e *Engine) calibrationNotice(err error) (string, bool) {
+	first := false
+	e.calOnce.Do(func() { first = true })
+	if !first {
+		return "", false
+	}
+	return "token calibration stopped updating, estimates keep the previous ratio: " + err.Error(), true
 }
 
 func (e *Engine) DryRun(j *Job) string {
