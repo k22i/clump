@@ -19,5 +19,22 @@ Result: `push` adds 4.7 ms p50 over `cat`, measured by `TestPushLatency` (assert
 `CLUMP_PUSH_LATENCY=1`, since `go test ./...` runs packages in parallel and the timing is noisy
 there).
 
+## How CI enforces the budget
+
+Every package `init` runs before `main`, so the budget is spent before `push` is even reached, and a
+wall-clock comparison against `cat` is too noisy to gate a shared CI runner with. CI gates the cause
+instead: `TestPushInitBudget` runs the real binary with `GODEBUG=inittrace=1` and sums what every
+linked package does before `main`. The budget is 12 ms of init clock, 5 ms in any one package and
+2 MiB of init allocations (measured: ~1-3 ms and ~660 KiB across 110 packages, the largest single
+`init` being `internal/chromalexers` at 0.3 ms).
+
+The allocation bound is the one that matters, because it is deterministic: `chroma/v2/styles` alone
+allocates 1.9 MiB at `init` (3.4 ms) and `chroma/v2/lexers` 2.7 MiB (16 ms), so re-adding either
+fails the test on any machine. Anything that needs a registry at start-up has to go behind a lazy
+`sync.Once`, as `internal/chromalexers` already does. The wall-clock p50 comparison stays a local
+measurement: it says how much of the budget the current machine really sees, and it is the number
+this ADR quotes.
+
+
 Because `internal/chromalexers` is vendored third-party code, the comment ban (ADR-0039) does not
 apply to it.

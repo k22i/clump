@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -199,5 +200,91 @@ func BenchmarkPush(b *testing.B) {
 		if err := cmd.Run(); err != nil {
 			b.Fatal(err)
 		}
+	}
+}
+
+const (
+	initClockBudgetMS  = 12.0
+	initBytesBudget    = 2 << 20
+	initSingleBudgetMS = 5.0
+)
+
+type initTrace struct {
+	pkg   string
+	clock float64
+	bytes int
+}
+
+func parseInitTrace(line string) (initTrace, bool) {
+	rest, ok := strings.CutPrefix(line, "init ")
+	if !ok {
+		return initTrace{}, false
+	}
+	f := strings.Fields(rest)
+	if len(f) < 8 || !strings.HasPrefix(f[1], "@") || f[2] != "ms," || f[4] != "ms" || f[5] != "clock," || f[7] != "bytes," {
+		return initTrace{}, false
+	}
+	clock, err := strconv.ParseFloat(f[3], 64)
+	if err != nil {
+		return initTrace{}, false
+	}
+	n, err := strconv.Atoi(strings.TrimSuffix(f[6], ","))
+	if err != nil {
+		return initTrace{}, false
+	}
+	return initTrace{pkg: f[0], clock: clock, bytes: n}, true
+}
+
+func TestPushInitBudget(t *testing.T) {
+	repo, env := shortRepo(t)
+	cmd := exec.Command(clumpBin(t), "push")
+	cmd.Dir, cmd.Env = repo, append(env, "GODEBUG=inittrace=1")
+	cmd.Stdin = bytes.NewReader(fixture(t))
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("push: %v\n%s", err, stderr.String())
+	}
+	var traces []initTrace
+	clock, bytesOut := 0.0, 0
+	for _, line := range strings.Split(stderr.String(), "\n") {
+		tr, ok := parseInitTrace(line)
+		if !ok {
+			continue
+		}
+		traces = append(traces, tr)
+		clock += tr.clock
+		bytesOut += tr.bytes
+	}
+	if len(traces) == 0 {
+		t.Fatalf("no init trace in stderr:\n%s", stderr.String())
+	}
+	sort.Slice(traces, func(i, j int) bool { return traces[i].bytes > traces[j].bytes })
+	worst := func(by func(a, b initTrace) bool) initTrace {
+		out := traces[0]
+		for _, tr := range traces[1:] {
+			if by(tr, out) {
+				out = tr
+			}
+		}
+		return out
+	}
+	heaviestClock := worst(func(a, b initTrace) bool { return a.clock > b.clock })
+	t.Logf("init budget: %.2f ms clock, %d bytes over %d packages; worst %.2f ms and %d bytes in %s",
+		clock, bytesOut, len(traces), heaviestClock.clock, traces[0].bytes, traces[0].pkg)
+	if clock > initClockBudgetMS {
+		t.Fatalf("package init takes %.2f ms before main (budget %.1f ms); heaviest: %s %.2f ms, %s %d bytes",
+			clock, initClockBudgetMS, heaviestClock.pkg, heaviestClock.clock, traces[0].pkg, traces[0].bytes)
+	}
+	if heaviestClock.clock > initSingleBudgetMS {
+		t.Fatalf("%s init takes %.2f ms (budget %.1f ms); it belongs behind a lazy registry (ADR-0011)",
+			heaviestClock.pkg, heaviestClock.clock, initSingleBudgetMS)
+	}
+	if bytesOut > initBytesBudget {
+		t.Fatalf("package init allocates %d bytes before main (budget %d); heaviest: %s %d bytes, %s %d bytes",
+			bytesOut, initBytesBudget, traces[0].pkg, traces[0].bytes, traces[1].pkg, traces[1].bytes)
+	}
+	if !bytes.Contains(stdout.Bytes(), []byte("\n")) {
+		t.Fatalf("push did not pass stdin through: %q", stdout.String())
 	}
 }
