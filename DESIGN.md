@@ -13,8 +13,10 @@ choices made after the spike.
 ## 1. Packages
 
 ```
-cmd/clump            CLI: flags, subcommands (watch, push, config init, rex install, lazygit install)
+cmd/clump            CLI: flags, subcommands (watch, push, comments, submit, config init, rex install, lazygit install)
 internal/gitdiff     unified-diff parser, canonical form + hash, git loaders
+internal/comment    review-comment anchors: kinds, content keys, placement
+internal/forge      post a review to GitHub: comment -> review payload, `gh api` submit
 internal/catalog     catalog lines, hunk blocks, near-identical hunk collapsing
 internal/group       prompt Build (tier 1/2), Validate/repair, Check, edit ops, History
 internal/provider    Provider interface; command, OpenAI-compatible, Anthropic, fake; Registry; Redact
@@ -42,7 +44,8 @@ tui/diffview -> chromalexers, chroma/v2 (core), view;  report -> gitdiff, group,
 engine    -> group, catalog, gitdiff, provider, cache, config
 group     -> catalog, gitdiff
 catalog   -> gitdiff
-cache     -> group, provider
+comment   -> gitdiff, group
+cache     -> group, provider, comment
 config    -> provider
 gitdiff, provider, ipc, lazygit, rex -> stdlib (+ golang.org/x/sys for ipc, rex)
 ```
@@ -271,6 +274,7 @@ summaries/<key[0:2]>/<key>.json      Summary{version, key, path, summary, create
 overrides/<hash[0:2]>/<hash>.json    Override (user edits; §8)
 calibration.json                     {"<provider>": bytes_per_token}
 reviewed/<key[0]>.json               {"version":1,"hunks":{"<ReviewKey>":"<time>"}} (16 shards)
+comments/<key[0]>.json               {"version":1,"comments":{"<anchor>":[{"id","text","at"}]}} (16 shards)
 ```
 
 - `Key = sha256(diffHash \0 provider \0 modelID \0 PromptVersion \0 max_groups)`, plus
@@ -280,6 +284,23 @@ reviewed/<key[0]>.json               {"version":1,"hunks":{"<ReviewKey>":"<time>
   header for a pseudo-hunk; no line numbers), so they follow a change across diffs and reset
   when its text changes. `SetReviewed` re-reads each shard before writing it and drops marks
   older than 180 days; a corrupt shard reads as empty.
+- Review comments (`internal/comment`) are keyed by an **anchor**: a line by
+  `sha256("line" \0 ReviewKey \0 side \0 lineNo)`, a file by
+  `sha256("file" \0 DisplayPath \0 ReviewKeys in file order)`, a group by
+  `sha256("group" \0 diffHash \0 groupID)`. The same content-anchored rules as reviewed
+  marks: line and file comments follow a change across diffs and wait out regroupings; a
+  group comment stays while the grouping that named it (a cached result or the override) is
+  on screen, and a regroup that renumbers groups hides it. Comment ids are the first 12 hex
+  of `sha256(key \0 at \0 text)`, 6 bytes shown as 12 hex — deletion is by `(key, id)` for
+  the TUI, by scanning the shards for the id on the CLI. `CommentTTL` is 180 days, like
+  `ReviewedTTL`; the same corrupt-shard and atomic-write rules apply.
+- Posting a review (`internal/forge`, `clump submit`, `P` in the TUI) turns those anchors into
+  one GitHub pull request review through the gh CLI: line comments inline (`side` LEFT is the
+  old path of a rename, as the base shows it), file comments as `subject_type: file`, group
+  comments — a clump-only concept — into the body. One `gh api --input -` request with event
+  COMMENT, APPROVE or REQUEST_CHANGES (a pending review needs GraphQL and is not built); the CLI
+  confirms before posting (`--yes` skips, `--dry-run` prints the payload), and the TUI posts on
+  `enter` from the event picker only when the diff came from `--pr`.
 - Writes: temp file in the same dir, then rename (atomic). Files 0600, dirs 0700.
 - A hit is exactly one `ReadFile` (tested with a counting FS).
 - `--no-cache` / `r`: reads miss, writes still happen. Overrides are never bypassed.
@@ -344,7 +365,8 @@ context the model can cancel.
 
 Keys: `j/k` groups, `⏎` focus diff pane (`esc` back), `]`/`[` next/prev group anywhere, `a`
 grouped/all, `/` search, `n`/`N` next/prev match, `e` open `$EDITOR` at `+line file`, `y` copy
-Markdown, `r` regroup, `m` provider, `?` help, `q` quit. Editing: `x` mark hunk, `v` visual range,
+Markdown, `r` regroup, `m` provider, `?` help, `q` quit, `s` side-by-side/unified diff. Editing:
+`x` mark hunk, `v` visual range,
 `M` move marks, `n` new group (while a search query is active, `n`/`N` are next/previous match
 instead; `esc` clears the query), `R` rename/explain, `d` delete, `J`/`K` reorder, `g` merge (one-shot) / group now
 (watch, when nothing is grouped yet), `u` undo, `ctrl+r` redo. Watch: `A` auto-group toggle.
@@ -354,9 +376,21 @@ reviewed. A finished group moves the cursor to the next group that is not review
 around. The Generated files group and empty groups are not counted in the header's `N/M reviewed`.
 A file block is folded by default when it is generated or fully reviewed. `z` (block) and `Z` (pane)
 flip that, remembered per `(group ID, file)` (`""` in the all view) until the block's reviewed
-state changes, and reset on a new grouping. A folded header carries `BlockHunks`, so `x`, `e`,
+state changes. `C` comments the target under the cursor — a diff line (its side is the old
+number for `-` lines, the new number otherwise, the old one when there is none), a file header,
+or a group (the list, the group block) — through the one-line input overlay; `D` deletes the
+comment row under the cursor. Comment rows are woven into the pane lines (a new `KindComment`),
+marked `✎`, wrapped at the pane width, placed after their line, header or group block, and
+searchable through `Gutter`. A group's comments carry the grouping in play: they are re-read
+with it (open, override, regroup), and a group created after that fetches its key on first use., and reset on a new grouping. A folded header carries `BlockHunks`, so `x`, `e`,
 `}`/`{` act on it. `#` toggles the line-number gutter (`line_numbers`, default on). `Line.Gutter`
-excludes the gutter from search.
+excludes the gutter from search. `s` toggles the side-by-side layout (`side_by_side`, default off):
+the pane's width splits into an old half (with the mark gutter and old numbers) and a new half
+around one separator column; a context line fills both halves, the i-th `-` line of a run faces the
+i-th `+` line, the excess of one side stands against blanks, and "\ No newline" markers render on
+the side of the line they follow. A split row is one `Line` whose `OldLine`/`NewLine` name the pair
+(`KindContext` unless one side is empty, then that side's kind), so cursor moves, marks, search and
+review work on it unchanged; a hunk given less than 3 columns falls back to the unified layout.
 
 Theme: `CLUMP_THEME=light|dark`, else the `CSI ? 996 n` query (DA1 sentinel, 100 ms) before
 Bubble Tea starts; Rex answers `ESC[?997;1n` (dark) in 0.2 ms (C-rex.md).
@@ -544,6 +578,17 @@ Verified in C-rex.md (Rex server 0.1.0-preview.21, app 0.1.0 (2061)):
   model never sees their bodies. The built-in list leaves out files a tool writes but people still
   read for intent (Django migrations, Jest snapshots, `go.mod`). A `generated/` directory pattern
   was rejected: it caught clump's own `internal/generated` package.
+- **Review comments are content-anchored, like reviewed marks.** tuicr-style comments were
+  asked for; clump's own persistence model already answers "what do they attach to": a line
+  ("line" \0 ReviewKey \0 side \0 lineNo), a file ("file" \0 path \0 its hunks' ReviewKeys) or a
+  group ("group" \0 diffHash \0 groupID). Line and file comments follow a change and are hidden
+  when it changes; group comments ride the grouping in play (cache/override), so a renumbering
+  regroup hides them. Storage mirrors reviewed/ (16 shards, 180-day TTL, atomic writes), several
+  comments per anchor with 12-hex ids. The TUI weaves `✎` rows into the pane after their target
+  (a new `KindComment` with the marker as `Gutter`, so search sees the text); `y`/`--plain`/`--json`
+  carry them per group, numbered for agents to quote; `clump comments` lists/adds/deletes for
+  agents without a provider call (`--file/--line/--side/--group/--rev` flags; delete scans the
+  shards by id). `C` takes the input overlay, `D` deletes under the cursor.
 - **Reviewed is per hunk content, toggled per file or group.** A file or group is the unit you
   check off, as on GitHub. Storing marks per hunk by content lets them survive regrouping and
   carry over from a commit to the branch range that contains it, and makes them reset when the

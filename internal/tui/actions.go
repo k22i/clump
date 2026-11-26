@@ -461,6 +461,8 @@ func (m *Model) finishInput() tea.Cmd {
 		return m.edit("renamed", func(x group.Grouping) (group.Grouping, error) {
 			return group.Rename(x, in.id, title, in.desc.text())
 		})
+	case inputComment:
+		m.saveComment(in.id, in.title.text())
 	case inputMoveNew:
 		var newID string
 		cmd := m.edit(fmt.Sprintf("moved %d hunks to a new group", len(in.hunks)), func(x group.Grouping) (group.Grouping, error) {
@@ -564,7 +566,7 @@ func (m *Model) copySummary() tea.Cmd {
 		return nil
 	}
 	m.setFlash("copying summary…", false)
-	return sys.CopyCmd(report.Markdown(m.doc.report()))
+	return sys.CopyCmd(report.Markdown(m.reportDoc()))
 }
 
 func (m *Model) openEditor() tea.Cmd {
@@ -617,6 +619,8 @@ func (m *Model) onSideMsg(msg tea.Msg) (tea.Cmd, bool) {
 			m.setFlash("editor: "+msg.Err.Error(), true)
 		}
 		return nil, true
+	case submitMsg:
+		return m.onSubmitMsg(msg), true
 	case pickLoadedMsg:
 		m.onPickLoaded(msg)
 		return nil, true

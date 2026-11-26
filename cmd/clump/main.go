@@ -52,6 +52,10 @@ func run(args []string, stdin *os.File, stdout, stderr io.Writer) int {
 		err = runLazygit(args[1:], stdin, stdout)
 	case "doctor":
 		err = runDoctor(stdout)
+	case "comments":
+		err = runComments(args[1:], stdin, stdout, stderr)
+	case "submit":
+		err = runSubmit(args[1:], stdin, stdout, stderr)
 	case "version", "--version":
 		fmt.Fprintln(stdout, "clump", version)
 		return 0
@@ -80,9 +84,41 @@ const usage = `usage:
   git diff | clump [flags]
   clump watch [--repo DIR] [--log FILE]
   clump push [--then 'CMD']
+  clump comments [REV | RANGE | --branch | --pr SPEC] [--json]
+  clump comments add --file PATH [--line N --side old|new] [--rev …] TEXT
+  clump comments delete --id ID
+  clump submit --pr SPEC --event comment|approve|request-changes \
+    [--body TEXT | --body-file PATH] [--yes] [--dry-run]
   clump config init | path
   clump rex install [--write]
   clump lazygit install [--write]
+
+comments:
+  clump comments lists a diff's stored review comments, numbered, or as
+  JSON with --json; add and delete write them for scripts and agents that
+  cannot run the TUI. The target is a rev, a range, --branch or --pr for
+  the list, --rev/--branch/--pr flags for add, a patch on stdin for both.
+
+  --repo DIR        repository (default: the current directory)
+  --json            list as JSON (else print one added comment)
+  --file PATH       comment on this file of the diff
+  --line N          comment on one line (default: the whole file)
+  --side old|new    which side --line N names (default new)
+  --group ID        comment on one group of the saved grouping
+  --rev REV         the diff to comment on (add, delete)
+
+submit:
+  clump submit posts the pull request's stored review comments back to
+  GitHub as one review, through the gh CLI: line comments inline on their
+  line, file comments on the file, group comments in the review body. In
+  the TUI (opened with --pr) P picks the event instead; nothing is posted
+  without a confirm.
+
+  --event EVENT     comment, approve or request-changes
+  --body TEXT       the review's summary text
+  --body-file PATH  the summary from a file ("-" is stdin)
+  --yes             post without the confirm question
+  --dry-run         print the JSON that would be posted, send nothing
 
 flags:
   --repo DIR        repository (default: the current directory)

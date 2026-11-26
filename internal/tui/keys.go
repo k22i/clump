@@ -21,15 +21,19 @@ func HelpSections(watch bool) []view.HelpSection {
 		}},
 		{Title: "Review", Entries: []view.HelpEntry{
 			{Keys: "c", Desc: "mark the file (diff pane) or group (list) reviewed; then on to the next unreviewed group"},
+			{Keys: "C", Desc: "comment on the line, file header or group under the cursor"},
+			{Keys: "D", Desc: "delete the comment row under the cursor"},
 			{Keys: "z", Desc: "fold/unfold the file (diff pane) or every file of the group (list)"},
 			{Keys: "Z", Desc: "fold/unfold every file in the pane"},
 			{Keys: "#", Desc: "line numbers on/off"},
+			{Keys: "s", Desc: "side-by-side diff on/off"},
 		}},
 		{Title: "Search & tools", Entries: []view.HelpEntry{
 			{Keys: "/", Desc: "search the diff pane"},
 			{Keys: "n/N", Desc: "next/previous match (while searching)"},
 			{Keys: "e", Desc: "open $EDITOR at the hunk"},
 			{Keys: "y", Desc: "copy a Markdown summary"},
+			{Keys: "P", Desc: "post the comments as a review of the pull request (--pr)"},
 			{Keys: "g", Desc: "group now (when waiting to send)"},
 			{Keys: "r", Desc: "regroup (bypass the cache)"},
 			{Keys: "m", Desc: "switch provider"},
@@ -81,6 +85,8 @@ func (m *Model) onKey(k tea.KeyPressMsg) tea.Cmd {
 		return m.keyMenu(key)
 	case ovPick:
 		return m.keyPick(k)
+	case ovSubmit:
+		return m.keySubmit(key)
 	}
 	if m.doc == nil {
 		if key == "q" {
@@ -123,6 +129,8 @@ func (m *Model) onKey(k tea.KeyPressMsg) tea.Cmd {
 		return m.openEditor()
 	case "y":
 		return m.copySummary()
+	case "P":
+		return m.openSubmit()
 	case "r":
 		return m.regroup()
 	case "m":
@@ -134,6 +142,12 @@ func (m *Model) onKey(k tea.KeyPressMsg) tea.Cmd {
 	case "c":
 		m.toggleReviewed()
 		return nil
+	case "C":
+		m.openComment()
+		return nil
+	case "D":
+		m.deleteComment()
+		return nil
 	case "z":
 		m.toggleFold()
 		return nil
@@ -142,6 +156,9 @@ func (m *Model) onKey(k tea.KeyPressMsg) tea.Cmd {
 		return nil
 	case "#":
 		m.toggleLineNumbers()
+		return nil
+	case "s":
+		m.toggleSplit()
 		return nil
 	case "v":
 		m.toggleVisual()

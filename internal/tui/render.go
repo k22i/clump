@@ -63,13 +63,14 @@ func (m *Model) ensureLines() []view.Line {
 	nw := m.numberWidth()
 	if m.mode == modeAll {
 		m.lines = rawview.RenderAllOpts(d, m.doc.hist.Current(), m.th, w, func(h *gitdiff.Hunk, width int) []view.Line {
-			return diffview.RenderHunk(h, m.th, diffview.HunkOpts{Width: width, Marked: m.marks[h.ID], Path: h.File.Path(), Numbers: nw})
+			return diffview.RenderHunk(h, m.th, diffview.HunkOpts{Width: width, Marked: m.marks[h.ID], Path: h.File.Path(), Numbers: nw, Split: m.split})
 		}, m.fileState())
 	} else if g, ok := m.currentGroup(); ok {
 		m.lines = append(m.groupBlock(g, w), diffview.RenderGroupLinesOpts(d, g.Hunks, m.th, w, diffview.GroupOpts{
-			Marked: m.marks, Numbers: nw, File: m.fileState(),
+			Marked: m.marks, Numbers: nw, File: m.fileState(), Split: m.split,
 		})...)
 	}
+	m.lines = m.insertCommentRows(m.lines)
 	if m.query != "" {
 		m.matches = helpview.FindMatches(m.lines, m.query)
 	}
@@ -186,6 +187,12 @@ func (m *Model) render() string {
 			labels = append(labels, it.label)
 		}
 		body = m.renderChoice("Group with provider:", labels, m.menu.cursor, bodyH)
+	case m.ov == ovSubmit:
+		var labels []string
+		for _, it := range m.submit.items {
+			labels = append(labels, it.label)
+		}
+		body = m.renderChoice(m.submit.title, labels, m.submit.cursor, bodyH)
 	default:
 		body = m.renderBody(bodyH)
 	}
@@ -397,7 +404,7 @@ func (m *Model) footer() string {
 			return m.th.Style(m.th.Notice, view.Truncate(strings.Join(m.doc.notices, " · "), w))
 		}
 	}
-	hint := "? keys · c reviewed · z fold · a all · / search · x mark · M move · u undo · q quit"
+	hint := "? keys · c reviewed · z fold · a all · s split · / search · x mark · M move · u undo · q quit"
 	if m.visual {
 		hint = "VISUAL · move to extend · x mark · M move · esc"
 	}

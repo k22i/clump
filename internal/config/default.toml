@@ -35,6 +35,10 @@ then = ""
 # Show old/new line numbers beside the diff (toggle with # in the TUI).
 line_numbers = true
 
+# Show the diff side by side: old lines left, new lines right (toggle with
+# s in the TUI).
+side_by_side = false
+
 # Generated files: their hunks are not sent to the model (cheaper, less
 # noise) and the TUI puts them in a "Generated files" group at the end of the
 # list, folded. A file is generated when .gitattributes marks it

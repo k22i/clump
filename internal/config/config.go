@@ -57,6 +57,9 @@ type Config struct {
 	// LineNumbers shows old/new line numbers in the diff pane (toggle with
 	// # in the TUI). Default true.
 	LineNumbers bool `toml:"line_numbers"`
+	// SideBySide draws hunks old-left / new-right in the diff pane
+	// (toggle with s in the TUI). Default false.
+	SideBySide bool `toml:"side_by_side"`
 	// Generated configures which files are skipped from review.
 	Generated Generated `toml:"generated"`
 
@@ -122,6 +125,7 @@ type rawConfig struct {
 	FollowWorktree bool                       `toml:"follow_worktree"`
 	Then           string                     `toml:"then"`
 	LineNumbers    bool                       `toml:"line_numbers"`
+	SideBySide     bool                       `toml:"side_by_side"`
 	Generated      Generated                  `toml:"generated"`
 	Providers      map[string]provider.Config `toml:"providers"`
 }
@@ -155,6 +159,7 @@ func Default() *Config {
 		FollowWorktree: false,
 		Then:           "",
 		LineNumbers:    true,
+		SideBySide:     false,
 		Generated:      Generated{Detect: true, Builtin: true},
 		Providers: []provider.Config{
 			{
@@ -264,6 +269,9 @@ func Parse(name, text string) (*Config, error) {
 	}
 	if md.IsDefined("line_numbers") {
 		cfg.LineNumbers = raw.LineNumbers
+	}
+	if md.IsDefined("side_by_side") {
+		cfg.SideBySide = raw.SideBySide
 	}
 	if md.IsDefined("generated", "detect") {
 		cfg.Generated.Detect = raw.Generated.Detect

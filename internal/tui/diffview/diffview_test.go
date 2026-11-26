@@ -520,3 +520,118 @@ func TestLineTint(t *testing.T) {
 		t.Errorf("plain theme: Text = %q", l.Text)
 	}
 }
+
+func TestGoldenSplit(t *testing.T) {
+	d := viewtest.FixtureDiff(t, "lazygit/commit-67a7d22.txt")
+	o := diffview.GroupOpts{Numbers: diffview.NumberWidth(d), Split: true}
+	lines := diffview.RenderGroupLinesOpts(d, allIDs(d), view.PlainTheme(), 80, o)
+	viewtest.Golden(t, "dp-split", viewtest.JoinPlain(lines))
+}
+
+// splitBody is a hunk body line rendered side by side: the separator column
+// splits the row at the left half's edge.
+func splitBody(t *testing.T, l view.Line, w int) (left, right string) {
+	t.Helper()
+	if w < 3 {
+		t.Fatalf("width %d cannot hold a split row", w)
+	}
+	sep := strings.Index(l.Plain, "│")
+	if sep < 0 {
+		t.Fatalf("no half separator in %q", l.Plain)
+	}
+	left, right = l.Plain[:sep], l.Plain[sep+len("│"):]
+	if got := lipgloss.Width(left); got != (w-1)/2 {
+		t.Fatalf("left half %q is %d cells, want %d", left, lipgloss.Width(left), (w-1)/2)
+	}
+	if got := lipgloss.Width(right); got > w-1-(w-1)/2 {
+		t.Fatalf("right half %q is %d cells, want at most %d", right, got, w-1-(w-1)/2)
+	}
+	return left, right
+}
+
+func TestSplitPairsAndNumbers(t *testing.T) {
+	h := &gitdiff.Hunk{
+		ID:       "h1",
+		Header:   "@@ -10,3 +20,4 @@",
+		OldStart: 10, NewStart: 20,
+		Lines: []string{" a", "-bb", "+cc", "+dd", " ", "\\ No newline at end of file"},
+	}
+	lines := diffview.RenderHunk(h, view.PlainTheme(), diffview.HunkOpts{Width: 40, Numbers: 2, Split: true})
+	if got, want := len(lines), 6; got != want {
+		t.Fatalf("got %d lines, want %d:\n%s", got, want, viewtest.JoinPlain(lines))
+	}
+	want := []nums{
+		{view.KindHunk, 10, 20},
+		{view.KindContext, 10, 20}, // " a" fills both halves
+		{view.KindContext, 11, 21}, // -bb faces +cc
+		{view.KindAdd, 0, 22},      // +dd alone in the right half
+		{view.KindContext, 12, 23},
+		{view.KindNoNewline, 0, 0}, // the marker under its context line
+	}
+	if got := triples(lines); !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	// Each half carries the mark gutter (left), its own number and prefix.
+	left, right := splitBody(t, lines[1], 40)
+	if !strings.HasPrefix(left, "  10  a") || !strings.HasPrefix(right, "20  a") {
+		t.Fatalf("context row is %q | %q", left, right)
+	}
+	if left, right := splitBody(t, lines[2], 40); !strings.HasPrefix(left, "  11 -bb") || !strings.HasPrefix(right, "21 +cc") {
+		t.Fatalf("paired row is %q | %q", left, right)
+	}
+	if left, right := splitBody(t, lines[3], 40); strings.TrimSpace(left) != "" || !strings.HasPrefix(right, "22 +dd") {
+		t.Fatalf("lone add row is %q | %q", left, right)
+	}
+	if left, right := splitBody(t, lines[5], 40); left != "     \\ No newline …" || strings.TrimSpace(right) != "" {
+		t.Fatalf("marker row is %q | %q", left, right)
+	}
+}
+
+func TestSplitFitAndSeparators(t *testing.T) {
+	d := viewtest.FixtureDiff(t, "lazygit/commit-67a7d22.txt")
+	lines := diffview.RenderGroupLinesOpts(d, allIDs(d), view.PlainTheme(), 80, diffview.GroupOpts{Split: true})
+	if len(lines) == 0 {
+		t.Fatal("no lines rendered")
+	}
+	for i, l := range lines {
+		if w := lipgloss.Width(l.Plain); w > 80 {
+			t.Fatalf("line %d is %d cells wide, want at most 80", i, w)
+		}
+		switch l.Kind {
+		case view.KindAdd, view.KindDel, view.KindContext, view.KindNoNewline:
+			splitBody(t, l, 80)
+		default:
+			if strings.Contains(l.Plain, "│") {
+				t.Fatalf("unsplit line %d carries a separator: %q", i, l.Plain)
+			}
+		}
+	}
+}
+
+func TestSplitMarkedAndNarrow(t *testing.T) {
+	h := &gitdiff.Hunk{
+		ID:       "h1",
+		Header:   "@@ -1,2 +1,2 @@",
+		OldStart: 1, NewStart: 1,
+		Lines: []string{"-the old line that is too long for the half", "+the new line that is also too long"},
+	}
+	// Marked hunk, halves truncate their content to fit the width.
+	lines := diffview.RenderHunk(h, view.PlainTheme(), diffview.HunkOpts{Width: 21, Marked: true, Split: true})
+	if len(lines) != 2 {
+		t.Fatalf("got %d lines, want 2:\n%s", len(lines), viewtest.JoinPlain(lines))
+	}
+	l, r := splitBody(t, lines[1], 21)
+	if want := "x -the ol…"; l != want {
+		t.Fatalf("left half %q, want %q", l, want)
+	}
+	if strings.Contains(r, "x ") {
+		t.Fatalf("mark gutter repeated in the right half: %q", r)
+	}
+	// Width 2 and below falls back to the unified layout.
+	for _, w := range []int{0, 2} {
+		out := diffview.RenderHunk(h, view.PlainTheme(), diffview.HunkOpts{Width: w, Split: true})
+		if len(out) != 3 || strings.Contains(out[1].Plain, "│") {
+			t.Fatalf("width %d: %q", w, viewtest.JoinPlain(out))
+		}
+	}
+}

@@ -42,6 +42,10 @@ type HunkOpts struct {
 	// Numbers is the digit width of the old/new line-number columns drawn
 	// after the mark gutter; 0 draws none. See NumberWidth.
 	Numbers int
+	// Split draws the body side by side: old lines left, new lines right,
+	// one separator column between the halves. It needs a width of at
+	// least 3 columns; less falls back to the unified layout.
+	Split bool
 }
 
 // NumberWidth is the digit width that fits every line number of d (at
@@ -60,20 +64,23 @@ func NumberWidth(d *gitdiff.Diff) int {
 	return w
 }
 
+// numberCol is one line-number column: n right-aligned in w digits, blank
+// when n <= 0.
+func numberCol(w, n int) string {
+	if n <= 0 {
+		return strings.Repeat(" ", w)
+	}
+	s := strconv.Itoa(n)
+	if len(s) < w {
+		s = strings.Repeat(" ", w-len(s)) + s
+	}
+	return s
+}
+
 // numberCols renders the line-number columns: "old new " right-aligned in
 // w digits each, blank on the side a line does not have.
 func numberCols(w, oldLine, newLine int) string {
-	col := func(n int) string {
-		if n <= 0 {
-			return strings.Repeat(" ", w)
-		}
-		s := strconv.Itoa(n)
-		if len(s) < w {
-			s = strings.Repeat(" ", w-len(s)) + s
-		}
-		return s
-	}
-	return col(oldLine) + " " + col(newLine) + " "
+	return numberCol(w, oldLine) + " " + numberCol(w, newLine) + " "
 }
 
 // RenderHunk renders one hunk: its header line, then its body lines.
@@ -84,19 +91,6 @@ func RenderHunk(h *gitdiff.Hunk, th view.Theme, o HunkOpts) []view.Line {
 	gutter, gutterStyles := "  ", []lipgloss.Style(nil)
 	if o.Marked {
 		gutter, gutterStyles = "x ", themeStyles(th, th.Marked)
-	}
-
-	// lead is the mark gutter plus, when on, the line-number columns.
-	lead := func(oldLine, newLine int) []segment {
-		segs := []segment{{text: gutter, styles: gutterStyles}}
-		if o.Numbers > 0 {
-			segs = append(segs, segment{text: numberCols(o.Numbers, oldLine, newLine), styles: themeStyles(th, th.Dim)})
-		}
-		return segs
-	}
-	gutterLen := len(gutter)
-	if o.Numbers > 0 {
-		gutterLen += 2*o.Numbers + 2
 	}
 
 	out := make([]view.Line, 0, len(h.Lines)+1)
@@ -114,29 +108,36 @@ func RenderHunk(h *gitdiff.Hunk, th view.Theme, o HunkOpts) []view.Line {
 		hl = newHighlighter(th, o.Path)
 	}
 	delSpans, addSpans := wordSpans(h.Lines, th)
+	if o.Split && o.Width > 2 {
+		return append(out, renderHunkSplit(h, th, o, gutter, gutterStyles, hl, delSpans, addSpans)...)
+	}
+
+	// lead is the mark gutter plus, when on, the line-number columns.
+	lead := func(oldLine, newLine int) []segment {
+		segs := []segment{{text: gutter, styles: gutterStyles}}
+		if o.Numbers > 0 {
+			segs = append(segs, segment{text: numberCols(o.Numbers, oldLine, newLine), styles: themeStyles(th, th.Dim)})
+		}
+		return segs
+	}
+	gutterLen := len(gutter)
+	if o.Numbers > 0 {
+		gutterLen += 2*o.Numbers + 2
+	}
 
 	oldNo, newNo := h.OldStart, h.NewStart
 	for i, raw := range h.Lines {
-		// The prefix decides what the line is: git writes " ", "+", "-" or
-		// "\" first; an empty body line (an empty context line with its
-		// trailing space stripped) counts as context.
-		prefix, content := " ", ""
-		if raw != "" {
-			prefix, content = raw[:1], raw[1:]
-		}
-		kind := view.KindContext
+		kind, body := bodySegments(raw, i, th, hl, delSpans, addSpans)
 		var oldLine, newLine int
-		switch prefix {
-		case "-":
-			kind, oldLine = view.KindDel, oldNo
+		switch kind {
+		case view.KindDel:
+			oldLine = oldNo
 			oldNo++
-		case "+":
-			kind, newLine = view.KindAdd, newNo
+		case view.KindAdd:
+			newLine = newNo
 			newNo++
-		case "\\":
-			kind = view.KindNoNewline
-		default:
-			kind, oldLine, newLine = view.KindContext, oldNo, newNo
+		case view.KindContext:
+			oldLine, newLine = oldNo, newNo
 			oldNo++
 			newNo++
 		}
@@ -147,20 +148,6 @@ func RenderHunk(h *gitdiff.Hunk, th view.Theme, o HunkOpts) []view.Line {
 			// text is rendered as it is.
 			segs = append(segs, segment{text: raw})
 		} else {
-			content = expandTabs(content)
-			body := []segment{{text: prefix, styles: themeStyles(th, baseStyle(th, kind))}}
-			runs := contentRuns(content, th, baseStyle(th, kind), hl)
-			if spans := spansFor(i, kind, delSpans, addSpans); len(spans) > 0 {
-				runs = applyWordSpans(runs, spans, wordStyle(th, kind))
-			}
-			body = append(body, runs...)
-			if bg, ok := lineStyle(th, kind); ok {
-				// The tint is the outermost style, so syntax colours and
-				// the stronger changed-word background still show on top.
-				for j := range body {
-					body[j].styles = append(append([]lipgloss.Style{}, body[j].styles...), bg)
-				}
-			}
 			segs = append(segs, body...)
 		}
 		l := renderLine(segs, o.Width, kind, h.ID, h.FileIdx, oldLine, newLine)
@@ -180,6 +167,237 @@ func withGutter(l view.Line, n int) view.Line {
 	return l
 }
 
+// bodySegments builds the content segments of the body line raw (hunk body
+// line index i): git writes " ", "+", "-" or "\" first; an empty body line
+// (an empty context line with its trailing space stripped) counts as
+// context. A "\ No newline" marker returns KindNoNewline and no segments —
+// callers render its text as it is, like the unified layout does.
+func bodySegments(raw string, i int, th view.Theme, hl *highlighter, delSpans, addSpans map[int][]Span) (view.LineKind, []segment) {
+	prefix, content := " ", ""
+	if raw != "" {
+		prefix, content = raw[:1], raw[1:]
+	}
+	kind := view.KindContext
+	switch prefix {
+	case "-":
+		kind = view.KindDel
+	case "+":
+		kind = view.KindAdd
+	case "\\":
+		return view.KindNoNewline, nil
+	}
+	base := baseStyle(th, kind)
+	content = expandTabs(content)
+	body := []segment{{text: prefix, styles: themeStyles(th, base)}}
+	runs := contentRuns(content, th, base, hl)
+	if spans := spansFor(i, kind, delSpans, addSpans); len(spans) > 0 {
+		runs = applyWordSpans(runs, spans, wordStyle(th, kind))
+	}
+	body = append(body, runs...)
+	if bg, ok := lineStyle(th, kind); ok {
+		// The tint is the outermost style, so syntax colours and the
+		// stronger changed-word background still show on top.
+		for j := range body {
+			body[j].styles = append(append([]lipgloss.Style{}, body[j].styles...), bg)
+		}
+	}
+	return kind, body
+}
+
+// splitCell is one cell of a side-by-side row: a "-" line on the left, a
+// "+" line on the right, a context line on both, or a "\ No newline"
+// marker rendered below its line on its own side.
+type splitCell struct {
+	kind view.LineKind
+	raw  string
+	idx  int // index in h.Lines, for the word-diff spans
+	// oldNo and newNo are the cell's line numbers (0 on the side it has
+	// none; markers keep both 0).
+	oldNo, newNo int
+}
+
+// splitRow is one side-by-side row: a stack of cells per side, because a
+// no-newline marker renders as a second line under its own side's cell.
+type splitRow struct{ left, right []*splitCell }
+
+// renderHunkSplit renders h's body side by side: the old lines in the left
+// half of o.Width, the new ones in the right half, one separator column
+// between the two (see HunkOpts.Split). Every row's left half starts with
+// the mark gutter; each side shows its own line number.
+func renderHunkSplit(h *gitdiff.Hunk, th view.Theme, o HunkOpts, gutter string, gutterStyles []lipgloss.Style, hl *highlighter, delSpans, addSpans map[int][]Span) []view.Line {
+	lw := (o.Width - 1) / 2 // left half
+	rw := o.Width - 1 - lw  // right half
+	leadLen := len(gutter)
+	if o.Numbers > 0 {
+		leadLen += o.Numbers + 1
+	}
+
+	// sideSegs renders one side of a row: the leading columns, then the
+	// body (or the marker text, which git writes as it is). The left side
+	// starts with the row's mark gutter even when its cell is blank.
+	sideSegs := func(c *splitCell, left bool) []segment {
+		var segs []segment
+		if left {
+			segs = append(segs, segment{text: gutter, styles: gutterStyles})
+		}
+		if c == nil {
+			return segs
+		}
+		if o.Numbers > 0 {
+			n := c.newNo
+			if left {
+				n = c.oldNo
+			}
+			segs = append(segs, segment{text: numberCol(o.Numbers, n) + " ", styles: themeStyles(th, th.Dim)})
+		}
+		if c.kind == view.KindNoNewline {
+			return append(segs, segment{text: c.raw})
+		}
+		_, body := bodySegments(c.raw, c.idx, th, hl, delSpans, addSpans)
+		return append(segs, body...)
+	}
+	// cellStyle is the background tint of a side's cell; markers and
+	// blanks have none.
+	cellStyle := func(c *splitCell) (lipgloss.Style, bool) {
+		if c == nil || c.kind == view.KindNoNewline {
+			return lipgloss.Style{}, false
+		}
+		return lineStyle(th, c.kind)
+	}
+
+	out := make([]view.Line, 0, len(h.Lines)+1)
+	for _, r := range pairSplitRows(h) {
+		for lvl := 0; lvl < max(len(r.left), len(r.right)); lvl++ {
+			var lc, rc *splitCell
+			if lvl < len(r.left) {
+				lc = r.left[lvl]
+			}
+			if lvl < len(r.right) {
+				rc = r.right[lvl]
+			}
+			kind := view.KindContext
+			if lc == nil && rc != nil {
+				kind = rc.kind
+			}
+			if rc == nil && lc != nil {
+				kind = lc.kind
+			}
+			lt, lp := renderSegments(sideSegs(lc, true), lw)
+			rt, rp := renderSegments(sideSegs(rc, false), rw)
+			// Each half carries its own line's tint out to its column, so
+			// a "-" cell tints the left half and a blank side stays clear.
+			lpad, rpad := padLine(lp, lw), padLine(rp, rw)
+			if bg, ok := cellStyle(lc); ok {
+				lt += bg.Render(lpad)
+			} else {
+				lt += lpad
+			}
+			if bg, ok := cellStyle(rc); ok {
+				rt += bg.Render(rpad)
+			} else {
+				rt += rpad
+			}
+			lp, rp = lp+lpad, rp+rpad
+			oldLine, newLine := 0, 0
+			if lc != nil {
+				oldLine = lc.oldNo
+			}
+			if rc != nil {
+				newLine = rc.newNo
+			}
+			out = append(out, withGutter(view.Line{
+				Text:    lt + applyStyles("│", themeStyles(th, th.Border)) + rt,
+				Plain:   lp + "│" + rp,
+				Kind:    kind,
+				HunkID:  h.ID,
+				FileIdx: h.FileIdx,
+				OldLine: oldLine,
+				NewLine: newLine,
+			}, leadLen))
+		}
+	}
+	return out
+}
+
+// pairSplitRows walks h's body lines and pairs them into side-by-side
+// rows: a context line fills both sides, and the i-th removed line of a
+// -/+ run faces the i-th added one; the excess of one side stands alone
+// against blanks. Cells carry their side's line number; a "\ No newline"
+// marker renders as a second cell under the line it follows, on that
+// line's side (left for a lone marker at the hunk's start).
+func pairSplitRows(h *gitdiff.Hunk) []splitRow {
+	lines := h.Lines
+	oldNo, newNo := h.OldStart, h.NewStart
+	nextOld := func() int { n := oldNo; oldNo++; return n }
+	nextNew := func() int { n := newNo; newNo++; return n }
+
+	// runStacks collects the run of body lines starting at i that match
+	// isRun (with the kind and the counter of that side), each followed by
+	// its no-newline markers, and returns one stack per line plus the
+	// index after the run.
+	runStacks := func(i int, isRun func(string) bool, kind view.LineKind, next func() int) ([][]*splitCell, int) {
+		var stacks [][]*splitCell
+		for i < len(lines) && isRun(lines[i]) {
+			c := &splitCell{kind: kind, raw: lines[i], idx: i}
+			if kind == view.KindDel {
+				c.oldNo = next()
+			} else {
+				c.newNo = next()
+			}
+			stack := []*splitCell{c}
+			i++
+			for i < len(lines) && strings.HasPrefix(lines[i], "\\") {
+				stack = append(stack, &splitCell{kind: view.KindNoNewline, raw: lines[i], idx: i})
+				i++
+			}
+			stacks = append(stacks, stack)
+		}
+		return stacks, i
+	}
+
+	var rows []splitRow
+	for i := 0; i < len(lines); {
+		switch {
+		case isDelLine(lines[i]):
+			dels, next := runStacks(i, isDelLine, view.KindDel, nextOld)
+			i = next
+			var adds [][]*splitCell
+			if i < len(lines) && isAddLine(lines[i]) {
+				adds, i = runStacks(i, isAddLine, view.KindAdd, nextNew)
+			}
+			for k := 0; k < max(len(dels), len(adds)); k++ {
+				row := splitRow{}
+				if k < len(dels) {
+					row.left = dels[k]
+				}
+				if k < len(adds) {
+					row.right = adds[k]
+				}
+				rows = append(rows, row)
+			}
+		case isAddLine(lines[i]):
+			var adds [][]*splitCell
+			adds, i = runStacks(i, isAddLine, view.KindAdd, nextNew)
+			for _, a := range adds {
+				rows = append(rows, splitRow{right: a})
+			}
+		case strings.HasPrefix(lines[i], "\\"):
+			rows = append(rows, splitRow{left: []*splitCell{{kind: view.KindNoNewline, raw: lines[i], idx: i}}})
+			i++
+		default: // context (an empty body line is one, stripped)
+			c := &splitCell{kind: view.KindContext, raw: lines[i], idx: i, oldNo: nextOld(), newNo: nextNew()}
+			row := splitRow{left: []*splitCell{c}, right: []*splitCell{c}}
+			i++
+			for i < len(lines) && strings.HasPrefix(lines[i], "\\") {
+				row.left = append(row.left, &splitCell{kind: view.KindNoNewline, raw: lines[i], idx: i})
+				i++
+			}
+			rows = append(rows, row)
+		}
+	}
+	return rows
+}
+
 // RenderGroupLines renders the given hunks grouped by file in diff order:
 // for each file a view.RenderFileHeader line, then its hunks, then a blank
 // line between files. Unknown IDs are skipped; order of hunkIDs is ignored.
@@ -197,6 +415,8 @@ type GroupOpts struct {
 	// hunk IDs listed under it; nil draws every block expanded. A folded
 	// block renders its header only.
 	File func(fileIdx int, hunkIDs []string) view.FileState
+	// Split is HunkOpts.Split for every hunk.
+	Split bool
 }
 
 // RenderGroupLinesOpts is RenderGroupLines with folding, review marks and
@@ -270,6 +490,7 @@ func RenderGroupLinesOpts(d *gitdiff.Diff, hunkIDs []string, th view.Theme, widt
 				Marked:  o.Marked[h.ID],
 				Path:    hunkPath(h),
 				Numbers: o.Numbers,
+				Split:   o.Split,
 			})...)
 		}
 	}

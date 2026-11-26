@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/k22i/clump/internal/config"
 	"github.com/k22i/clump/internal/group"
 	"github.com/k22i/clump/internal/tui/view"
 )
@@ -138,5 +139,42 @@ func TestGeneratedFilesGroup(t *testing.T) {
 	h.keys("z")
 	if !strings.Contains(h.screen(), "SECRETSUMNOTSENT") {
 		t.Fatal("z from the list did not unfold")
+	}
+}
+
+func TestToggleSideBySide(t *testing.T) {
+	h := newHarness(t, nil, nil)
+	h.load(testPatch)
+	for _, l := range h.m.ensureLines() {
+		if strings.Contains(l.Plain, "│") {
+			t.Fatalf("split rendered before s: %q", l.Plain)
+		}
+	}
+	h.keys("s")
+	if !h.m.split {
+		t.Fatalf("s: split=%v flash %q", h.m.split, h.m.flash)
+	}
+	if !strings.Contains(h.m.flash, "side by side on") {
+		t.Fatalf("flash %q", h.m.flash)
+	}
+	var split int
+	for _, l := range h.m.ensureLines() {
+		if strings.Contains(l.Plain, "│") {
+			split++
+		}
+	}
+	if split == 0 {
+		t.Fatal("s drew no side-by-side line")
+	}
+	h.keys("s")
+	if h.m.split || !strings.Contains(h.m.flash, "side by side off") {
+		t.Fatalf("s again: split=%v flash %q", h.m.split, h.m.flash)
+	}
+
+	// Config side_by_side starts the TUI split.
+	h2 := newHarness(t, nil, func(c *config.Config) { c.SideBySide = true })
+	h2.load(testPatch)
+	if !h2.m.split {
+		t.Fatal("config side_by_side = true ignored")
 	}
 }

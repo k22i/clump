@@ -116,6 +116,7 @@ const (
 	inputNew inputAct = iota
 	inputRename
 	inputMoveNew
+	inputComment // in.id holds the comment's anchor key
 )
 
 type inputState struct {

@@ -15,6 +15,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/k22i/clump/internal/cache"
+	"github.com/k22i/clump/internal/comment"
 	"github.com/k22i/clump/internal/config"
 	"github.com/k22i/clump/internal/engine"
 	"github.com/k22i/clump/internal/gitdiff"
@@ -36,6 +37,9 @@ type Options struct {
 	Load func(ctx context.Context) (*gitdiff.Loaded, error)
 	// Pick opens the in-TUI picker first (clump --pick).
 	Pick bool
+	// PR, when set, is the --pr spec the diff came from: P posts the
+	// comments there as a GitHub review (internal/forge).
+	PR string
 	// Yes sends above the ceiling without asking.
 	Yes bool
 	// Watch, when set, makes this a watch pane (see watch.go).
@@ -76,6 +80,7 @@ const (
 	ovInput            // title / description input (n, R, M→new)
 	ovProvider         // m provider switcher
 	ovPick             // the --pick commit/branch picker
+	ovSubmit           // P post the review as a pull request review
 )
 
 // Model is the root Bubble Tea model.
@@ -104,20 +109,30 @@ type Model struct {
 	marks    map[string]bool
 	reviewed map[string]bool // by gitdiff.Hunk.ReviewKey
 	fold     map[foldKey]bool
+
+	// Review comments (internal/comment): comments by anchor key, the keys
+	// already fetched (a new group's key is fetched on first use) and, when
+	// the pane is built, which line holds which comment (for D).
+	comments   map[string][]comment.Comment
+	loadedKeys map[string]bool
+	commentAt  map[int]commentRef
 	// lineNumbers draws old/new line numbers (config line_numbers, #).
 	lineNumbers bool
-	visual      bool
-	visualAt    string // hunk ID where visual mode started
-	query       string
-	matches     []int
-	ov          overlay
-	confirm     confirmState
-	target      targetState
-	input       inputState
-	menu        menuState
-	pick        pickState
-	searchBox   lineInput
-	spin        spinner.Model
+	// split draws hunks old-left / new-right (config side_by_side, s).
+	split     bool
+	visual    bool
+	visualAt  string // hunk ID where visual mode started
+	query     string
+	matches   []int
+	ov        overlay
+	confirm   confirmState
+	target    targetState
+	input     inputState
+	menu      menuState
+	pick      pickState
+	submit    submitState
+	searchBox lineInput
+	spin      spinner.Model
 
 	flash    string
 	flashErr bool
@@ -134,6 +149,8 @@ func New(ctx context.Context, o Options) *Model {
 	sp := spinner.New(spinner.WithSpinner(spinner.MiniDot))
 	m := &Model{o: o, ctx: ctx, th: o.Theme, provider: o.Provider, marks: map[string]bool{}, searchBox: sb, spin: sp,
 		reviewed: map[string]bool{}, fold: map[foldKey]bool{}, lineNumbers: o.Cfg != nil && o.Cfg.LineNumbers,
+		split:    o.Cfg != nil && o.Cfg.SideBySide,
+		comments: map[string][]comment.Comment{}, loadedKeys: map[string]bool{}, commentAt: map[int]commentRef{},
 		width: 100, height: 30}
 	if o.Watch != nil {
 		m.watch = newWatchState(o.Watch)
@@ -210,6 +227,7 @@ func (m *Model) open(l *gitdiff.Loaded, auto bool) tea.Cmd {
 	m.cursor, m.scroll, m.dcur, m.marks, m.visual = 0, 0, 0, map[string]bool{}, false
 	m.fold = map[foldKey]bool{}
 	m.loadReviewed()
+	m.loadComments()
 	m.linesOK = false
 	if m.mode == modeAll {
 		m.focus = focusDiff
@@ -264,6 +282,7 @@ func (m *Model) loadOverride() bool {
 	}
 	m.doc.setBase(base, ov.BaseCacheKey, provider, false, false, nil)
 	m.doc.hist.Reset(ov.Grouping)
+	m.loadComments()
 	return true
 }
 
@@ -342,6 +361,7 @@ func (m *Model) applyGrouped(msg groupedMsg) tea.Cmd {
 	d.setBase(msg.out.Result.Grouping, msg.out.Key, msg.out.Provider, false, msg.out.Result.Fallback, msg.out.Result.Notices)
 	m.cursor, m.linesOK = 0, false
 	m.fold = map[foldKey]bool{} // group IDs mean other groups now
+	m.loadComments()
 	return m.status("done", plural(len(msg.out.Result.Groups), "group"))
 }
 

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/k22i/clump/internal/cache"
+	"github.com/k22i/clump/internal/comment"
 	"github.com/k22i/clump/internal/gitdiff"
 	"github.com/k22i/clump/internal/group"
 )
@@ -28,6 +29,10 @@ type Doc struct {
 	Fallback bool
 	// Snapshots are kept edit snapshots (from the override file).
 	Snapshots []cache.Snapshot
+	// Comments are the review comments of the diff, pre-placed on their
+	// groups (internal/comment: line, file and group comments). Empty
+	// when the report comes from a path without comments.
+	Comments []comment.Placed
 }
 
 // GroupStats returns the +/- totals, file count and hunk count of a group.
@@ -112,6 +117,9 @@ func Markdown(doc Doc) string {
 	if doc.Edited {
 		meta = append(meta, "edited")
 	}
+	if n := len(doc.Comments); n > 0 {
+		meta = append(meta, plural(n, "review comment"))
+	}
 	b.WriteString(strings.Join(meta, " · "))
 	b.WriteString("\n")
 	for i, g := range doc.Grouping.Groups {
@@ -129,6 +137,20 @@ func Markdown(doc Doc) string {
 			b.WriteString(r)
 			b.WriteByte('\n')
 		}
+		if cs := groupComments(doc, g.ID); len(cs) > 0 {
+			b.WriteString("\nReview comments:\n\n")
+			for i, c := range cs {
+				fmt.Fprintf(&b, "%d. %s\n", i+1, commentLabel(c))
+			}
+		}
+	}
+	// Comments on targets that are in no group (an ungrouped hunk, the
+	// raw file list before grouping) close the review.
+	if rest := groupComments(doc, ""); len(rest) > 0 {
+		b.WriteString("\n## Review comments\n\n")
+		for i, c := range rest {
+			fmt.Fprintf(&b, "%d. %s\n", i+1, commentLabel(c))
+		}
 	}
 	if len(doc.Notices) > 0 {
 		b.WriteString("\n")
@@ -137,6 +159,36 @@ func Markdown(doc Doc) string {
 		}
 	}
 	return b.String()
+}
+
+// groupComments lists the review comments showing in group groupID, stable
+// overall order, numbered within the report.
+func groupComments(doc Doc, groupID string) []comment.Placed {
+	var out []comment.Placed
+	for _, c := range doc.Comments {
+		if c.GroupID == groupID {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
+// commentLabel names a comment the way a reader (and an agent asked to fix
+// it) can quote it back: the group, the file, or the file and line.
+func commentLabel(c comment.Placed) string {
+	var at string
+	switch c.Kind {
+	case comment.KindLine:
+		at = fmt.Sprintf("`%s:%d` (%s side)", c.Path, c.Line, c.Side)
+	case comment.KindFile:
+		at = fmt.Sprintf("`%s` (file)", c.Path)
+	default:
+		at = "this group"
+	}
+	if at == "" {
+		return c.Text
+	}
+	return at + " — " + c.Text
 }
 
 func plural(n int, word string) string {
@@ -170,21 +222,35 @@ type JSONGroup struct {
 
 // JSONDoc is the --json output.
 type JSONDoc struct {
-	Version   int         `json:"version"`
-	Title     string      `json:"title"`
-	Ref       string      `json:"ref"`
-	DiffHash  string      `json:"diff_hash"`
-	Provider  string      `json:"provider"`
-	Cached    bool        `json:"cached"`
-	Edited    bool        `json:"edited"`
-	Fallback  bool        `json:"fallback"`
-	Notices   []string    `json:"notices"`
-	Files     int         `json:"files"`
-	HunkCount int         `json:"hunk_count"`
-	Add       int         `json:"add"`
-	Del       int         `json:"del"`
-	Groups    []JSONGroup `json:"groups"`
-	Snapshots []JSONSnap  `json:"snapshots,omitempty"`
+	Version   int           `json:"version"`
+	Title     string        `json:"title"`
+	Ref       string        `json:"ref"`
+	DiffHash  string        `json:"diff_hash"`
+	Provider  string        `json:"provider"`
+	Cached    bool          `json:"cached"`
+	Edited    bool          `json:"edited"`
+	Fallback  bool          `json:"fallback"`
+	Notices   []string      `json:"notices"`
+	Files     int           `json:"files"`
+	HunkCount int           `json:"hunk_count"`
+	Add       int           `json:"add"`
+	Del       int           `json:"del"`
+	Groups    []JSONGroup   `json:"groups"`
+	Snapshots []JSONSnap    `json:"snapshots,omitempty"`
+	Comments  []JSONComment `json:"comments,omitempty"`
+}
+
+// JSONComment is a review comment in the --json output.
+type JSONComment struct {
+	Kind    string    `json:"kind"`
+	GroupID string    `json:"group,omitempty"`
+	Path    string    `json:"path,omitempty"`
+	Side    string    `json:"side,omitempty"`
+	Line    int       `json:"line,omitempty"`
+	Text    string    `json:"text"`
+	ID      string    `json:"id"`
+	At      time.Time `json:"at"`
+	Anchor  string    `json:"anchor"`
 }
 
 // JSONSnap is a kept snapshot in the --json output.
@@ -222,6 +288,10 @@ func JSON(doc Doc) ([]byte, error) {
 	}
 	for _, s := range doc.Snapshots {
 		out.Snapshots = append(out.Snapshots, JSONSnap{Name: s.Name, At: s.At, Groups: s.Grouping.Groups})
+	}
+	for _, c := range doc.Comments {
+		out.Comments = append(out.Comments, JSONComment{Kind: c.Kind.String(), GroupID: c.GroupID,
+			Path: c.Path, Side: c.Side, Line: c.Line, Text: c.Text, ID: c.ID, At: c.At, Anchor: c.Anchor})
 	}
 	b, err := json.MarshalIndent(out, "", "  ")
 	if err != nil {

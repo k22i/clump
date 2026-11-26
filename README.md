@@ -110,6 +110,7 @@ and a `[providers.<name>]` table it defines replaces the built-in provider of th
 | `follow_worktree` | `false` | watch mode also follows lazygit's working-tree/staged diffs |
 | `then` | `""` | diff renderer `clump lazygit install` keeps behind `clump push`, e.g. `"delta --paging=never"` |
 | `line_numbers` | `true` | show old/new line numbers beside the diff (`#` toggles them in the TUI) |
+| `side_by_side` | `false` | draw the diff old-left / new-right (`s` toggles it in the TUI) |
 
 ### Generated files
 
@@ -357,6 +358,7 @@ results/<key[0:2]>/<key>.json      one cached grouping
 summaries/<key[0:2]>/<key>.json    one cached per-file summary
 overrides/<hash[0:2]>/<hash>.json  your edits for one diff
 reviewed/<k>.json                  hunks you marked reviewed, by content
+comments/<k>.json                  your review comments, by their anchor
 calibration.json                   bytes-per-token per provider
 ```
 
@@ -377,6 +379,49 @@ numbers, not by diff. So a hunk you checked off while stepping through commits i
 already checked when you open the branch range (`clump --branch`). It stays checked after a
 regroup, an edit, a provider switch or a rebase that only moves it, and is unchecked again as soon
 as its text changes. Marks older than 180 days are dropped.
+
+Review comments (`C`) are keyed by content the same way: a line comment by its hunk and line
+(a side and a line number), a file comment by the file's path and the whole set of its hunks, a
+group comment by the diff and the group's ID, so it stays while that grouping — a cached result or
+your saved edits — is the one on screen, and a regroup that renumbers groups drops it from view
+(the comment is kept in the store until it expires after 180 days). `D` deletes the comment under
+the cursor. Comments show as `✎` rows under their line, file header or group block, are searchable
+like the diff, and travel with the `y` summary, `--json` and `--plain` (each group's section lists
+its line, file and group comments, numbered).
+
+`clump comments` reads and writes them without the TUI, for scripts and coding agents:
+
+```
+clump comments [REV | A..B | A...B | --branch | --pr SPEC] [--json]
+clump comments add --file PATH [--line N --side old|new] [--rev REV|--branch|--pr SPEC] TEXT
+clump comments add --group ID [--rev REV|…] TEXT     # a saved grouping must exist
+clump comments delete --id ID
+```
+
+The list numbers the comments one per line — `` `a.txt:2` (new side) — text `` — or prints them as
+JSON with `--json`; `add` prints the added comment and its `id` (which `delete` takes); the list
+also takes a patch on stdin, so `git show | clump comments` works. Group comments are listed via
+the saved grouping (your edits, else the cached result); no `comments` command calls a provider.
+So an agent review ends with `clump comments <ref> --json`, and the TUI, `y`, `--json` and the
+CLI all read the same store.
+
+### Posting a review
+
+`clump submit` posts a pull request's stored comments back to GitHub as one review, through the
+`gh` CLI (clump stores no tokens; the review is posted as whatever account `gh` is logged into):
+
+```
+clump submit --pr SPEC --event comment|approve|request-changes [--body TEXT] [--yes] [--dry-run]
+```
+
+Line comments land inline on their line, file comments on their file header, and group comments —
+a clump concept GitHub has no place for — go into the review body (`--body`, if given, is its
+summary). The whole review is one `gh api` request. Without `--yes` clump prints what it is about
+to post and asks first; `--dry-run` prints the JSON payload and sends nothing.
+
+In the TUI opened with `--pr`, `P` does the same: it shows what would be posted
+("Post review of `<ref>`: 2 line comments, …") and the three events to pick from; `enter` posts,
+`esc` cancels. A diff opened any other way answers `P` with a hint to use `--pr`.
 
 `r` with edits asks first: `d` discards them and regroups, `s` keeps them as a snapshot (`before
 regroup <time>`) and regroups, `esc` cancels; after a regroup only the snapshots remain. `--json`
@@ -403,9 +448,12 @@ Press `?` for the same list inside the TUI.
 | key | action |
 |---|---|
 | `c` | mark the file under the cursor (diff pane) or the whole group (list) reviewed; when the group is done, move on to the next unreviewed one. `c` again unmarks |
+| `C` | comment on the line, file header or group under the cursor (saved as you type enter; `esc` cancels) |
+| `D` | delete the comment row under the cursor |
 | `z` | fold/unfold the file under the cursor (diff pane) or every file of the group (list) |
 | `Z` | fold/unfold every file in the pane |
 | `#` | line numbers on/off |
+| `s` | side-by-side diff on/off (old left, new right) |
 
 Reviewed files fold, their header gets a `✓`, and the list shows `2/5h` for a group you have partly
 reviewed and `✓` for one you have finished. The header shows `3/7 reviewed`, which does not count
@@ -420,6 +468,7 @@ on a folded header act on its hunks.
 | `n/N` | next/previous match (while searching) |
 | `e` | open `$EDITOR` at the hunk |
 | `y` | copy a Markdown summary |
+| `P` | post the comments as a review of the pull request (a diff opened with `--pr`; see Posting a review) |
 | `r` | regroup (bypass the cache) |
 | `m` | switch provider |
 | `?` | this help |

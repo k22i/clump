@@ -207,6 +207,17 @@ func (m *Model) toggleLineNumbers() {
 	}
 }
 
+// toggleSplit is s.
+func (m *Model) toggleSplit() {
+	m.split = !m.split
+	m.keepCursorLine(func() { m.linesOK = false })
+	if m.split {
+		m.setFlash("side by side on", false)
+	} else {
+		m.setFlash("side by side off", false)
+	}
+}
+
 // keepCursorLine runs change (which invalidates the lines) and puts the
 // diff cursor back on the same file and hunk line as before.
 func (m *Model) keepCursorLine(change func()) {

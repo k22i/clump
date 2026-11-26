@@ -114,6 +114,14 @@ func isRepoName(s string) bool {
 // its stdout. Like runGit it never lets gh wait on a terminal for
 // credentials, clips its error text, and respects ctx cancellation.
 func runGh(ctx context.Context, dir string, args ...string) (string, error) {
+	return Gh(ctx, dir, "", args...)
+}
+
+// Gh runs one gh command in dir ("" is the current directory) and returns
+// its stdout. It behaves like the git runner: gh never waits on a terminal
+// for credentials, error text is clipped, and ctx cancellation is honoured.
+// A non-empty stdin is piped to the command (gh api --input -).
+func Gh(ctx context.Context, dir, stdin string, args ...string) (string, error) {
 	name := "gh"
 	if len(args) > 0 {
 		name = "gh " + args[0]
@@ -128,21 +136,27 @@ func runGh(ctx context.Context, dir string, args ...string) (string, error) {
 	// NO_COLOR: the patch must be plain text; GH_NO_UPDATE_NOTIFIER: never
 	// spend the run on an update check.
 	cmd.Env = append(os.Environ(), "NO_COLOR=1", "GH_NO_UPDATE_NOTIFIER=1")
-	var stdout, stderr strings.Builder
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		if cerr := ctx.Err(); cerr != nil {
-			return "", fmt.Errorf("%s: %w", name, cerr)
-		}
-		var execErr *exec.Error
-		if errors.As(err, &execErr) {
-			return "", errors.New("gh is not on PATH: --pr needs the GitHub CLI (https://cli.github.com)")
-		}
-		return "", fmt.Errorf("%s: %s", strings.Join(args, " "), clip(strings.TrimSpace(stderr.String()), 500))
+	var stdouts, stderrs strings.Builder
+	cmd.Stdout = &stdouts
+	cmd.Stderr = &stderrs
+	if stdin != "" {
+		cmd.Stdin = strings.NewReader(stdin)
 	}
-	return stdout.String(), nil
+	err := cmd.Run()
+	if err == nil {
+		return stdouts.String(), nil
+	}
+	if cerr := ctx.Err(); cerr != nil {
+		return "", fmt.Errorf("%s: %w", name, cerr)
+	}
+	var execErr *exec.Error
+	if errors.As(err, &execErr) {
+		return "", errors.New("gh is not on PATH: --pr needs the GitHub CLI (https://cli.github.com)")
+	}
+	return "", fmt.Errorf("%s: %s", strings.Join(args, " "), clip(strings.TrimSpace(stderrs.String()), 500))
 }
+
+// LoadPR loads a GitHub pull request the way the one-shot loaders load git:
 
 // prView is the subset of `gh pr view --json` LoadPR reads.
 type prView struct {

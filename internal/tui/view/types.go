@@ -96,6 +96,7 @@ const (
 	KindNoNewline                 // "\ No newline at end of file"
 	KindBoundary                  // raw view: a group boundary marker
 	KindGroup                     // diff pane: the group's title/description block
+	KindComment                   // a review comment row (always under its target)
 )
 
 // Line is one rendered line of a diff view.
