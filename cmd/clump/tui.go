@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
 
@@ -11,15 +12,19 @@ import (
 	"github.com/k22i/clump/internal/tui/view"
 )
 
-func theme() view.Theme {
-	return view.NewTheme(detectDark())
+func theme(stderr io.Writer) view.Theme {
+	dark, err := detectDark()
+	if err != nil {
+		fmt.Fprintf(stderr, "clump: %s\n", err)
+	}
+	return view.NewTheme(dark)
 }
 
-func runTUI(ctx context.Context, a *app, o oneShotOpts, stdin *os.File, providerName string) (*handoff.Request, error) {
+func runTUI(ctx context.Context, a *app, o oneShotOpts, stdin *os.File, stderr io.Writer, providerName string) (*handoff.Request, error) {
 	repo, _ := resolveRepo(ctx, o.repo)
 	topts := tui.Options{
 		Engine: a.eng, Store: a.store, Cfg: a.cfg, Repo: repo, Provider: providerName, Yes: o.yes,
-		Theme: theme(), Pick: o.pick, PR: o.pr, Status: statusFunc(),
+		Theme: theme(stderr), Pick: o.pick, PR: o.pr, Status: statusFunc(),
 	}
 	if !o.pick {
 		if len(o.args) == 0 && !o.branch && !isTerminal(stdin) {

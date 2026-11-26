@@ -11,16 +11,17 @@ import (
 	"github.com/k22i/clump/internal/tui"
 )
 
-func detectDark() bool {
+func detectDark() (bool, error) {
 	if t, ok := rex.ThemeFromEnv(os.Getenv); ok {
-		return t != rex.ThemeLight
+		return t != rex.ThemeLight, nil
 	}
 	tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
 	if err != nil {
-		return true
+		return true, nil
 	}
 	defer tty.Close()
-	return rex.DetectTheme(tty, os.Getenv, 100*time.Millisecond) != rex.ThemeLight
+	t, err := rex.DetectTheme(tty, os.Getenv, 100*time.Millisecond)
+	return t != rex.ThemeLight, err
 }
 
 func statusFunc() tui.StatusFunc {

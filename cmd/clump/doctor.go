@@ -134,12 +134,15 @@ func runDoctor(stdout io.Writer) error {
 	theme := "no terminal"
 	if tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0); err == nil {
 		start := time.Now()
-		t := rex.DetectTheme(tty, os.Getenv, 200*time.Millisecond)
+		t, terr := rex.DetectTheme(tty, os.Getenv, 200*time.Millisecond)
 		tty.Close()
 		if t == "" {
 			t = "unknown (dark is used)"
 		}
 		theme = fmt.Sprintf("%s (%s)", t, time.Since(start).Round(time.Millisecond))
+		if terr != nil {
+			theme += " " + terr.Error()
+		}
 	}
 	fmt.Fprintf(stdout, "theme       %s\n", theme)
 	return nil

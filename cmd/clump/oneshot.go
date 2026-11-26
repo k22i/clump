@@ -185,7 +185,7 @@ func runOneShot(args []string, stdin *os.File, stdout, stderr io.Writer) error {
 	}
 	interactive := !o.jsonOut && !o.plain && !o.dryRun && fileIsTerminal(stdout)
 	if interactive || o.pick {
-		req, err := runTUI(ctx, a, o, stdin, providerName)
+		req, err := runTUI(ctx, a, o, stdin, stderr, providerName)
 		if err != nil {
 			return err
 		}

@@ -37,31 +37,35 @@ func TestParseThemeReply(t *testing.T) {
 		da1  = esc + "[?62;22c"
 	)
 	tests := []struct {
-		name string
-		in   string
-		want Theme
-		done bool
+		name  string
+		in    string
+		want  Theme
+		state ReplyState
 	}{
-		{"dark then DA1", dark + da1, ThemeDark, true},
-		{"light then DA1", lit + da1, ThemeLight, true},
-		{"DA1 only", da1, ThemeUnknown, true},
-		{"997 without DA1", dark, ThemeDark, false},
-		{"partial sequence", esc + "[?99", ThemeUnknown, false},
+		{"dark then DA1", dark + da1, ThemeDark, ReplyDone},
+		{"light then DA1", lit + da1, ThemeLight, ReplyDone},
+		{"DA1 only", da1, ThemeUnknown, ReplyDone},
+		{"997 without DA1", dark, ThemeDark, ReplyNoise},
+		{"partial sequence", esc + "[?99", ThemeUnknown, ReplyIncomplete},
+		{"cut off after ESC", "junk" + esc, ThemeUnknown, ReplyIncomplete},
+		{"cut off after CSI", "junk" + esc + "[", ThemeUnknown, ReplyIncomplete},
+		{"cut off mid-params", esc + "[?997;", ThemeUnknown, ReplyIncomplete},
+		{"done wins over a trailing partial", dark + da1 + esc + "[?9", ThemeDark, ReplyDone},
 		{
 			"garbage, OSC 11 reply, 997, DA1",
 			"junk" + esc + "]11;rgb:0d0d/1111/1717" + esc + `\` + dark + da1,
-			ThemeDark, true,
+			ThemeDark, ReplyDone,
 		},
-		{"two reports: the last wins", dark + lit + da1, ThemeLight, true},
-		{"unknown 997 parameter", esc + "[?997;3n" + da1, ThemeUnknown, true},
-		{"our own query echoed", ThemeQuery, ThemeUnknown, false},
-		{"empty", "", ThemeUnknown, false},
+		{"two reports: the last wins", dark + lit + da1, ThemeLight, ReplyDone},
+		{"unknown 997 parameter", esc + "[?997;3n" + da1, ThemeUnknown, ReplyDone},
+		{"our own query echoed", ThemeQuery, ThemeUnknown, ReplyNoise},
+		{"empty", "", ThemeUnknown, ReplyNoise},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, done := ParseThemeReply([]byte(tt.in))
-			if got != tt.want || done != tt.done {
-				t.Errorf("ParseThemeReply(%q) = (%q, %v), want (%q, %v)", tt.in, got, done, tt.want, tt.done)
+			got, state := ParseThemeReply([]byte(tt.in))
+			if got != tt.want || state != tt.state {
+				t.Errorf("ParseThemeReply(%q) = (%q, %v), want (%q, %v)", tt.in, got, state, tt.want, tt.state)
 			}
 		})
 	}
@@ -69,15 +73,16 @@ func TestParseThemeReply(t *testing.T) {
 	t.Run("split across two reads", func(t *testing.T) {
 		full := []byte(dark + da1)
 		for i := 0; i < len(full)-1; i++ {
-			if got, done := ParseThemeReply(full[:i]); done {
-				t.Fatalf("ParseThemeReply(%q) = (%q, true) for a prefix, want done = false", full[:i], got)
+			got, state := ParseThemeReply(full[:i])
+			if state == ReplyDone {
+				t.Fatalf("ParseThemeReply(%q) = (%q, %v) for a prefix, want anything but done", full[:i], got, state)
 			}
 		}
-		if got, done := ParseThemeReply(full[:len(dark)-1]); got != ThemeUnknown || done {
-			t.Errorf("ParseThemeReply(prefix %q) = (%q, %v), want (%q, false)", full[:len(dark)-1], got, done, ThemeUnknown)
+		if got, state := ParseThemeReply(full[:len(dark)-1]); got != ThemeUnknown || state != ReplyIncomplete {
+			t.Errorf("ParseThemeReply(prefix %q) = (%q, %v), want (%q, %v)", full[:len(dark)-1], got, state, ThemeUnknown, ReplyIncomplete)
 		}
-		if got, done := ParseThemeReply(full); got != ThemeDark || !done {
-			t.Errorf("ParseThemeReply(full) = (%q, %v), want (%q, true)", got, done, ThemeDark)
+		if got, state := ParseThemeReply(full); got != ThemeDark || state != ReplyDone {
+			t.Errorf("ParseThemeReply(full) = (%q, %v), want (%q, %v)", got, state, ThemeDark, ReplyDone)
 		}
 	})
 }
@@ -85,8 +90,8 @@ func TestParseThemeReply(t *testing.T) {
 func TestDetectThemeEnvAndNonTTY(t *testing.T) {
 	t.Run("env override wins with a nil tty", func(t *testing.T) {
 		t.Setenv("CLUMP_THEME", "light")
-		if got := DetectTheme(nil, os.Getenv, time.Second); got != ThemeLight {
-			t.Errorf("DetectTheme(nil, CLUMP_THEME=light) = %q, want %q", got, ThemeLight)
+		if got, err := DetectTheme(nil, os.Getenv, time.Second); got != ThemeLight || err != nil {
+			t.Errorf("DetectTheme(nil, CLUMP_THEME=light) = (%q, %v), want (%q, nil)", got, err, ThemeLight)
 		}
 	})
 
@@ -100,10 +105,13 @@ func TestDetectThemeEnvAndNonTTY(t *testing.T) {
 		defer w.Close()
 
 		start := time.Now()
-		got := DetectTheme(r, os.Getenv, time.Second)
+		got, err := DetectTheme(r, os.Getenv, time.Second)
 		elapsed := time.Since(start)
 		if got != ThemeUnknown {
 			t.Errorf("DetectTheme(pipe) = %q, want %q", got, ThemeUnknown)
+		}
+		if err != nil {
+			t.Errorf("DetectTheme(pipe) = %v, want nil: a pipe cannot be queried, which is not a failure", err)
 		}
 		if elapsed > 200*time.Millisecond {
 			t.Errorf("DetectTheme(pipe) took %v, want < 200ms", elapsed)
@@ -128,8 +136,11 @@ func TestDetectThemeTimeout(t *testing.T) {
 	}
 
 	start := time.Now()
-	got := DetectTheme(tty, os.Getenv, 50*time.Millisecond)
+	got, err := DetectTheme(tty, os.Getenv, 50*time.Millisecond)
 	elapsed := time.Since(start)
+	if err != nil {
+		t.Errorf("DetectTheme(tty) = %v, want the terminal put back the way it was found", err)
+	}
 
 	if got != ThemeUnknown && got != ThemeDark && got != ThemeLight {
 		t.Errorf("DetectTheme(tty) = %q, want one of %q, %q, %q", got, ThemeUnknown, ThemeDark, ThemeLight)

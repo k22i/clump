@@ -2,8 +2,8 @@
 
 package rex
 
-func enterRawMode(fd int) (restore func() error, ok bool) {
-	return nil, false
+func enterRawMode(fd int) (func() error, error) {
+	return nil, errNoTermios
 }
 
 func termiosSnapshot(fd int) (snap string, ok bool) {

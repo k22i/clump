@@ -10,9 +10,18 @@ instead of hanging until the deadline.
 
 - The read happens in raw mode with `VMIN=0`/`VTIME=1`, so each read returns within 100 ms and the
   loop can watch the clock; the whole query is bounded well before Bubble Tea takes the terminal.
-- `ParseThemeReply` looks for `CSI ? 997 ; 1 n` (dark) and `CSI ? 997 ; 2 n` (light) and is re-run
-  over the growing buffer, so a reply split across reads still parses (ADR-0004 closes the remaining
-  partial-sequence gap).
+- `ParseThemeReply` looks for `CSI ? 997 ; 1 n` (dark) and `CSI ? 997 ; 2 n` (light) and reports what
+  it knows as a `ReplyState`: `ReplyDone` (DA1 closed the exchange), `ReplyIncomplete` (the buffer
+  ends inside a sequence, so the caller must read more bytes) or `ReplyNoise` (complete bytes, no
+  colour-scheme reply yet). It is re-run over the growing buffer, so a reply split across reads still
+  parses; the difference between the last two states is that an incomplete tail is a prefix of a real
+  sequence and a one-shot caller must not read it as "the terminal said nothing".
+- `DetectTheme` returns the theme *and* an error. The theme is best effort — an unqueryable terminal
+  (no tty, `ENOTTY`, a platform without termios) is `ThemeUnknown` and no error — but a failed
+  restore is not: if the terminal cannot be put back the way it was found, it stays in raw mode
+  (`VMIN=0`, `VTIME=1`, echo and canonical input off) and the TUI inherits a terminal in an unknown
+  state. `enterRawMode` therefore returns its termios error too, and `cmd/clump` prints the failure
+  to stderr before it starts Bubble Tea.
 - Rex answers in 0.2 ms (`C-rex.md`), which is why the query is viable in a startup path that must
   stay fast (ADR-0011).
 - Darwin and Linux each spell the termios requests differently (`TIOCGETA`/`TIOCSETA` vs

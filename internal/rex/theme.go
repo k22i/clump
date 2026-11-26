@@ -2,6 +2,7 @@ package rex
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 	"syscall"
@@ -20,6 +21,28 @@ const ThemeQuery = "\x1b[?996n\x1b[c"
 
 const themeReplyCap = 1024
 
+var errNoTermios = errors.New("rex: this platform has no termios")
+
+type ReplyState int
+
+const (
+	ReplyIncomplete ReplyState = iota
+	ReplyNoise
+	ReplyDone
+)
+
+func (s ReplyState) String() string {
+	switch s {
+	case ReplyIncomplete:
+		return "incomplete"
+	case ReplyNoise:
+		return "noise"
+	case ReplyDone:
+		return "done"
+	}
+	return "unknown"
+}
+
 func ThemeFromEnv(getenv func(string) string) (Theme, bool) {
 	if getenv == nil {
 		return ThemeUnknown, false
@@ -33,14 +56,18 @@ func ThemeFromEnv(getenv func(string) string) (Theme, bool) {
 	return ThemeUnknown, false
 }
 
-func ParseThemeReply(b []byte) (t Theme, done bool) {
+func ParseThemeReply(b []byte) (t Theme, state ReplyState) {
+	state = ReplyNoise
 	for i := 0; i < len(b); i++ {
 		if b[i] != 0x1b {
 			continue
 		}
 		j := i + 1
 		if j >= len(b) {
-			break
+			if state == ReplyDone {
+				break
+			}
+			return t, ReplyIncomplete
 		}
 		if b[j] != '[' {
 			continue
@@ -51,7 +78,10 @@ func ParseThemeReply(b []byte) (t Theme, done bool) {
 			j++
 		}
 		if j >= len(b) {
-			break
+			if state == ReplyDone {
+				break
+			}
+			return t, ReplyIncomplete
 		}
 		final := b[j]
 		if final < 0x40 || final > 0x7e {
@@ -64,11 +94,11 @@ func ParseThemeReply(b []byte) (t Theme, done bool) {
 		case final == 'n' && params == "?997;2":
 			t = ThemeLight
 		case final == 'c' && isDA1Reply(params):
-			done = true
+			state = ReplyDone
 		}
 		i = j
 	}
-	return t, done
+	return t, state
 }
 
 func isDA1Reply(params string) bool {
@@ -83,23 +113,28 @@ func isDA1Reply(params string) bool {
 	return true
 }
 
-func DetectTheme(tty *os.File, getenv func(string) string, timeout time.Duration) Theme {
+func DetectTheme(tty *os.File, getenv func(string) string, timeout time.Duration) (theme Theme, err error) {
 	if t, ok := ThemeFromEnv(getenv); ok {
-		return t
+		return t, nil
 	}
 	if tty == nil {
-		return ThemeUnknown
+		return ThemeUnknown, nil
 	}
-	restore, ok := enterRawMode(int(tty.Fd()))
-	if !ok {
-		return ThemeUnknown
+	restore, err := enterRawMode(int(tty.Fd()))
+	if errors.Is(err, errNoTermios) || errors.Is(err, syscall.ENOTTY) {
+		return ThemeUnknown, nil
+	}
+	if err != nil {
+		return ThemeUnknown, fmt.Errorf("rex: put the terminal in raw mode to ask its colour scheme: %w", err)
 	}
 	defer func() {
-		_ = restore()
+		if rerr := restore(); rerr != nil {
+			err = errors.Join(err, fmt.Errorf("rex: restore the terminal mode after asking its colour scheme: %w", rerr))
+		}
 	}()
 
-	if _, err := tty.WriteString(ThemeQuery); err != nil {
-		return ThemeUnknown
+	if _, werr := tty.WriteString(ThemeQuery); werr != nil {
+		return ThemeUnknown, fmt.Errorf("rex: write the colour-scheme query: %w", werr)
 	}
 
 	buf := make([]byte, 0, 256)
@@ -113,23 +148,23 @@ func DetectTheme(tty *os.File, getenv func(string) string, timeout time.Duration
 		if room > len(chunk) {
 			room = len(chunk)
 		}
-		n, err := tty.Read(chunk[:room])
+		n, rerr := tty.Read(chunk[:room])
 		if n > 0 {
 			buf = append(buf, chunk[:n]...)
-			if t, done := ParseThemeReply(buf); done {
-				return t
+			if t, state := ParseThemeReply(buf); state == ReplyDone {
+				return t, nil
 			}
 		}
-		if err != nil && n == 0 {
-			if errors.Is(err, syscall.EINTR) {
+		if rerr != nil && n == 0 {
+			if errors.Is(rerr, syscall.EINTR) {
 				continue
 			}
-			if errors.Is(err, syscall.EAGAIN) || errors.Is(err, syscall.EWOULDBLOCK) {
+			if errors.Is(rerr, syscall.EAGAIN) || errors.Is(rerr, syscall.EWOULDBLOCK) {
 				time.Sleep(5 * time.Millisecond)
 				continue
 			}
-			return ThemeUnknown
+			return ThemeUnknown, fmt.Errorf("rex: read the colour-scheme reply: %w", rerr)
 		}
 	}
-	return ThemeUnknown
+	return ThemeUnknown, nil
 }
