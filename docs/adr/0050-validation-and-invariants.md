@@ -16,7 +16,9 @@ that always passes `Check`. In order:
    `fallback: one group per file (<why>)`).
 2. For each model group in order: trim each ID; expand an alias ID to its members; drop IDs that
    are not hunks of the diff (counted); drop IDs already placed (duplicates: keep the first,
-   counted). A group left with no hunks is dropped.
+   counted). A group left with no hunks is dropped. An ID that is not a JSON string at all is
+   dropped as unknown; one that is a string but fails to decode is a decoder fault, not model noise,
+   so it returns `FallbackPerFile` with the decode error as the reason rather than a repair count.
 3. Title: control characters become spaces, whitespace collapses, trimmed, cut to 80 runes;
    empty -> `(untitled group)`. Description: same but newlines are kept, cut to 1000 runes.
    (Model text reaches the terminal; it must never carry escape sequences.)

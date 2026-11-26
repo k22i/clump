@@ -80,8 +80,7 @@ func Validate(d *gitdiff.Diff, text string, o ValidateOpts) Result {
 			}
 			var id string
 			if err := json.Unmarshal([]byte(s), &id); err != nil {
-				unknown++
-				continue
+				return FallbackPerFile(d, "hunk ID is not a JSON string: "+err.Error())
 			}
 			id = strings.TrimSpace(id)
 			if members, isAlias := o.Aliases[id]; isAlias {
