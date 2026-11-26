@@ -46,13 +46,19 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      # gh resolves the repository from the git checkout, so this job needs one
+      # even though it only uploads artifacts. --repo below makes it explicit.
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           path: dist
           merge-multiple: true
       - name: checksums
-        run: (cd dist && sha256sum * > checksums.txt)
+        run: (cd dist && sha256sum -- *.tar.gz > checksums.txt)
       - name: publish
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" dist/* --title "clump $GITHUB_REF_NAME" --generate-notes
+        run: >
+          gh release create "$GITHUB_REF_NAME" dist/*.tar.gz dist/checksums.txt
+          --repo "$GITHUB_REPOSITORY"
+          --title "clump $GITHUB_REF_NAME" --generate-notes
