@@ -30,11 +30,24 @@ columns or wider, stacked below that.
 
 ## Install
 
+A prebuilt binary — macOS and Linux, arm64 and amd64 — no Go toolchain needed:
+
+```
+curl -fsSL https://raw.githubusercontent.com/k22i/clump/main/scripts/install.sh | sh
+```
+
+The script downloads the archive of the latest [release](https://github.com/k22i/clump/releases),
+checks it against the release's checksums and puts `clump` on your PATH
+(`CLUMP_BIN_DIR` overrides where). From then on `clump upgrade` (alias `clump update`) fetches the
+next release over the binary itself, checksummed the same way.
+
+With Go 1.27 or newer:
+
 ```
 go install github.com/k22i/clump/cmd/clump@latest
 ```
 
-Go 1.27 or newer. Or build from a clone:
+Or build from a clone:
 
 ```
 git clone https://github.com/k22i/clump && cd clump

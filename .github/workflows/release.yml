@@ -1,0 +1,58 @@
+# Publishes a release for every tag push (git tag v0.1.0 && git push --tags):
+# the platforms listed below build clump_<GOOS>_<GOARCH>.tar.gz — one clump
+# binary at the archive root, its version stamped in — plus checksums.txt,
+# the assets scripts/install.sh and `clump update` download and verify.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - { goos: darwin, goarch: arm64 }
+          - { goos: darwin, goarch: amd64 }
+          - { goos: linux, goarch: amd64 }
+          - { goos: linux, goarch: arm64 }
+    env:
+      GOOS: ${{ matrix.goos }}
+      GOARCH: ${{ matrix.goarch }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: build
+        run: |
+          mkdir build
+          CGO_ENABLED=0 go build -trimpath \
+            -ldflags "-s -w -X main.version=${GITHUB_REF_NAME}" \
+            -o build/clump ./cmd/clump
+          tar -czf "clump_${GOOS}_${GOARCH}.tar.gz" -C build clump
+      - uses: actions/upload-artifact@v4
+        with:
+          name: clump_${{ matrix.goos }}_${{ matrix.goarch }}
+          path: clump_${{ matrix.goos }}_${{ matrix.goarch }}.tar.gz
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: checksums
+        run: (cd dist && sha256sum * > checksums.txt)
+      - name: publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --title "clump $GITHUB_REF_NAME" --generate-notes

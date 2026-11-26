@@ -31,6 +31,7 @@ internal/tui/view    shared render types (Theme, Line, ListRow, HelpSection), fi
 internal/tui/{diffview,rawview,listview,helpview,sys}  pure render helpers, clipboard/editor glue
 internal/report      Markdown (y, --plain) and JSON (--json) output of a grouped diff
 internal/chromalexers  vendored chroma/v2/lexers with a lazily built registry (see §14)
+internal/update      latest release lookup, checksummed download, in-place binary replace (clump update)
 rex/                 init.lua (Rex actions) + embed.go (package rexlua)
 scripts/             mkfixture.sh (scratch test repo), mkgolden.sh (parser golden fixtures)
 ```
@@ -38,7 +39,7 @@ scripts/             mkfixture.sh (scratch test repo), mkgolden.sh (parser golde
 Import graph (arrows point at dependencies; no cycles):
 
 ```
-cmd/clump -> tui, engine, config, cache, provider, gitdiff, ipc, lazygit, rex, rexlua
+cmd/clump -> tui, engine, config, cache, provider, gitdiff, ipc, lazygit, rex, rexlua, comment, forge, update
 tui       -> engine, group, gitdiff, cache, config, lazygit, ipc, report, tui/*
 tui/diffview -> chromalexers, chroma/v2 (core), view;  report -> gitdiff, group, cache
 engine    -> group, catalog, gitdiff, provider, cache, config
@@ -47,8 +48,18 @@ catalog   -> gitdiff
 comment   -> gitdiff, group
 cache     -> group, provider, comment
 config    -> provider
+forge     -> comment, gitdiff
+update    -> stdlib
 gitdiff, provider, ipc, lazygit, rex -> stdlib (+ golang.org/x/sys for ipc, rex)
 ```
+
+Distribution: a release workflow (.github/workflows/release.yml) publishes, per tag `vX.Y.Z`,
+`clump_<GOOS>_<GOARCH>.tar.gz` (macOS and Linux, arm64 and amd64; one binary at the archive root,
+its version stamped with `-X main.version`) plus `checksums.txt`. scripts/install.sh downloads
+the latest release and verifies it against those checksums; `clump update` (alias `upgrade`)
+does the same through internal/update — the GitHub API anonymously, or with $GITHUB_TOKEN, else
+the gh CLI's token — and renames the new binary over the running one (a temp file in the same
+dir, then rename, so a running clump keeps its inode and a failed install changes nothing).
 
 Dependencies (the whole list): `charm.land/bubbletea/v2` v2.1.2, `charm.land/bubbles/v2` v2.2.2,
 `charm.land/lipgloss/v2` v2.1.1 (the current stable major of each), `github.com/alecthomas/chroma/v2`,

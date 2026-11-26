@@ -10,6 +10,7 @@
 //	clump config init | path                                print the default config / its path
 //	clump rex install [--write]                             Rex integration
 //	clump lazygit install [--write]                         lazygit integration
+//	clump update (alias: upgrade)                           replace this binary with the latest release
 package main
 
 import (
@@ -59,6 +60,8 @@ func run(args []string, stdin *os.File, stdout, stderr io.Writer) int {
 	case "version", "--version":
 		fmt.Fprintln(stdout, "clump", version)
 		return 0
+	case "update", "upgrade":
+		err = runUpdate(args[1:], stdout, stderr)
 	case "help", "-h", "--help":
 		fmt.Fprint(stdout, usage)
 		return 0
@@ -92,6 +95,13 @@ const usage = `usage:
   clump config init | path
   clump rex install [--write]
   clump lazygit install [--write]
+  clump update | upgrade
+
+update:
+  clump update downloads the latest release published on GitHub and
+  replaces this binary with it — the same prebuilt, checksummed archive
+  scripts/install.sh installs, no Go toolchain needed. It says so and
+  does nothing when this binary is already the latest release.
 
 comments:
   clump comments lists a diff's stored review comments, numbered, or as
