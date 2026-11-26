@@ -401,6 +401,12 @@ func RenderGroupLinesOpts(d *gitdiff.Diff, hunkIDs []string, th view.Theme, widt
 			out = append(out, view.RenderFileHeaderState(d.Files[g.fileIdx], g.fileIdx, add, del, ids, st, th, width))
 		} else {
 			st.Folded = false
+			text := view.Truncate("── (unknown file "+strconv.Itoa(g.fileIdx)+") ", width)
+			if w := lipgloss.Width(text); w < width {
+				text += strings.Repeat("─", width-w)
+			}
+			out = append(out, view.Line{Text: th.Style(th.Error, text), Plain: text, Kind: view.KindFile,
+				FileIdx: g.fileIdx, BlockHunks: ids})
 		}
 		if st.Folded {
 			continue

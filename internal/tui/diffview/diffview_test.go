@@ -619,3 +619,37 @@ func TestSplitMarkedAndNarrow(t *testing.T) {
 		}
 	}
 }
+
+func TestHunkWithOutOfRangeFileIdxKeepsAVisibleHeader(t *testing.T) {
+	d := &gitdiff.Diff{
+		Files: []*gitdiff.File{{Status: "M"}},
+		Hunks: []*gitdiff.Hunk{{
+			ID: "h1", Index: 0, FileIdx: 7,
+			Header:   "@@ -1,1 +1,2 @@",
+			OldStart: 1, OldLines: 1, NewStart: 1, NewLines: 2,
+			Lines: []string{" old", "+new"}, Add: 1,
+		}},
+	}
+	lines := diffview.RenderGroupLinesOpts(d, []string{"h1"}, view.PlainTheme(), 40, diffview.GroupOpts{})
+	if len(lines) < 2 {
+		t.Fatalf("got %d lines, want a header and the hunk:\n%s", len(lines), viewtest.JoinPlain(lines))
+	}
+	if lines[0].Kind != view.KindFile || !strings.Contains(lines[0].Plain, "(unknown file 7)") {
+		t.Fatalf("first line = %q (kind %v), want a visible (unknown file 7) header", lines[0].Plain, lines[0].Kind)
+	}
+	if lines[0].FileIdx != 7 {
+		t.Fatalf("FileIdx = %d, want 7", lines[0].FileIdx)
+	}
+	if got := lipgloss.Width(lines[0].Plain); got != 40 {
+		t.Fatalf("header width = %d, want the pane width 40", got)
+	}
+	hunks := 0
+	for _, l := range lines {
+		if l.HunkID == "h1" {
+			hunks++
+		}
+	}
+	if hunks == 0 {
+		t.Fatalf("the hunk's lines were dropped:\n%s", viewtest.JoinPlain(lines))
+	}
+}

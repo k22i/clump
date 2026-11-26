@@ -449,11 +449,11 @@ func (m *Model) footer() string {
 	}
 	switch {
 	case m.visual:
-		return m.renderHints(m.th.Style(m.th.Title, "VISUAL"))
+		return m.renderHints("VISUAL", m.th.Title)
 	case m.query != "":
-		return m.renderHints(m.th.Style(m.th.Dim, fmt.Sprintf("/%s: %d matches", m.query, len(m.matches))))
+		return m.renderHints(fmt.Sprintf("/%s: %d matches", m.query, len(m.matches)), m.th.Dim)
 	}
-	return m.renderHints("")
+	return m.renderHints("", m.th.Dim)
 }
 
 type hint struct{ key, desc string }
@@ -472,14 +472,14 @@ func (m *Model) footerHints() []hint {
 	}
 }
 
-func (m *Model) renderHints(lead string) string {
+func (m *Model) renderHints(lead string, leadStyle lipgloss.Style) string {
 	type seg struct {
 		text string
 		w    int
 	}
 	var segs []seg
 	if lead != "" {
-		segs = append(segs, seg{lead, lipgloss.Width(lead)})
+		segs = append(segs, seg{m.th.Style(leadStyle, lead), lipgloss.Width(lead)})
 	}
 	for _, h := range m.footerHints() {
 		segs = append(segs, seg{
@@ -506,7 +506,7 @@ func (m *Model) renderHints(lead string) string {
 		used += need
 	}
 	if b.Len() == 0 {
-		return view.Truncate(lead, m.width)
+		return m.th.Style(leadStyle, view.Truncate(lead, m.width))
 	}
 	return b.String()
 }

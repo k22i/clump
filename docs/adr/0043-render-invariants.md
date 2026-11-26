@@ -8,6 +8,16 @@ Two invariants hold in `internal/tui` and its render packages:
   it reproduces the line's content byte for byte. A lexer that loses or rewrites a character is
   treated as "no highlighting" rather than trusted.
 
+Two consequences are pinned by tests because both are easy to undo by accident:
+
+- The footer draws its hints as `key description` pairs in `th.Key`/`th.Dim` and drops a hint whole
+  when the remainder does not fit; it never falls back to one line of another style. A styled
+  segment (the `VISUAL` or `/query` lead included) is truncated as plain text and then styled, so a
+  narrow terminal cannot be shown half an escape sequence.
+- A hunk whose `FileIdx` is outside `Diff.Files` — only a hand-built `Diff` can do that — renders
+  `── (unknown file N)` in `th.Error` instead of quietly losing its header, so the mistake is
+  visible in a golden file rather than looking like a plausible diff.
+
 Why: the pane, the golden files, `y`, `--plain` and `--json` all have to agree on what the text is.
 A highlighter or an ellipsis that changed a character would make search miss, make a copied diff
 differ from the one reviewed, and make the goldens depend on the theme.
