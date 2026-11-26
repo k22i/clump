@@ -476,7 +476,7 @@ func (m *Model) regroup() tea.Cmd {
 		m.askConfirm("Regroup discards your edits: [d] discard  [s] keep them as a snapshot  [esc] cancel", confirmRegroup)
 		return nil
 	}
-	return m.requestGroup(true, true)
+	return m.requestGroup(true)
 }
 
 func (m *Model) doRegroup(keep bool) tea.Cmd {
@@ -491,7 +491,7 @@ func (m *Model) doRegroup(keep bool) tea.Cmd {
 		m.setFlash("could not update saved edits: "+err.Error(), true)
 	}
 	m.linesOK = false
-	return m.requestGroup(true, true)
+	return m.requestGroup(true)
 }
 
 func (m *Model) openProviderMenu() {
@@ -532,7 +532,7 @@ func (m *Model) switchProvider(name string) tea.Cmd {
 		return nil
 	}
 	m.setFlash("provider is now "+name, false)
-	return m.requestGroup(m.autoGroup(), false)
+	return m.requestGroup(m.autoGroup())
 }
 
 func (m *Model) autoGroup() bool {
@@ -579,9 +579,9 @@ func (m *Model) groupNow() tea.Cmd {
 		return nil
 	}
 	if d.job == nil {
-		return m.requestGroup(true, false)
+		return m.requestGroup(true)
 	}
-	return m.startJob(d.job, false)
+	return m.startJob(d.job)
 }
 
 func (m *Model) onSideMsg(msg tea.Msg) (tea.Cmd, bool) {

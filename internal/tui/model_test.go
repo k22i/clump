@@ -537,3 +537,21 @@ func TestStatusReports(t *testing.T) {
 		t.Fatalf("status %v", got)
 	}
 }
+
+func TestRegroupCallsTheProviderEvenWithACachedResult(t *testing.T) {
+	h := newHarness(t, nil, nil)
+	h.load(testPatch)
+	if h.fake.Calls() != 1 || h.m.doc.cached {
+		t.Fatalf("first grouping: calls %d cached %v", h.fake.Calls(), h.m.doc.cached)
+	}
+	if _, ok, err := h.eng.Lookup(h.m.doc.L.Diff, "cheap"); !ok || err != nil {
+		t.Fatalf("the first grouping should be cached already: ok=%v err=%v", ok, err)
+	}
+	h.keys("r")
+	if h.fake.Calls() != 2 {
+		t.Fatalf("r took the total provider calls to %d, want 2 (regroup never reads the result cache)", h.fake.Calls())
+	}
+	if h.m.doc.cached {
+		t.Fatal("the regrouped document is marked cached")
+	}
+}

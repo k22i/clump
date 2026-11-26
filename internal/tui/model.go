@@ -222,7 +222,7 @@ func (m *Model) open(l *gitdiff.Loaded, auto bool) tea.Cmd {
 			return m.status("done", plural(len(out.Result.Groups), "group")+" (cached)")
 		}
 	}
-	return m.requestGroup(auto, false)
+	return m.requestGroup(auto)
 }
 
 func (m *Model) noCacheRead() bool { return false }
@@ -260,7 +260,7 @@ func (m *Model) loadOverride() bool {
 	return true
 }
 
-func (m *Model) requestGroup(auto, force bool) tea.Cmd {
+func (m *Model) requestGroup(auto bool) tea.Cmd {
 	d := m.doc
 	j, err := m.o.Engine.Prepare(engineInput(d), m.provider)
 	if err != nil {
@@ -279,14 +279,14 @@ func (m *Model) requestGroup(auto, force bool) tea.Cmd {
 		d.state = stNeedsConfirm
 		return m.status("idle", "")
 	}
-	return m.startJob(j, force)
+	return m.startJob(j)
 }
 
 func engineInput(d *Doc) engine.Input {
 	return engine.Input{Diff: d.L.Diff, Context: d.L.Context}
 }
 
-func (m *Model) startJob(j *engine.Job, force bool) tea.Cmd {
+func (m *Model) startJob(j *engine.Job) tea.Cmd {
 	if m.watch != nil {
 		return m.watch.request(m, j)
 	}
@@ -299,7 +299,6 @@ func (m *Model) startJob(j *engine.Job, force bool) tea.Cmd {
 	gen, hash := m.gen, m.doc.Hash
 	m.doc.state, m.doc.started = stGrouping, m.o.Now()
 	eng := m.o.Engine
-	_ = force
 	return tea.Batch(m.status("working", fmt.Sprintf("grouping with %s (%s)", j.Provider, j.Est)), func() tea.Msg {
 		out, err := eng.Run(ctx, j, nil)
 		return groupedMsg{hash: hash, gen: gen, out: out, err: err}

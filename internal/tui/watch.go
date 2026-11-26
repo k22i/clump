@@ -311,7 +311,7 @@ func (w *watchState) toggleAuto(m *Model) tea.Cmd {
 	}
 	m.setFlash("auto-group on with "+m.providerLabel(), false)
 	if d := m.doc; d != nil && d.state == stNeedsConfirm && d.job != nil && !d.job.Est.OverCeiling {
-		return m.startJob(d.job, false)
+		return m.startJob(d.job)
 	}
 	return nil
 }
