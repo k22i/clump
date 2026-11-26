@@ -111,6 +111,7 @@ func TestHandoffPrintCarriesWholeReviewAndStamps(t *testing.T) {
 
 func TestHandoffDryRunPrintsCommandAndStampsNothing(t *testing.T) {
 	dir := handoffRepo(t)
+	stubHandoffAgent(t)
 	out, err := handoffRun(t, "--repo", dir, "HEAD", "--dry-run")
 	if err != nil {
 		t.Fatal(err)
@@ -165,6 +166,7 @@ func TestHandoffReplaceArgvAndPreExecStamp(t *testing.T) {
 
 func TestHandoffReplaceRefusesAStubbedStdin(t *testing.T) {
 	dir := handoffRepo(t)
+	stubHandoffAgent(t)
 	oldTTY := handoffTerminal
 	handoffTerminal = func(*os.File) bool { return false }
 	t.Cleanup(func() { handoffTerminal = oldTTY })
@@ -191,6 +193,7 @@ func TestHandoffPrintFallbackOnMissingAgent(t *testing.T) {
 
 func TestHandoffPaneWithoutMultiplexer(t *testing.T) {
 	dir := handoffRepo(t)
+	stubHandoffAgent(t)
 	t.Setenv("REX_SESSION", "")
 	t.Setenv("REX_BLOCK", "")
 	t.Setenv("TMUX", "")

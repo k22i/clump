@@ -23,7 +23,7 @@ func stubHandoffBinaries(t *testing.T, names ...string) string {
 	return dir
 }
 
-func stubRexLogging(t *testing.T) string {
+func stubRexLogging(t *testing.T, alsoOnPath ...string) string {
 	t.Helper()
 	dir := t.TempDir()
 	log := filepath.Join(dir, "rex.log")
@@ -32,6 +32,9 @@ func stubRexLogging(t *testing.T) string {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	if len(alsoOnPath) > 0 {
+		stubHandoffBinaries(t, alsoOnPath...)
+	}
 	return log
 }
 
@@ -149,7 +152,7 @@ func TestHandoffAgentMissingFromPathFlashes(t *testing.T) {
 }
 
 func TestHandoffPaneLaunchesRexAndStamps(t *testing.T) {
-	log := stubRexLogging(t)
+	log := stubRexLogging(t, "codex")
 	h := newHarness(t, nil, func(c *config.Config) {
 		c.Agents = []handoff.Agent{{Name: "codex", Argv: []string{"codex"}, Where: handoff.WherePane}}
 	})
@@ -190,6 +193,7 @@ func TestHandoffPaneLaunchesRexAndStamps(t *testing.T) {
 }
 
 func TestHandoffPaneWithoutMultiplexerFlashes(t *testing.T) {
+	stubHandoffBinaries(t, "codex")
 	h := newHarness(t, nil, func(c *config.Config) {
 		c.Agents = []handoff.Agent{{Name: "codex", Argv: []string{"codex"}, Where: handoff.WherePane}}
 	})
@@ -211,6 +215,9 @@ func TestHandoffPaneWithoutMultiplexerFlashes(t *testing.T) {
 func TestHandoffWatchTurnsReplaceIntoPaneAndHidesPrint(t *testing.T) {
 	stubHandoffBinaries(t, "claude")
 	h := newHarness(t, nil, nil)
+	t.Setenv("REX_SESSION", "")
+	t.Setenv("REX_BLOCK", "")
+	t.Setenv("TMUX", "")
 	h.load(testPatch)
 	loadHandoffComment(t, h, "x")
 	h.m.watch = newWatchState(&WatchOptions{Repo: "/repo/root"})
