@@ -1,4 +1,9 @@
-# clump
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/brand/clump-horizontal-dark.svg">
+    <img alt="clump" src="docs/brand/clump-horizontal.svg" width="280">
+  </picture>
+</p>
 
 `clump` reads a git diff and asks an LLM to split its hunks into logical changes, each with a title
 and an explanation, then shows that grouping in a terminal UI next to the raw diff so you can review
@@ -753,6 +758,10 @@ Useful pieces:
 - `internal/chromalexers` is `chroma/v2/lexers` vendored so the registry is built on first use rather
   than in package `init`: the stock lexers cost 3.5 ms of start-up, and lazygit runs `clump push` on
   every diff it renders.
+
+## Brand
+
+The logo, wordmark, favicons and colour guidelines live in [`docs/brand/`](docs/brand/README.md).
 
 ## License
 
