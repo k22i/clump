@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"errors"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -20,25 +21,29 @@ func (osFS) WriteFileAtomic(name string, data []byte) error {
 		return err
 	}
 	tmp := f.Name()
-	remove := func(cause error) error {
-		_ = f.Close()
-		_ = os.Remove(tmp)
+	unlink := func(cause error) error {
+		if err := os.Remove(tmp); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return errors.Join(cause, err)
+		}
 		return cause
 	}
+	abandon := func(cause error) error {
+		return unlink(errors.Join(cause, f.Close()))
+	}
 	if _, err := f.Write(data); err != nil {
-		return remove(err)
+		return abandon(err)
 	}
 	if err := f.Sync(); err != nil {
-		return remove(err)
+		return abandon(err)
 	}
 	if err := f.Close(); err != nil {
-		return remove(err)
+		return unlink(err)
 	}
 	if err := os.Chmod(tmp, 0o600); err != nil {
-		return remove(err)
+		return unlink(err)
 	}
 	if err := os.Rename(tmp, name); err != nil {
-		return remove(err)
+		return unlink(err)
 	}
 	return nil
 }
