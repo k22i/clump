@@ -24,10 +24,8 @@ func handoffDefault(cfg *config.Config) string {
 	if cfg.Handoff != "" {
 		return cfg.Handoff
 	}
-	for _, a := range cfg.Agents {
-		if _, err := exec.LookPath(a.Argv[0]); err == nil {
-			return "auto (" + a.Name + ")"
-		}
+	if a, err := cfg.ResolveHandoffAgent("", exec.LookPath); err == nil {
+		return "auto (" + a.Name + ")"
 	}
 	return "auto (none found on PATH)"
 }

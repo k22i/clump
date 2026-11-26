@@ -95,11 +95,17 @@ func runHandoff(args []string, stdin *os.File, stdout, stderr io.Writer) error {
 	}
 	agent, err := a.cfg.ResolveHandoffAgent(o.agent, exec.LookPath)
 	if err != nil {
-		return err
+		if o.where != handoff.WherePrint {
+			return err
+		}
 	}
 	where := o.where
 	if where == "" {
-		where = agent.Where
+		if agent.Where != "" {
+			where = agent.Where
+		} else {
+			return errors.New("handoff: no agent resolved; pass --agent NAME or --where print|pane|replace")
+		}
 	}
 	prompt := handoff.Prompt(handoff.Review{Title: l.Title, Ref: l.Ref, Comments: placed, GroupTitle: groupTitles(l, a)})
 	repo, err := resolveRepo(ctx, o.repo)
@@ -112,7 +118,7 @@ func runHandoff(args []string, stdin *os.File, stdout, stderr io.Writer) error {
 		return nil
 	}
 	if where != handoff.WherePrint && !o.yes {
-		if !confirm(fmt.Sprintf("Hand off %s to %s (%s)? [y/N] ", commentSummary(placed), agent.Name, where)) {
+		if !confirm(fmt.Sprintf("Hand off %s to %s (%s)? [y/N] ", fmt.Sprintf("%d comment(s)", len(placed)), agent.Name, where)) {
 			return errors.New("not handed off (no terminal to confirm on; pass --yes to skip the question)")
 		}
 	}
@@ -124,10 +130,6 @@ func handoffRequest(agent handoff.Agent, where, prompt, repo string, placed []co
 		Agent: agent.Name, Where: where, Argv: agent.ArgvWith(prompt),
 		Prompt: prompt, Dir: repo, Anchors: handoff.AnchorKeys(placed),
 	}
-}
-
-func commentSummary(placed []comment.Placed) string {
-	return fmt.Sprintf("%d comment(s)", len(placed))
 }
 
 func deliverRequest(a *app, req *handoff.Request, stdin *os.File, stdout io.Writer) error {
@@ -148,8 +150,7 @@ func deliverRequest(a *app, req *handoff.Request, stdin *os.File, stdout io.Writ
 		if req.Path == "" {
 			path, err := exec.LookPath(req.Argv[0])
 			if err != nil {
-				printHandoffFallback(stdout, req, err.Error())
-				return fmt.Errorf("handoff: %s: the prompt and command were printed on stdout", err)
+				return handoffFallback(stdout, req, err.Error())
 			}
 			req.Path = path
 		}
@@ -160,29 +161,23 @@ func deliverRequest(a *app, req *handoff.Request, stdin *os.File, stdout io.Writ
 			return err
 		}
 		if err := syscallExec(req.Path, req.Argv, os.Environ()); err != nil {
-			printHandoffFallback(stdout, req, err.Error())
-			return fmt.Errorf("handoff: %s: the prompt and command were printed on stdout", err)
+			return handoffFallback(stdout, req, err.Error())
 		}
 		return nil
 	case handoff.WherePane:
 		if _, err := exec.LookPath(req.Argv[0]); err != nil {
-			printHandoffFallback(stdout, req, err.Error())
-			return fmt.Errorf("handoff: %s: the prompt and command were printed on stdout", err)
+			return handoffFallback(stdout, req, err.Error())
 		}
-		paneArgv, multiplexer, ok := handoff.PaneArgv(paneEnvironment(), req.Dir, handoff.LabelFor(req.Agent), req.Argv)
+		paneArgv, multiplexer, ok := handoff.PaneArgv(handoff.PaneEnvironment(os.Getenv), req.Dir, handoff.LabelFor(req.Agent), req.Argv)
 		if !ok {
-			reason := "no Rex or tmux session to open a pane in"
-			printHandoffFallback(stdout, req, reason)
-			return fmt.Errorf("handoff: %s: the prompt and command were printed on stdout", reason)
+			return handoffFallback(stdout, req, "no Rex or tmux session to open a pane in")
 		}
 		var errb bytes.Buffer
 		cmd := exec.Command(paneArgv[0], paneArgv[1:]...)
 		cmd.Dir = req.Dir
 		cmd.Stderr = &errb
 		if err := cmd.Run(); err != nil {
-			reason := paneArgv[0] + ": " + strings.TrimSpace(errb.String())
-			printHandoffFallback(stdout, req, reason)
-			return fmt.Errorf("handoff: %s: the prompt and command were printed on stdout", reason)
+			return handoffFallback(stdout, req, paneArgv[0]+": "+strings.TrimSpace(errb.String()))
 		}
 		if err := stamp(); err != nil {
 			return err
@@ -193,11 +188,8 @@ func deliverRequest(a *app, req *handoff.Request, stdin *os.File, stdout io.Writ
 	return errors.New("handoff: unknown where " + req.Where)
 }
 
-func paneEnvironment() handoff.Environment {
-	return handoff.Environment{RexSession: os.Getenv("REX_SESSION"), RexBlock: os.Getenv("REX_BLOCK"), Tmux: os.Getenv("TMUX")}
-}
-
-func printHandoffFallback(w io.Writer, req *handoff.Request, reason string) {
+func handoffFallback(w io.Writer, req *handoff.Request, reason string) error {
 	fmt.Fprintf(w, "clump: could not hand off to %s (%s)\n\n$ %s\n\nprompt:\n\n%s\n",
 		req.Agent, reason, req.Command(), req.Prompt)
+	return fmt.Errorf("handoff: %s: the prompt and command were printed on stdout", reason)
 }

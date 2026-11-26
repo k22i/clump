@@ -8,6 +8,10 @@ import (
 )
 
 func HelpSections(watch bool) []view.HelpSection {
+	handoffDesc := "hand the review's comments to a coding agent"
+	if watch {
+		handoffDesc = "hand the review's comments to a coding agent in a new split"
+	}
 	s := []view.HelpSection{
 		{Title: "Navigate", Entries: []view.HelpEntry{
 			{Keys: "j/k ↓/↑", Desc: "next/previous group (lines in the diff pane)"},
@@ -33,7 +37,7 @@ func HelpSections(watch bool) []view.HelpSection {
 			{Keys: "n/N", Desc: "next/previous match (while searching)"},
 			{Keys: "e", Desc: "open $EDITOR at the hunk"},
 			{Keys: "y", Desc: "copy a Markdown summary"},
-			{Keys: "H", Desc: "hand the review's comments to a coding agent"},
+			{Keys: "H", Desc: handoffDesc},
 			{Keys: "P", Desc: "post the comments as a review of the pull request (--pr)"},
 			{Keys: "g", Desc: "group now (when waiting to send)"},
 			{Keys: "r", Desc: "regroup (bypass the cache)"},

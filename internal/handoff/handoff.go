@@ -129,9 +129,13 @@ type Environment struct {
 	Tmux       string
 }
 
+func PaneEnvironment(getenv func(string) string) Environment {
+	return Environment{RexSession: getenv("REX_SESSION"), RexBlock: getenv("REX_BLOCK"), Tmux: getenv("TMUX")}
+}
+
 func PaneArgv(e Environment, repo, label string, agentArgv []string) ([]string, string, bool) {
 	if e.RexSession != "" && e.RexBlock != "" {
-		out := []string{"rex", "split", "-b", e.RexBlock, "--split", "right", "--cwd", repo, "--label", label}
+		out := []string{"rex", "split", "-b", e.RexBlock, "--split", "right", "--cwd", repo, "--label", label, "--"}
 		return append(out, agentArgv...), "rex", true
 	}
 	if e.Tmux != "" {

@@ -250,3 +250,37 @@ func TestHandoffPlainAndJsonCarryComments(t *testing.T) {
 		t.Errorf("json lost the comments:\n%s", js.String())
 	}
 }
+
+func TestHandoffPrintWithoutAnyResolvableAgent(t *testing.T) {
+	dir := handoffRepo(t)
+	missingAgentConfig(t)
+	out, err := handoffRun(t, "--repo", dir, "HEAD", "--where", "print", "--yes")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "needs a test") {
+		t.Errorf("print must work with no agent installed:\n%s", out)
+	}
+	list, _ := commentRun(t, "--repo", dir, "--rev", "HEAD")
+	if !strings.Contains(list, "(handed off)") {
+		t.Errorf("comments not stamped:\n%s", list)
+	}
+	stubHandoffAgent(t)
+	oldExec, oldTTY := syscallExec, handoffTerminal
+	execArgv := ""
+	syscallExec = func(path string, argv []string, env []string) error {
+		execArgv = strings.Join(argv, "\x00")
+		return nil
+	}
+	handoffTerminal = func(*os.File) bool { return true }
+	t.Cleanup(func() {
+		syscallExec = oldExec
+		handoffTerminal = oldTTY
+	})
+	if _, err := handoffRun(t, "--repo", dir, "HEAD", "--yes"); err != nil {
+		t.Fatalf("auto resolution should land on an agent, err = %v", err)
+	}
+	if !strings.Contains(execArgv, "needs a test") {
+		t.Errorf("exec argv = %q", execArgv)
+	}
+}

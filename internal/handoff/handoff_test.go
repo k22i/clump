@@ -123,7 +123,7 @@ func TestPaneArgvRex(t *testing.T) {
 	if !ok || via != "rex" {
 		t.Fatalf("ok=%v via=%q", ok, via)
 	}
-	want := []string{"rex", "split", "-b", "b7", "--split", "right", "--cwd", "/repo", "--label", "handoff: codex", "codex", "fix it"}
+	want := []string{"rex", "split", "-b", "b7", "--split", "right", "--cwd", "/repo", "--label", "handoff: codex", "--", "codex", "fix it"}
 	if strings.Join(got, "\x00") != strings.Join(want, "\x00") {
 		t.Fatalf("argv = %q, want %q", got, want)
 	}

@@ -24,12 +24,15 @@ ADR-0054 requires.
   terminal (a piped `git show | clump handoff` would hand the agent a dead pipe); tests stub the
   call and assert the argv instead of execing (ADR-0057).
 - `pane` — a new split in the multiplexer clump is already inside: `rex split -b $REX_BLOCK
-  --cwd <repo> --label "handoff: <agent>" -- <agent argv>` (the exact `rex.session.new_split` shape
-  the Rex module's `clump_watch` uses, rex/init.lua), else `tmux split-window -h -c <repo>` when
-  `$TMUX` is set. The launcher is invoked and its exit code reported; clump ran-time never attaches
-  to the agent's pane. Neither multiplexer present is an error, not a silent no-op.
+  --split right --cwd <repo> --label "handoff: <agent>" -- <agent argv>` (the `rex.session.new_split`
+  shape the Rex module's `clump_watch` uses, rex/init.lua), else `tmux split-window -h -c <repo>`
+  when `$TMUX` is set; the `--` keeps a prompt that starts with `-` out of rex's own flag parser.
+  The launcher is invoked and its exit code reported; clump never attaches to the agent's pane.
+  Neither multiplexer present is an error, not a silent no-op.
 - `print` — the prompt on stdout, nothing launched. This is how any agent we do not know about
-  works (configure its argv, then pipe the prompt wherever), and it keeps handoff scriptable.
+  works (configure its argv, then pipe the prompt wherever), and it keeps handoff scriptable:
+  it needs no agent installed at all — a `--where print` handoff does not resolve one, it is the
+  shape that works on a machine with nothing on PATH.
 
 The prompt travels in **argv, not stdin**: the agent inherits the TTY and its stdin is the agent's
 UI. Verified prompt forms — `claude "<prompt>"`, `codex "<prompt>"`,
@@ -74,6 +77,11 @@ item**: replacing would kill the pane lazygit pushes to (the IPC socket dies wit
 watch to print a prompt tears down the session for a scroll of text. The CLI honours `--where`
 literally; it is expected to run where the user can see the consequence.
 
+The CLI asks before `replace`/`pane` — replacing the process in someone's terminal is worth a beat
+of consent — and `--yes` skips the question, exactly as `clump submit` does; `print` never asks
+(its cost is one screen of text). `--dry-run` prints the exact command and the prompt, launching
+and stamping nothing, the same contract as the one-shot `--dry-run`.
+
 **Fail loud, degrade to print.** The binary is resolved with `LookPath` before anything is
 launched; if the exec cannot start — missing binary, no multiplexer, launcher error — clump prints
 the prompt *and* the exact command ("$ /path/to/agent 'prompt…'") on stdout and exits non-zero
@@ -95,3 +103,8 @@ The prompt is the numbered comments, each with the target an agent needs — `pa
 does not embed the diff or the grouping: the agent runs in the repo and can ask clump itself
 (`clump --json`, `clump comments --json`) or git. This is the contract `TestPrompt*` in
 internal/handoff pins.
+
+The user-facing reference — flags table, keys table, the "Handing off" section beside "Posting a
+review", the `clump comments` block — lives in docs/cli.md, docs/keys.md and docs/reviews.md rather
+than README.md: reference detail moved out of the README into docs pages earlier in this repo's
+history, and the README keeps one quick-start sentence pointing at docs/reviews.md.

@@ -130,7 +130,7 @@ func (m *Model) pickHandoff(name string) tea.Cmd {
 }
 
 func (m *Model) handoffPane(a handoff.Agent, prompt string, anchors []string) tea.Cmd {
-	paneArgv, via, ok := handoff.PaneArgv(paneEnvironment(), m.o.Repo, handoff.LabelFor(a.Name), a.ArgvWith(prompt))
+	paneArgv, via, ok := handoff.PaneArgv(handoff.PaneEnvironment(os.Getenv), m.o.Repo, handoff.LabelFor(a.Name), a.ArgvWith(prompt))
 	if !ok {
 		m.setFlash("no Rex or tmux session to open a pane in (--where print prints the prompt)", true)
 		return nil
@@ -157,8 +157,4 @@ func (m *Model) onHandoffMsg(msg handoffMsg) tea.Cmd {
 	}
 	m.setFlash("handed off to "+msg.agent+" in a new pane; the comments are stamped", false)
 	return m.status("done", "handed off to "+msg.agent)
-}
-
-func paneEnvironment() handoff.Environment {
-	return handoff.Environment{RexSession: os.Getenv("REX_SESSION"), RexBlock: os.Getenv("REX_BLOCK"), Tmux: os.Getenv("TMUX")}
 }

@@ -41,7 +41,7 @@ on a folded header act on its hunks.
 | `n/N` | next/previous match (while searching) |
 | `e` | open `$EDITOR` at the hunk |
 | `y` | copy a Markdown summary |
-| `H` | hand the review's comments to a coding agent (`claude`, `codex`, `opencode` or an `[agents.<name>]` entry) as its initial prompt, then get out of the way — a picker lists each configured agent and its launch shape; `enter` picks, `esc` cancels ([Posting a review](reviews.md#handing-off-to-a-coding-agent)) |
+| `H` | hand the review's comments to a coding agent (`claude`, `codex`, `opencode` or an `[agents.<name>]` entry) as its initial prompt, then get out of the way — a picker lists each configured agent and its launch shape; `enter` picks, `esc` cancels ([Handing off](reviews.md#handing-off-to-a-coding-agent)). In watch mode `H` opens a pane only: `replace` would kill the pane lazygit pushes to, and `print` would quit the session for a scroll of text |
 | `P` | post the comments as a review of the pull request (a diff opened with `--pr`; see [Posting a review](reviews.md#posting-a-review)) |
 | `r` | regroup (bypass the cache) |
 | `m` | switch provider |
