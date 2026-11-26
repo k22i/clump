@@ -11,27 +11,14 @@ it, edit it and copy it out. Instead of reading a commit file by file and guessi
 was doing, you read a short list of groups — "retry policy in the client", "tests for the timeout",
 "the changelog entry" — and check each against its hunks.
 
-```
-clump · range 7cad34e2a144^..2a438fc11199 · → claude-haiku · auto on
-──────────────────────────────────────────────────────────────────────────────────────────────────────────────
- ▸ Append log lines to docs/log.txt   +3 −0 1h │ 1. Append log lines to docs/log.txt
-   Add func f6 to src/fill.go         +1 −0 1h │ 1 file · 1 hunk · +3 −0
-                                               │
-                                               │   Adds three new lines (line 6 through line 8) to the end of
-                                               │   the log document. Documentation-only change with no code
-                                               │   impact.
-                                               │
-                                               │ ── docs/log.txt (M +3 −0) ──────────────────────────────────
-                                               │   @@ -3,3 +3,6 @@ line 2
-                                               │    3  3  line 3
-                                               │    4  4  line 4
-                                               │    5  5  line 5
-                                               │       6 +line 6
-                                               │       7 +line 7
-                                               │       8 +line 8
-──────────────────────────────────────────────────────────────────────────────────────────────────────────────
-? keys · / search · c reviewed · x mark · M move · z fold · a all · s split · u undo · q quit
-```
+<p align="center">
+  <img alt="clump's TUI on a branch: the group list on the left, the selected group's explanation and its diff on the right"
+       src="docs/images/preview.png" width="900">
+</p>
+
+The list on the left is the model's grouping — title, `+added −deleted`, hunk count — and the right
+side is the selected group's explanation, indented under its title, and its hunks, grouped by file:
+side by side at 100 columns or wider, stacked below that.
 
 **Highlights**
 
