@@ -17,24 +17,16 @@ import (
 	"github.com/k22i/clump/internal/tui/view"
 )
 
-// wideMin is the width from which the list and the diff sit side by side.
 const wideMin = 100
 
 const (
-	// padX is the breathing room on each side of a pane's content, so text
-	// never touches the separator or the edge of the terminal.
-	padX = 1
-	// minList and maxList bound the group list's width.
+	padX             = 1
 	minList, maxList = 24, 48
-	// chrome is the number of rows the body does not get: the header, the
-	// rule under it, the rule above the footer and the footer itself.
-	chrome = 4
+	chrome           = 4
 )
 
 func (m *Model) wide() bool { return m.width >= wideMin }
 
-// listWidth is the group list's width: enough for the longest title and its
-// counts, within 45% of the screen and the maxList cap.
 func (m *Model) listWidth() int {
 	want := minList
 	if m.doc != nil && m.doc.L != nil {
@@ -43,10 +35,8 @@ func (m *Model) listWidth() int {
 	return max(minList, min(want, min(maxList, m.width*9/20)))
 }
 
-// listInnerWidth is the list's content width: the pane minus its padding.
 func (m *Model) listInnerWidth() int { return max(4, m.listWidth()-2*padX) }
 
-// diffWidth is the diff pane's width.
 func (m *Model) diffWidth() int {
 	if m.wide() {
 		return max(10, m.width-m.listWidth()-1)
@@ -54,29 +44,23 @@ func (m *Model) diffWidth() int {
 	return max(10, m.width)
 }
 
-// diffInnerWidth is the diff pane's content width: the pane minus its padding.
-// Everything the pane draws into lines is measured against it.
 func (m *Model) diffInnerWidth() int { return max(8, m.diffWidth()-2*padX) }
 
-// listHeight is the list's height in the narrow layout.
 func (m *Model) listHeight() int {
 	h := m.height - chrome
 	return max(1, min(len(m.groups()), max(3, h/3)))
 }
 
-// bodyHeight is the diff pane's height.
 func (m *Model) bodyHeight() int {
-	h := m.height - chrome // header, two rules, footer
+	h := m.height - chrome
 	if !m.wide() {
 		h -= m.listHeight() + 1
 	}
 	return max(1, h)
 }
 
-// rule is the dim horizontal line that frames the body above and below.
 func (m *Model) rule() string { return m.th.Style(m.th.Border, strings.Repeat("─", m.width)) }
 
-// ensureLines (re)builds the diff pane's lines when stale.
 func (m *Model) ensureLines() []view.Line {
 	w := m.diffInnerWidth()
 	if m.linesOK && m.linesW == w {
@@ -106,7 +90,6 @@ func (m *Model) ensureLines() []view.Line {
 	return m.lines
 }
 
-// groupBlock is the selected group's title and explanation above its hunks.
 func (m *Model) groupBlock(g group.Group, w int) []view.Line {
 	mk := func(s string, st lipgloss.Style) view.Line {
 		s = view.Truncate(s, w)
@@ -128,8 +111,6 @@ func (m *Model) groupBlock(g group.Group, w int) []view.Line {
 	}
 	out = append(out, mk(stats, m.th.Dim))
 	if desc := strings.TrimSpace(g.Description); desc != "" && m.doc.grouped() {
-		// A blank line, then the prose indented off the title's column: the
-		// explanation reads as commentary on the group, not as more diff.
 		const indent = "  "
 		out = append(out, view.Line{Kind: view.KindBlank, FileIdx: -1})
 		for _, para := range strings.Split(desc, "\n") {
@@ -152,7 +133,6 @@ func plural(n int, w string) string {
 	return fmt.Sprintf("%d %ss", n, w)
 }
 
-// wrap breaks s into lines of at most w cells at spaces.
 func wrap(s string, w int) []string {
 	words := strings.Fields(s)
 	if len(words) == 0 {
@@ -174,7 +154,6 @@ func wrap(s string, w int) []string {
 	return append(out, cur)
 }
 
-// listRows are the group list's rows.
 func (m *Model) listRows() []view.ListRow {
 	var rows []view.ListRow
 	d := m.doc.L.Diff
@@ -258,7 +237,6 @@ func (m *Model) placeholder(s string, h int) string {
 	return strings.Join(lines, "\n")
 }
 
-// renderChoice renders a titled list with a cursor.
 func (m *Model) renderChoice(title string, items []string, cursor, h int) string {
 	lines := []string{"", "  " + m.th.Style(m.th.Title, title), ""}
 	start, end := listview.Window(len(items), cursor, max(1, h-5))
@@ -274,8 +252,6 @@ func (m *Model) renderChoice(title string, items []string, cursor, h int) string
 	return strings.Join(lines, "\n")
 }
 
-// renderBody is the list plus the diff pane, each padded away from the
-// separator and the edges of the screen.
 func (m *Model) renderBody(bodyH int) string {
 	rows := m.listRows()
 	pad := strings.Repeat(" ", padX)
@@ -305,7 +281,6 @@ func (m *Model) renderBody(bodyH int) string {
 	return strings.Join(list, "\n") + "\n" + m.rule() + "\n" + strings.Join(diff, "\n")
 }
 
-// listTheme dims the list when it is not focused (keeps the cursor visible).
 func (m *Model) listTheme() view.Theme {
 	th := m.th
 	if m.focus == focusDiff && !th.Plain {
@@ -314,13 +289,11 @@ func (m *Model) listTheme() view.Theme {
 	return th
 }
 
-// renderDiff renders the visible window of the diff pane.
 func (m *Model) renderDiff(w, h int) string {
 	lines := m.ensureLines()
 	if len(lines) == 0 {
 		return ""
 	}
-	// The last page stays full: the window never scrolls past the last line.
 	if maxScroll := max(0, len(lines)-h); m.scroll > maxScroll {
 		m.scroll = maxScroll
 	}
@@ -354,14 +327,11 @@ func (m *Model) renderDiff(w, h int) string {
 	return strings.Join(vis, "\n")
 }
 
-// headPart is one styled segment of the header line.
 type headPart struct {
 	text  string
 	style lipgloss.Style
 }
 
-// headerParts are the header's segments: clump, the change, its ref and
-// provider, then the markers and any progress.
 func (m *Model) headerParts() []headPart {
 	dim := m.th.Dim
 	parts := []headPart{{"clump", dim}}
@@ -406,8 +376,6 @@ func (m *Model) headerParts() []headPart {
 	return parts
 }
 
-// header is the top line: the change in bold, everything else dim, so the eye
-// lands on what is being reviewed rather than on clump.
 func (m *Model) header() string {
 	parts := m.headerParts()
 	var plain strings.Builder
@@ -418,7 +386,6 @@ func (m *Model) header() string {
 		plain.WriteString(p.text)
 	}
 	if lipgloss.Width(plain.String()) > m.width {
-		// Too many parts to style piecemeal: cut the joined line instead.
 		return m.th.Style(m.th.Title, view.Truncate(plain.String(), m.width))
 	}
 	sep := m.th.Style(m.th.Dim, " · ")
@@ -444,7 +411,6 @@ func (m *Model) providerLabel() string {
 	return m.provider
 }
 
-// footer is the notices bar / input line.
 func (m *Model) footer() string {
 	w := m.width
 	switch m.ov {
@@ -484,12 +450,8 @@ func (m *Model) footer() string {
 	return m.renderHints("")
 }
 
-// hint is one key hint in the footer strip.
 type hint struct{ key, desc string }
 
-// footerHints are the keys worth showing in the current state, most useful
-// first: renderHints drops from the end, so the narrowest terminals keep the
-// primary affordance.
 func (m *Model) footerHints() []hint {
 	if m.visual {
 		return []hint{{"esc", "cancel"}, {"x", "mark"}, {"M", "move"}}
@@ -504,8 +466,6 @@ func (m *Model) footerHints() []hint {
 	}
 }
 
-// renderHints draws lead, then the key hints, separated by dim dots. A hint
-// that does not fit is left out whole, rather than cut mid-word.
 func (m *Model) renderHints(lead string) string {
 	type seg struct {
 		text string
@@ -521,7 +481,7 @@ func (m *Model) renderHints(lead string) string {
 			lipgloss.Width(h.key) + 1 + lipgloss.Width(h.desc),
 		})
 	}
-	const sepW = 3 // " · "
+	const sepW = 3
 	sep := m.th.Style(m.th.Dim, " · ")
 	var b strings.Builder
 	used := 0
@@ -545,7 +505,6 @@ func (m *Model) renderHints(lead string) string {
 	return b.String()
 }
 
-// padLines splits s into exactly h lines, each padded to w cells.
 func padLines(s string, w, h int) []string {
 	var lines []string
 	if s != "" {
@@ -562,7 +521,6 @@ func padLines(s string, w, h int) []string {
 	return out
 }
 
-// padTo pads s (styled or not) with spaces to w cells.
 func padTo(s string, w int) string {
 	if d := w - lipgloss.Width(s); d > 0 {
 		return s + strings.Repeat(" ", d)
@@ -570,7 +528,6 @@ func padTo(s string, w int) string {
 	return s
 }
 
-// fitLines makes s exactly h lines.
 func fitLines(s string, w, h int) string {
 	return strings.Join(padLines(s, w, h), "\n")
 }

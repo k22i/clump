@@ -12,8 +12,6 @@ import (
 	"time"
 )
 
-// writeScript writes an executable /bin/sh script to a temp dir and returns its
-// path. Tests never call a real agent CLI.
 func writeScript(t *testing.T, body string) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "provider.sh")
@@ -23,7 +21,6 @@ func writeScript(t *testing.T, body string) string {
 	return path
 }
 
-// mustNew builds a provider from cfg or fails the test.
 func mustNew(t *testing.T, cfg Config) Provider {
 	t.Helper()
 	p, err := New(cfg)
@@ -33,8 +30,6 @@ func mustNew(t *testing.T, cfg Config) Provider {
 	return p
 }
 
-// evalSymlinks resolves path for comparison; a path that does not exist is
-// returned unchanged.
 func evalSymlinks(t *testing.T, path string) string {
 	t.Helper()
 	got, err := filepath.EvalSymlinks(path)
@@ -190,7 +185,6 @@ func TestCommandExitError(t *testing.T) {
 	if err == nil {
 		t.Fatal("Complete succeeded, want an exit error")
 	}
-	// Provider name, exit status and the stderr tail, in that order.
 	for _, want := range []string{"failing: exit status 3: boom"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Fatalf("error = %q, want it to contain %q", err, want)
@@ -258,7 +252,6 @@ func TestCommandKillsGroup(t *testing.T) {
 		done <- err
 	}()
 
-	// Wait until the shell has forked the child, so we have a pid to check.
 	var child int
 	for deadline := time.Now().Add(10 * time.Second); child == 0; {
 		if time.Now().After(deadline) {
@@ -284,7 +277,6 @@ func TestCommandKillsGroup(t *testing.T) {
 		t.Fatal("Complete did not return after cancellation")
 	}
 
-	// The grandchild must be dead too: signal 0 fails once it is gone.
 	for deadline := time.Now().Add(2 * time.Second); ; {
 		err := syscall.Kill(child, 0)
 		if err != nil {

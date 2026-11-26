@@ -18,7 +18,6 @@ type Result struct {
 	Fallback bool     `json:"fallback"`
 }
 
-// extractJSON finds the outermost {...} in model text (models sometimes add fences/prose).
 func extractJSON(s string) (string, bool) {
 	start := strings.Index(s, "{")
 	if start < 0 {
@@ -59,8 +58,6 @@ func FallbackPerFile(d *Diff, why string) Result {
 	return r
 }
 
-// Validate parses model output and enforces: IDs exist, every hunk in exactly one
-// group, group count capped. Repairs what it can; falls back to per-file otherwise.
 func Validate(d *Diff, text string, maxGroups int) Result {
 	js, ok := extractJSON(text)
 	if !ok {
@@ -131,7 +128,6 @@ func Validate(d *Diff, text string, maxGroups int) Result {
 	return r
 }
 
-// Check is the invariant used by tests: every hunk exactly once.
 func Check(d *Diff, r Result) error {
 	count := map[string]int{}
 	for _, g := range r.Groups {

@@ -117,7 +117,6 @@ func TestFindAnchor(t *testing.T) {
 	if a.Side != SideOld {
 		t.Fatalf("old-side anchor: %+v", a)
 	}
-	// path alone: file comment
 	a, err = FindAnchor(d, "a", "", 0)
 	if err != nil {
 		t.Fatal(err)
@@ -125,7 +124,6 @@ func TestFindAnchor(t *testing.T) {
 	if a.Kind != KindFile || a.Key != FileKey("a", []string{d.Hunks[0].ReviewKey()}) {
 		t.Fatalf("file anchor: %+v", a)
 	}
-	// deleted file: old side only
 	dd := parse(t, delPatch)
 	a, err = FindAnchor(dd, "gone", SideNew, 1)
 	if err == nil {
@@ -162,9 +160,8 @@ func TestResolvePlace(t *testing.T) {
 		byKind[KindFile][0].Key:     {{ID: "c3", Text: "file a", At: time.Unix(12, 0)}},
 		anchors[len(anchors)-1].Key: {{ID: "c4", Text: "group b", At: time.Unix(13, 0)}},
 	}
-	anchors[0].GroupID = "" // resolved from grouping below
+	anchors[0].GroupID = ""
 	res := Resolve(anchors, comments)
-	// first three comments are on a's hunks; the group comment is on g2
 	g := group.Grouping{Groups: []group.Group{
 		{ID: "g1", Title: "A", Hunks: []string{d.Hunks[0].ID}},
 		{ID: "g2", Title: "B", Hunks: []string{d.Hunks[1].ID}},

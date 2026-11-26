@@ -12,8 +12,6 @@ import (
 	"github.com/k22i/clump/internal/tui/view/viewtest"
 )
 
-// basicRows is the fixture for the list goldens: five rows, one of them the
-// Ungrouped group and one carrying marks.
 func basicRows() []view.ListRow {
 	return []view.ListRow{
 		{ID: "g1", Title: "Parser hardening", Add: 12, Del: 3, Hunks: 2},
@@ -121,8 +119,6 @@ func TestListNarrow(t *testing.T) {
 		if l == "" {
 			t.Errorf("line %d is empty; a narrow row must still show something", i)
 		}
-		// A row too narrow for the counts is the whole line truncated; a row
-		// with room for one title cell keeps the counts flush right.
 		prefix := "  "
 		if i == 0 {
 			prefix = cursorMark
@@ -152,7 +148,6 @@ func TestListLongTitle(t *testing.T) {
 	if strings.Contains(got, "\n") {
 		t.Fatalf("one row rendered as %q, want a single line", got)
 	}
-	// A cut title still keeps titleGap cells free before the counts.
 	if want := "…" + strings.Repeat(" ", titleGap) + " +3 −1 2h"; !strings.HasSuffix(got, want) {
 		t.Fatalf("row = %q, want it to end with %q", got, want)
 	}
@@ -183,8 +178,6 @@ func TestListColoured(t *testing.T) {
 		t.Errorf("cursor row %q is not styled", colouredLines[1])
 	}
 
-	// A narrow row must strip back to its plain text too: the parts are cut
-	// separately before styling, so the escape codes never split a rune.
 	narrowPlain := Render(rows, 0, 12, 5, view.PlainTheme())
 	narrowColoured := Render(rows, 0, 12, 5, view.NewTheme(false))
 	np := strings.Split(narrowPlain, "\n")

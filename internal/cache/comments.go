@@ -14,23 +14,8 @@ import (
 	"github.com/k22i/clump/internal/comment"
 )
 
-// Review comments are stored by anchor key (internal/comment), not by diff:
-// the same rules as reviewed marks — a comment follows the content it was
-// written on across diffs, regroupings and edits, and disappears when that
-// content changes. Several comments can sit on one anchor.
-//
-// They live in 16 shards, comments/<key[0]>.json, each
-//
-//	{"version":1,"comments":{"<anchorKey>":[{"id","text","at"}, ...]}}
-//
-// A comment's id is the first 12 hex digits of sha256(key \0 at \0 text), so
-// it can be deleted without reading it first. Entries whose comments are
-// all older than CommentTTL are dropped when their shard is written.
-
-// CommentTTL is how long a comment is kept.
 const CommentTTL = 180 * 24 * time.Hour
 
-// commentShard is one disk file.
 type commentShard struct {
 	Version  int                        `json:"version"`
 	Comments map[string][]commentStored `json:"comments"`
@@ -46,9 +31,6 @@ func (s *Store) commentsPath(shard byte) string {
 	return filepath.Join(s.dir, "comments", string(shard)+".json")
 }
 
-// readCommentShard reads one shard; a missing, corrupt or other-version
-// file is an empty shard (comments are review notes, not data that must
-// never be lost).
 func (s *Store) readCommentShard(shard byte) commentShard {
 	sh := commentShard{Version: FormatVersion, Comments: map[string][]commentStored{}}
 	data, err := s.fs.ReadFile(s.commentsPath(shard))
@@ -62,13 +44,11 @@ func (s *Store) readCommentShard(shard byte) commentShard {
 	return got
 }
 
-// CommentID builds the id of a comment written at at with text on key.
 func CommentID(key string, at time.Time, text string) string {
 	sum := sha256.Sum256([]byte(key + "\x00" + at.UTC().Format(time.RFC3339Nano) + "\x00" + text))
 	return hex.EncodeToString(sum[:6])
 }
 
-// Comments returns the comments stored for each key that has any.
 func (s *Store) Comments(keys []string) (map[string][]comment.Comment, error) {
 	shards, err := byShard(keys)
 	if err != nil {
@@ -91,9 +71,6 @@ func (s *Store) Comments(keys []string) (map[string][]comment.Comment, error) {
 	return out, nil
 }
 
-// AddComment stores a comment on key and returns it with its id filled in.
-// The touched shard is re-read just before it is written, so two clump
-// processes lose at most a comment made in the same instant.
 func (s *Store) AddComment(key, text string, now time.Time) (comment.Comment, error) {
 	if strings.TrimSpace(text) == "" {
 		return comment.Comment{}, errors.New("cache: empty comment")
@@ -107,8 +84,6 @@ func (s *Store) AddComment(key, text string, now time.Time) (comment.Comment, er
 	sh := s.readCommentShard(shard)
 	at := now.UTC().Truncate(time.Second)
 	c := comment.Comment{ID: CommentID(key, at, text), Text: text, At: at}
-	// TTL-drop old entries and new duplicates with the same content and
-	// timestamp (the id covers them).
 	kept := sh.Comments[key][:0]
 	for _, old := range sh.Comments[key] {
 		if now.Sub(old.At) <= CommentTTL && old.ID != c.ID {
@@ -122,8 +97,6 @@ func (s *Store) AddComment(key, text string, now time.Time) (comment.Comment, er
 	return c, nil
 }
 
-// DeleteComment removes the comment with id from key. Unknown keys and ids
-// are not errors: deletion is idempotent.
 func (s *Store) DeleteComment(key, id string) error {
 	if err := checkName(key); err != nil {
 		return err
@@ -143,7 +116,7 @@ func (s *Store) DeleteComment(key, id string) error {
 		}
 	}
 	if len(kept) == len(cs) {
-		return nil // id unknown: nothing to do
+		return nil
 	}
 	if len(kept) > 0 {
 		sh.Comments[key] = kept
@@ -153,9 +126,6 @@ func (s *Store) DeleteComment(key, id string) error {
 	return s.writeCommentShard(shard, sh)
 }
 
-// AllComments returns every stored comment with its anchor key, for the
-// comments CLI's delete-by-id (which knows no key). TTL-dropped entries are
-// not returned.
 func (s *Store) AllComments(now time.Time) (map[string][]comment.Comment, error) {
 	out := map[string][]comment.Comment{}
 	for _, shard := range []byte("0123456789abcdef") {
@@ -172,7 +142,6 @@ func (s *Store) AllComments(now time.Time) (map[string][]comment.Comment, error)
 	return out, nil
 }
 
-// writeCommentShard writes the shard atomically, dropping empties.
 func (s *Store) writeCommentShard(shard byte, sh commentShard) error {
 	sh.Version = FormatVersion
 	path := s.commentsPath(shard)

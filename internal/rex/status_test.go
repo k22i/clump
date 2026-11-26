@@ -57,7 +57,7 @@ func TestSanitizeMsg(t *testing.T) {
 	}
 
 	t.Run("cut on a rune boundary", func(t *testing.T) {
-		in := strings.Repeat("é", 2500) // 5000 bytes
+		in := strings.Repeat("é", 2500)
 		got := SanitizeMsg(in)
 		if len(got) > MaxMsgDecoded {
 			t.Fatalf("len(SanitizeMsg(5000 bytes)) = %d, want <= %d", len(got), MaxMsgDecoded)
@@ -142,8 +142,6 @@ func TestEncode(t *testing.T) {
 	}
 }
 
-// decodeMsg returns the decoded msg of an encoded report, and whether the
-// report carried one.
 func decodeMsg(t *testing.T, seq string) (string, bool) {
 	t.Helper()
 	body, ok := strings.CutPrefix(seq, "\x1b]7501;")
@@ -172,8 +170,6 @@ func decodeMsg(t *testing.T, seq string) (string, bool) {
 }
 
 func TestEncodeLimits(t *testing.T) {
-	// 100 KB of text, newlines, tabs and escapes: the sort of thing a git
-	// diff or an error would carry.
 	in := strings.Repeat("bad\x1b[0m line\n\twith: separators ", 4000)
 	if len(in) < 100*1024 {
 		t.Fatalf("test input is %d bytes, want >= 100 KB", len(in))
@@ -203,7 +199,6 @@ func TestEncodeValueCharset(t *testing.T) {
 	valueRE := regexp.MustCompile(`^[A-Za-z0-9_.,+/=-]*$`)
 	states := []State{StateIdle, StateWorking, StateDone, StateBlocked, StateError, StateClear}
 	rng := rand.New(rand.NewPCG(1, 2))
-	// A pool that includes everything msg must survive or strip.
 	const pool = "abc XYZ 0123:_=;.,/+-*\n\t\r\x00\x1b\x7f\u0085\u009f\u202e\u200f\u2066é🎉"
 
 	for i := range 1000 {
@@ -286,7 +281,6 @@ func TestReporter(t *testing.T) {
 		if want := Encode(done); writes[1] != want {
 			t.Errorf("wrote %q, want %q", writes[1], want)
 		}
-		// A repeat of the first report is a change again: the last one wins.
 		r.Report(working)
 		if len(writes) != 3 {
 			t.Fatalf("writes = %q after returning to the first report, want 3", writes)
@@ -298,7 +292,7 @@ func TestReporter(t *testing.T) {
 		if r.Enabled() {
 			t.Error("nil Reporter.Enabled() = true, want false")
 		}
-		r.Report(Status{State: StateDone}) // must not panic
+		r.Report(Status{State: StateDone})
 	})
 
 	t.Run("concurrent reports", func(t *testing.T) {
@@ -322,8 +316,6 @@ func TestReporter(t *testing.T) {
 			go func() {
 				defer wg.Done()
 				for range rounds {
-					// Two distinct reports per goroutine, so every goroutine
-					// races with every other one on the same sequences.
 					r.Report(Status{State: StateWorking, Progress: g % 2, Msg: "Grouping"})
 					r.Report(Status{State: StateDone, Progress: -1, Msg: "Grouped"})
 				}

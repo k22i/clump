@@ -10,17 +10,11 @@ import (
 	"github.com/k22i/clump/internal/gitdiff"
 )
 
-// ValidateOpts configures Validate.
 type ValidateOpts struct {
-	// MaxGroups caps the number of model groups; <= 0 means DefaultMaxGroups.
 	MaxGroups int
-	// Aliases maps a collapsed catalog unit ID ("c1") to the hunk IDs it
-	// stands for. The model may assign a unit; Validate expands it.
-	Aliases map[string][]string
+	Aliases   map[string][]string
 }
 
-// Limits the validator applies to model text. Model text reaches the terminal,
-// so it must never carry escape sequences and must never be unbounded.
 const (
 	maxTitleRunes = 80
 	maxDescRunes  = 1000
@@ -31,9 +25,6 @@ const (
 	ellipsis      = "\u2026"
 )
 
-// Validate parses the model's text output and returns a Result that always
-// passes Check(d, result.Grouping). It repairs what it can and otherwise
-// falls back to one group per file. See DESIGN.md "Validation and repair".
 func Validate(d *gitdiff.Diff, text string, o ValidateOpts) Result {
 	max := o.MaxGroups
 	if max <= 0 {
@@ -55,7 +46,6 @@ func Validate(d *gitdiff.Diff, text string, o ValidateOpts) Result {
 		return FallbackPerFile(d, "invalid JSON: "+err.Error())
 	}
 
-	// Generated hunks were not in the prompt; the model cannot place them.
 	known := make(map[string]bool, len(d.Hunks))
 	for _, h := range d.Hunks {
 		known[h.ID] = !IsGenerated(h)
@@ -65,7 +55,6 @@ func Validate(d *gitdiff.Diff, text string, o ValidateOpts) Result {
 	seen := make(map[string]bool, len(d.Hunks))
 	unknown, dup := 0, 0
 
-	// place adds one hunk ID to g, counting the reasons it cannot be placed.
 	place := func(g *Group, id string) {
 		switch {
 		case !known[id]:
@@ -84,8 +73,6 @@ func Validate(d *gitdiff.Diff, text string, o ValidateOpts) Result {
 			Description: sanitiseDescription(mg.Description),
 		}
 		for _, rawID := range mg.Hunks {
-			// Only JSON strings are hunk IDs; numbers, null, objects and
-			// arrays count as unknown.
 			s := strings.TrimSpace(string(rawID))
 			if s == "" || s[0] != '"' {
 				unknown++
@@ -93,9 +80,6 @@ func Validate(d *gitdiff.Diff, text string, o ValidateOpts) Result {
 			}
 			var id string
 			if err := json.Unmarshal([]byte(s), &id); err != nil {
-				// Unreachable for valid JSON (the raw message already came
-				// from the decoder and starts with a quote), but counting the
-				// element as unknown is the safe answer if it ever happens.
 				unknown++
 				continue
 			}
@@ -169,9 +153,6 @@ func Validate(d *gitdiff.Diff, text string, o ValidateOpts) Result {
 	return Result{Grouping: Grouping{Groups: groups}, Notices: notices}
 }
 
-// AllGenerated is the result for a diff whose every hunk is generated: the
-// Generated files group alone, with no model call. ok is false when d has a
-// hunk to review.
 func AllGenerated(d *gitdiff.Diff) (Result, bool) {
 	for _, h := range d.Hunks {
 		if !IsGenerated(h) {
@@ -185,10 +166,6 @@ func AllGenerated(d *gitdiff.Diff) (Result, bool) {
 	return Result{Grouping: Grouping{Groups: []Group{g}}}, true
 }
 
-// FallbackPerFile returns one group per file of d (files with their hunks in
-// diff order), with Fallback set and the notice
-// "fallback: one group per file (<why>)". Generated files share one
-// Generated files group at the end instead.
 func FallbackPerFile(d *gitdiff.Diff, why string) Result {
 	r := Result{
 		Fallback: true,
@@ -214,9 +191,6 @@ func FallbackPerFile(d *gitdiff.Diff, why string) Result {
 	return r
 }
 
-// ExtractJSON returns the first balanced top-level {...} object in s,
-// skipping braces inside JSON strings. Models sometimes wrap JSON in prose or
-// code fences. ok is false if there is no balanced object.
 func ExtractJSON(s string) (obj string, ok bool) {
 	start := strings.Index(s, "{")
 	if start < 0 {
@@ -227,14 +201,12 @@ func ExtractJSON(s string) (obj string, ok bool) {
 		c := s[i]
 		switch {
 		case esc:
-			// The escaped byte is consumed; only strings can be escaped.
 			esc = false
 		case c == '\\' && inStr:
 			esc = true
 		case c == '"':
 			inStr = !inStr
 		case inStr:
-			// Braces inside a string do not change depth.
 		case c == '{':
 			depth++
 		case c == '}':
@@ -247,22 +219,16 @@ func ExtractJSON(s string) (obj string, ok bool) {
 	return "", false
 }
 
-// sortHunks sorts hunk IDs ascending by their number.
 func sortHunks(ids []string) {
 	sort.SliceStable(ids, func(i, j int) bool {
 		a, b := HunkNum(ids[i]), HunkNum(ids[j])
 		if a != b {
 			return a < b
 		}
-		// Only reachable for IDs HunkNum does not understand; a total order
-		// keeps the sort deterministic.
 		return ids[i] < ids[j]
 	})
 }
 
-// sanitiseTitle makes a model title safe to print: control runes become
-// spaces, whitespace runs collapse, the result is cut to maxTitleRunes and an
-// empty title becomes untitledGroup.
 func sanitiseTitle(s string) string {
 	t := collapseSpaces(s)
 	if t == "" {
@@ -271,8 +237,6 @@ func sanitiseTitle(s string) string {
 	return cutRunes(t, maxTitleRunes)
 }
 
-// sanitiseDescription sanitises each line like a title (keeping newlines),
-// trims the result and cuts it to maxDescRunes.
 func sanitiseDescription(s string) string {
 	lines := strings.Split(s, "\n")
 	for i, l := range lines {
@@ -281,13 +245,10 @@ func sanitiseDescription(s string) string {
 	return cutRunes(strings.TrimSpace(strings.Join(lines, "\n")), maxDescRunes)
 }
 
-// collapseSpaces replaces control runes with spaces and collapses whitespace
-// runs, trimming both ends.
 func collapseSpaces(s string) string {
 	return strings.Join(strings.Fields(cleanControls(s)), " ")
 }
 
-// cleanControls replaces every control rune of s with a space.
 func cleanControls(s string) string {
 	return strings.Map(func(r rune) rune {
 		if unicode.IsControl(r) {
@@ -297,8 +258,6 @@ func cleanControls(s string) string {
 	}, s)
 }
 
-// cutRunes shortens s to at most n runes, replacing the last rune with an
-// ellipsis when it has to cut.
 func cutRunes(s string, n int) string {
 	r := []rune(s)
 	if len(r) <= n {

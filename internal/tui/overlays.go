@@ -7,8 +7,8 @@ import (
 type confirmKind int
 
 const (
-	confirmSend    confirmKind = iota // y sends the job above the ceiling
-	confirmRegroup                    // d discard / s snapshot / esc
+	confirmSend confirmKind = iota
+	confirmRegroup
 )
 
 type confirmState struct {
@@ -56,7 +56,7 @@ const (
 )
 
 type targetOpt struct {
-	id    string // "" = new group
+	id    string
 	label string
 }
 
@@ -84,7 +84,6 @@ func (m *Model) keyTarget(key string) tea.Cmd {
 			return m.finishTarget(t.opts[t.cursor])
 		}
 	default:
-		// 1-9 pick a group by number.
 		if len(key) == 1 && key[0] >= '1' && key[0] <= '9' {
 			n := int(key[0] - '0')
 			for i, o := range t.opts {
@@ -116,14 +115,14 @@ const (
 	inputNew inputAct = iota
 	inputRename
 	inputMoveNew
-	inputComment // in.id holds the comment's anchor key
+	inputComment
 )
 
 type inputState struct {
 	act   inputAct
 	title lineInput
 	desc  lineInput
-	field int // 0 title, 1 description (rename only)
+	field int
 	id    string
 	hunks []string
 }
@@ -156,7 +155,7 @@ func (m *Model) keyInput(k tea.KeyPressMsg) tea.Cmd {
 		m.ov = ovNone
 	case done:
 		if in.act == inputRename && in.field == 0 {
-			in.field = 1 // enter on the title moves to the explanation
+			in.field = 1
 			return nil
 		}
 		m.ov = ovNone

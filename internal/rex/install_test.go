@@ -12,17 +12,13 @@ import (
 	"time"
 )
 
-// module is a stand-in for the embedded rex/init.lua.
 var installTestModule = []byte("-- clump for Rex (test module)\nreturn {}\n")
 
-// installPaths is a pair of scratch paths, so no test ever touches the real
-// ~/.config/rex/init.lua.
 type installPaths struct {
-	cfg string // the Rex init.lua
-	mod string // clump's module
+	cfg string
+	mod string
 }
 
-// newInstallPaths returns config and module paths inside one t.TempDir().
 func newInstallPaths(t *testing.T) installPaths {
 	t.Helper()
 	dir := t.TempDir()
@@ -32,13 +28,10 @@ func newInstallPaths(t *testing.T) installPaths {
 	}
 }
 
-// opts is a print-only InstallOpts for these paths and module.
 func (p installPaths) opts() InstallOpts {
 	return InstallOpts{ConfigPath: p.cfg, ModulePath: p.mod, Module: installTestModule}
 }
 
-// runInstall runs Install with o.Out captured, defaulting In to EOF, and
-// returns what it printed.
 func runInstall(t *testing.T, o InstallOpts) (string, error) {
 	t.Helper()
 	var out bytes.Buffer
@@ -50,7 +43,6 @@ func runInstall(t *testing.T, o InstallOpts) (string, error) {
 	return out.String(), err
 }
 
-// installMustRead returns the contents of path.
 func installMustRead(t *testing.T, path string) []byte {
 	t.Helper()
 	b, err := os.ReadFile(path)
@@ -60,8 +52,6 @@ func installMustRead(t *testing.T, path string) []byte {
 	return b
 }
 
-// installMustPerm returns path's permission bits, failing the test when path does
-// not exist.
 func installMustPerm(t *testing.T, path string) fs.FileMode {
 	t.Helper()
 	info, err := os.Stat(path)
@@ -71,7 +61,6 @@ func installMustPerm(t *testing.T, path string) fs.FileMode {
 	return info.Mode().Perm()
 }
 
-// installMustNotExist asserts that path does not exist.
 func installMustNotExist(t *testing.T, path string) {
 	t.Helper()
 	if _, err := os.Stat(path); !errors.Is(err, fs.ErrNotExist) {
@@ -79,7 +68,6 @@ func installMustNotExist(t *testing.T, path string) {
 	}
 }
 
-// installBackups returns the clump installBackups of the given config file.
 func installBackups(t *testing.T, configPath string) []string {
 	t.Helper()
 	b, err := filepath.Glob(configPath + ".clump-backup-*")
@@ -89,7 +77,6 @@ func installBackups(t *testing.T, configPath string) []string {
 	return b
 }
 
-// TestConfigPath pins the Rex init.lua location rules.
 func TestConfigPath(t *testing.T) {
 	home := t.TempDir()
 	xdg := t.TempDir()
@@ -117,7 +104,6 @@ func TestConfigPath(t *testing.T) {
 	}
 }
 
-// TestModulePath pins where clump writes its own Lua module.
 func TestModulePath(t *testing.T) {
 	home := t.TempDir()
 	xdg := t.TempDir()
@@ -145,7 +131,6 @@ func TestModulePath(t *testing.T) {
 	}
 }
 
-// TestDofileLine pins the exact line, including Lua string escaping.
 func TestDofileLine(t *testing.T) {
 	tests := []struct {
 		name string
@@ -172,8 +157,6 @@ func TestDofileLine(t *testing.T) {
 	}
 }
 
-// TestInstallPrintOnly: without Write, Install writes the module and prints
-// the line, leaving the config alone.
 func TestInstallPrintOnly(t *testing.T) {
 	p := newInstallPaths(t)
 	out, err := runInstall(t, p.opts())
@@ -201,7 +184,6 @@ func TestInstallPrintOnly(t *testing.T) {
 	installMustNotExist(t, p.cfg)
 }
 
-// TestInstallModuleUpToDate: a second run with the same bytes writes nothing.
 func TestInstallModuleUpToDate(t *testing.T) {
 	p := newInstallPaths(t)
 	if _, err := runInstall(t, p.opts()); err != nil {
@@ -231,8 +213,6 @@ func TestInstallModuleUpToDate(t *testing.T) {
 	}
 }
 
-// TestInstallWriteYes: an existing config without a trailing newline gains
-// one, plus the line, and is backed up first.
 func TestInstallWriteYes(t *testing.T) {
 	p := newInstallPaths(t)
 	const original = "-- mine\nrex.x = 1"
@@ -277,7 +257,6 @@ func TestInstallWriteYes(t *testing.T) {
 	}
 }
 
-// TestInstallWriteNewConfig: a missing config is created with mode 0644.
 func TestInstallWriteNewConfig(t *testing.T) {
 	p := newInstallPaths(t)
 	o := p.opts()
@@ -306,7 +285,6 @@ func TestInstallWriteNewConfig(t *testing.T) {
 	}
 }
 
-// TestInstallWriteNo: anything but y/yes — including EOF — writes nothing.
 func TestInstallWriteNo(t *testing.T) {
 	const original = "-- mine\n"
 	for _, tt := range []struct {
@@ -345,8 +323,6 @@ func TestInstallWriteNo(t *testing.T) {
 	}
 }
 
-// installFailReader fails the test when read; Install must not prompt when the
-// config already loads the module.
 type installFailReader struct{ t *testing.T }
 
 func (r installFailReader) Read([]byte) (int, error) {
@@ -354,8 +330,6 @@ func (r installFailReader) Read([]byte) (int, error) {
 	return 0, io.EOF
 }
 
-// TestInstallAlreadyLoaded: a config that mentions the module path is left
-// alone and nothing is asked.
 func TestInstallAlreadyLoaded(t *testing.T) {
 	p := newInstallPaths(t)
 	original := "-- mine\n" + DofileLine(p.mod) + "\n"
@@ -387,7 +361,6 @@ func TestInstallAlreadyLoaded(t *testing.T) {
 	}
 }
 
-// TestInstallEmptyModule: Install needs the module's bytes.
 func TestInstallEmptyModule(t *testing.T) {
 	p := newInstallPaths(t)
 	o := p.opts()

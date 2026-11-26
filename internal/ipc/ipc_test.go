@@ -22,9 +22,6 @@ import (
 	"time"
 )
 
-// shortSocketPath returns a socket path inside a fresh, short directory made
-// for the test. macOS limits Unix socket paths to 104 bytes, so t.TempDir()
-// (deep under /var/folders) must not be used for sockets.
 func shortSocketPath(t *testing.T) string {
 	t.Helper()
 	dir, err := os.MkdirTemp("", "ipc")
@@ -35,7 +32,6 @@ func shortSocketPath(t *testing.T) string {
 	return filepath.Join(dir, "s.sock")
 }
 
-// receive returns the next message from ch, failing the test on timeout.
 func receive(t *testing.T, ch <-chan Msg) Msg {
 	t.Helper()
 	select {
@@ -47,7 +43,6 @@ func receive(t *testing.T, ch <-chan Msg) Msg {
 	}
 }
 
-// expectNoMessage fails the test when a message arrives within d.
 func expectNoMessage(t *testing.T, ch <-chan Msg, d time.Duration) {
 	t.Helper()
 	select {
@@ -103,7 +98,6 @@ func TestEncodeDecodeRoundTrip(t *testing.T) {
 	}
 }
 
-// filler yields n identical bytes without allocating them up front.
 type filler struct{ n int64 }
 
 func (f *filler) Read(p []byte) (int, error) {
@@ -146,7 +140,6 @@ func TestDecodeErrors(t *testing.T) {
 	})
 
 	t.Run("too large", func(t *testing.T) {
-		// Lazy reader: MaxMsgBytes is far too big to materialise twice.
 		src := &filler{n: MaxMsgBytes + 10}
 		if _, err := Decode(src); !errors.Is(err, ErrTooLarge) {
 			t.Fatalf("Decode of an oversized message = %v, want ErrTooLarge", err)
@@ -244,9 +237,8 @@ func TestFindRepoRoot(t *testing.T) {
 		dir := t.TempDir()
 		got := FindRepoRoot(dir)
 		if got == "" {
-			return // nothing above the temp dir is a repo: the expected case
+			return
 		}
-		// Only acceptable if an ancestor really is a repo.
 		if _, err := os.Lstat(filepath.Join(got, ".git")); err != nil {
 			t.Fatalf("FindRepoRoot(%q) = %q, which has no .git", dir, got)
 		}
@@ -284,7 +276,6 @@ func TestListenPermissions(t *testing.T) {
 
 func TestListenStaleSocket(t *testing.T) {
 	path := shortSocketPath(t)
-	// A leftover regular file (a crashed watch) must not block a new watch.
 	if err := os.WriteFile(path, []byte("stale"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -325,7 +316,6 @@ func TestListenInUse(t *testing.T) {
 		second.Close()
 	}
 
-	// The live listener keeps working.
 	want := Msg{V: Version, SentNS: 7, RepoRoot: "/r", Diff: "after in-use\n"}
 	if err := Send(path, want, DialTimeout, time.Second); err != nil {
 		t.Fatalf("Send: %v", err)
@@ -449,7 +439,6 @@ func TestServeStopsOnCtx(t *testing.T) {
 		t.Fatal("Serve did not return within 1s of cancellation")
 	}
 
-	// Serve's own goroutines must be gone; give the scheduler a moment.
 	deadline := time.Now().Add(2 * time.Second)
 	for {
 		now := runtime.NumGoroutine()
@@ -491,8 +480,6 @@ func TestCloseRemovesOnlyOwnSocket(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Listen: %v", err)
 		}
-		// A new watch removes the file and binds the same path; the old
-		// listener still holds its (now unlinked) socket.
 		if err := os.Remove(path); err != nil {
 			t.Fatalf("remove socket by hand: %v", err)
 		}
@@ -535,8 +522,6 @@ func TestSendNoListener(t *testing.T) {
 
 	t.Run("stale socket file", func(t *testing.T) {
 		path := shortSocketPath(t)
-		// Bind and close without unlinking: exactly the leftovers a crashed
-		// watch leaves behind.
 		ul, err := net.Listen("unix", path)
 		if err != nil {
 			t.Fatalf("net.Listen: %v", err)
@@ -567,7 +552,6 @@ func TestSendWriteDeadline(t *testing.T) {
 		t.Fatalf("net.Listen: %v", err)
 	}
 
-	// Accept connections and never read them, so the writer's buffer fills.
 	var mu sync.Mutex
 	var conns []net.Conn
 	go func() {

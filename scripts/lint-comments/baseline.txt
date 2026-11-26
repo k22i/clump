@@ -1,0 +1,2 @@
+# Comment ratchet: the most comments each file may still carry.
+# Lower a count (or drop the line) as a file is cleaned; `-update` refuses to raise one.

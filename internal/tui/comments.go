@@ -1,14 +1,5 @@
 package tui
 
-// Review comments: writing, storing and locating them in the pane.
-//
-// A comment attaches to a line (a rendered diff line), a file (its whole
-// change) or a group, each keyed by content (see internal/comment). Comments
-// load with the diff and after a regroup; a new group's key is fetched on
-// first use so comments survive group edits without a reload. C comments
-// the target under the cursor and opens the one-line input; D deletes the
-// comment row under the cursor.
-
 import (
 	"strings"
 	"time"
@@ -19,21 +10,17 @@ import (
 	"github.com/k22i/clump/internal/tui/view"
 )
 
-// commentRef names one rendered comment row's comment, for D.
 type commentRef struct {
 	key string
 	id  string
 }
 
-// reportDoc is the document the outputs see, comments included.
 func (m *Model) reportDoc() report.Doc {
 	d := m.doc.report()
 	d.Comments = m.reportComments()
 	return d
 }
 
-// reportComments places the doc's comments on the grouping in play,
-// stable in whole-diff order: files and lines in diff order, then groups.
 func (m *Model) reportComments() []comment.Placed {
 	if m.doc == nil || m.doc.L == nil || len(m.comments) == 0 {
 		return nil
@@ -43,8 +30,6 @@ func (m *Model) reportComments() []comment.Placed {
 	return comment.Place(res, m.doc.L.Diff, m.doc.hist.Current())
 }
 
-// loadComments reads the comments of every anchor of the doc and its current
-// grouping (group comments follow the grouping on screen).
 func (m *Model) loadComments() {
 	m.comments = map[string][]comment.Comment{}
 	m.loadedKeys = map[string]bool{}
@@ -67,7 +52,6 @@ func (m *Model) loadComments() {
 	m.comments = got
 }
 
-// commentKeys lists the anchor keys of the doc as shown now.
 func (m *Model) commentKeys() []string {
 	seen := map[string]bool{}
 	var keys []string
@@ -80,7 +64,6 @@ func (m *Model) commentKeys() []string {
 	return keys
 }
 
-// groupIDs is the current grouping's group IDs (""-free).
 func (m *Model) groupIDs() []string {
 	gs := m.groups()
 	ids := make([]string, 0, len(gs))
@@ -90,8 +73,6 @@ func (m *Model) groupIDs() []string {
 	return ids
 }
 
-// commentsOn returns the comments stored on key, fetching the key once when
-// it is first seen (a group's key can be newer than the last load).
 func (m *Model) commentsOn(key string) []comment.Comment {
 	if cs, ok := m.comments[key]; ok {
 		return cs
@@ -115,7 +96,6 @@ func (m *Model) commentsOn(key string) []comment.Comment {
 	return nil
 }
 
-// fileKey is the anchor key of file fi's whole change.
 func (m *Model) fileKey(fi int) string {
 	if m.doc == nil || m.doc.L == nil || fi < 0 || fi >= len(m.doc.L.Diff.Files) {
 		return ""
@@ -128,8 +108,6 @@ func (m *Model) fileKey(fi int) string {
 	return comment.FileKey(f.DisplayPath(), rkeys)
 }
 
-// typedComment is the anchor key and prompt title for the target under the
-// cursor; ok is false when there is nothing to comment on.
 func (m *Model) typedComment() (key, target string, ok bool) {
 	if m.doc == nil || m.doc.L == nil {
 		return "", "", false
@@ -171,7 +149,6 @@ func (m *Model) typedComment() (key, target string, ok bool) {
 	return "", "", false
 }
 
-// openComment is C.
 func (m *Model) openComment() {
 	key, target, ok := m.typedComment()
 	if !ok {
@@ -185,7 +162,6 @@ func (m *Model) openComment() {
 	m.openInput(inputComment, prompt, "", "", key, nil)
 }
 
-// saveComment is the input overlay's enter, from finishInput.
 func (m *Model) saveComment(key, text string) {
 	text = strings.TrimSpace(text)
 	if text == "" {
@@ -208,7 +184,6 @@ func (m *Model) saveComment(key, text string) {
 	m.setFlash("comment added", false)
 }
 
-// deleteComment is D: drop the comment row under the cursor.
 func (m *Model) deleteComment() {
 	ref, ok := m.commentAt[m.dcur]
 	if !ok {
@@ -237,15 +212,10 @@ func (m *Model) deleteComment() {
 	m.setFlash("comment deleted", false)
 }
 
-// insertCommentRows weaves comment rows into lines, one scroll per target:
-// group comments after the group block, file comments after their header,
-// line comments under their line. It records each row's comment in
-// m.commentAt for D.
 func (m *Model) insertCommentRows(lines []view.Line) []view.Line {
 	m.commentAt = map[int]commentRef{}
 	w := m.diffInnerWidth()
 	out := make([]view.Line, 0, len(lines)+len(m.comments)*2)
-	// Group comments go after the group block's last line: find it once.
 	groupEnd := -1
 	if m.mode == modeGrouped {
 		for i, l := range lines {
@@ -294,8 +264,6 @@ func (m *Model) insertCommentRows(lines []view.Line) []view.Line {
 	return out
 }
 
-// appendCommentRow adds the wrapped rows for one comment and records its
-// first row in m.commentAt.
 func appendCommentRow(out []view.Line, m *Model, key string, c comment.Comment, w int) []view.Line {
 	rev := commentRef{key: key, id: c.ID}
 	for i, seg := range wrap(c.Text, w-commentPrefixWidth()) {
@@ -305,10 +273,9 @@ func appendCommentRow(out []view.Line, m *Model, key string, c comment.Comment, 
 		}
 		plain := prefix + seg
 		row := view.Line{
-			Text:  m.th.Style(m.th.Notice, plain),
-			Plain: plain,
-			Kind:  view.KindComment,
-			// the comment follows its target's file for fileLineAt
+			Text:    m.th.Style(m.th.Notice, plain),
+			Plain:   plain,
+			Kind:    view.KindComment,
 			FileIdx: -1, Gutter: len([]rune(prefix)),
 		}
 		idx := len(out)
@@ -320,5 +287,4 @@ func appendCommentRow(out []view.Line, m *Model, key string, c comment.Comment, 
 	return out
 }
 
-// commentPrefixWidth is the comment row marker.
 func commentPrefixWidth() int { return 2 }

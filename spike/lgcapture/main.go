@@ -1,5 +1,3 @@
-// lgcapture is a throwaway lazygit stdinFilter that records what lazygit pipes
-// to it (stdin, argv, cwd, env, timing, signals) and passes stdin through.
 package main
 
 import (

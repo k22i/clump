@@ -1,5 +1,3 @@
-// Package sys is clump's glue to the outside world from the TUI: copying to
-// the clipboard (OSC 52 plus a native tool) and opening $EDITOR at a hunk.
 package sys
 
 import (
@@ -19,18 +17,13 @@ import (
 	"github.com/k22i/clump/internal/gitdiff"
 )
 
-// copyTimeout bounds a native clipboard helper, so a wedged tool cannot hold
-// the update loop.
 const copyTimeout = 3 * time.Second
 
-// CopiedMsg reports the result of CopyCmd.
 type CopiedMsg struct {
-	// Via is "osc52" or "osc52+<tool>".
 	Via string
 	Err error
 }
 
-// ClipboardArgv picks a native clipboard command, or nil for none.
 func ClipboardArgv(goos string, getenv func(string) string, lookPath func(string) (string, error)) []string {
 	found := func(name string) bool {
 		_, err := lookPath(name)
@@ -53,7 +46,6 @@ func ClipboardArgv(goos string, getenv func(string) string, lookPath func(string
 	return nil
 }
 
-// CopyCmd copies text with OSC 52 and, when one exists, the native tool.
 func CopyCmd(text string) tea.Cmd {
 	native := func() tea.Msg {
 		return runCopy(ClipboardArgv(runtime.GOOS, os.Getenv, exec.LookPath), text)
@@ -61,9 +53,6 @@ func CopyCmd(text string) tea.Cmd {
 	return tea.Batch(tea.SetClipboard(text), native)
 }
 
-// runCopy pipes text into argv, if there is one, and reports how the copy
-// went. OSC 52 is sent by the caller either way, so a failing native tool is
-// reported but does not undo the copy.
 func runCopy(argv []string, text string) CopiedMsg {
 	if len(argv) == 0 {
 		return CopiedMsg{Via: "osc52"}
@@ -78,10 +67,8 @@ func runCopy(argv []string, text string) CopiedMsg {
 	return CopiedMsg{Via: "osc52+" + argv[0]}
 }
 
-// EditedMsg reports that the editor exited.
 type EditedMsg struct{ Err error }
 
-// EditorFromEnv is $VISUAL, else $EDITOR, else "vi".
 func EditorFromEnv(getenv func(string) string) string {
 	if v := strings.TrimSpace(getenv("VISUAL")); v != "" {
 		return v
@@ -92,13 +79,6 @@ func EditorFromEnv(getenv func(string) string) string {
 	return "vi"
 }
 
-// EditorArgv builds the argv that opens file at line with editor.
-//
-// editor is split like a POSIX shell, without expansion, so "code --wait" and
-// "/Applications/VS Code.app/…/code -n" work. The flavour is chosen from the
-// base name of the program: VS Code and its forks take "--goto file:line",
-// Sublime and Zed take "file:line", everything else takes "+line file". A
-// line of zero or less opens the file without a position.
 func EditorArgv(editor, file string, line int) ([]string, error) {
 	words, err := splitWords(editor)
 	if err != nil {
@@ -122,10 +102,6 @@ func EditorArgv(editor, file string, line int) ([]string, error) {
 	}
 }
 
-// splitWords splits a command line into words the way a POSIX shell does,
-// without expansion: whitespace separates words, '...' is literal, "..." only
-// understands \" and \\, and a backslash outside quotes escapes the next
-// character.
 func splitWords(s string) ([]string, error) {
 	var words []string
 	var word strings.Builder
@@ -180,8 +156,6 @@ func splitWords(s string) ([]string, error) {
 	return words, nil
 }
 
-// HunkTarget is the file and line to open for h; ok is false when there is
-// nothing to open (a pseudo-hunk or a deleted file).
 func HunkTarget(h *gitdiff.Hunk) (path string, line int, ok bool) {
 	if h == nil || h.Pseudo || h.File == nil || h.File.NewPath == "" {
 		return "", 0, false
@@ -189,9 +163,6 @@ func HunkTarget(h *gitdiff.Hunk) (path string, line int, ok bool) {
 	return h.File.Path(), hunkLine(h), true
 }
 
-// hunkLine is the new-side line number to land the cursor on: the first added
-// line, else the first context line, else the hunk's new start. It is never
-// less than 1.
 func hunkLine(h *gitdiff.Hunk) int {
 	line, firstContext := 0, 0
 	n := h.NewStart
@@ -206,7 +177,6 @@ func hunkLine(h *gitdiff.Hunk) int {
 			line = n
 			n++
 		case l[0] == '-':
-			// deleted line: does not advance the new side
 		}
 		if line != 0 {
 			break
@@ -224,7 +194,6 @@ func hunkLine(h *gitdiff.Hunk) int {
 	return line
 }
 
-// EditCmd suspends the TUI and runs argv in dir, then sends EditedMsg.
 func EditCmd(argv []string, dir string) tea.Cmd {
 	if len(argv) == 0 {
 		return func() tea.Msg {

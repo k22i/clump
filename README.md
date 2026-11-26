@@ -744,8 +744,14 @@ sequence of edit operations with `Check` after every step, golden fixtures for t
 renderers, and provider fakes (`printf`/`cat` scripts, `httptest` servers); no test makes a real
 network call or needs a model.
 
+Design notes and the reasoning behind every contract (cache keys, prompt formats, the key map, the
+lazygit selection rules) live in [`docs/adr/`](docs/adr/README.md), one decision per file. There is
+no separate design document.
+
 Useful pieces:
 
+- `go run ./scripts/lint-comments` enforces the ban on comments in clump's own packages
+  ([ADR-0039](docs/adr/0039-no-comments-in-source.md)); the ratchet baseline only turns one way.
 - `scripts/mkfixture.sh DIR [N]` builds a scratch repository with a rename, a copy, a binary file, a
   mode change, a path without a trailing newline, a quoted unicode path, a path with spaces, a
   deletion, a merge, `N` filler commits, a feature branch and a stash entry.

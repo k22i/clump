@@ -12,38 +12,31 @@ import (
 	"github.com/k22i/clump/internal/ipc"
 )
 
-// runPush is lazygit's diff filter: pass the diff through unchanged (or to
-// --then), then forward it to a running watch. It always exits 0 and never
-// prints anything of its own, so lazygit's panel is never disturbed.
 func runPush(args []string, stdin *os.File, stdout io.Writer) int {
 	fs := flag.NewFlagSet("push", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	then := fs.String("then", "", "")
-	_ = fs.Parse(args) // unknown flags are ignored: push must never fail
+	_ = fs.Parse(args)
 
 	if isTerminal(stdin) {
-		return 0 // lazygit's startup probe: nothing to filter
+		return 0
 	}
-	data, _ := io.ReadAll(stdin) // a short read still passes through what arrived
+	data, _ := io.ReadAll(stdin)
 
-	// 1. The diff reaches lazygit first, untouched.
 	if *then != "" {
 		cmd := exec.Command("/bin/sh", "-c", *then)
 		cmd.Stdin = bytes.NewReader(data)
 		cmd.Stdout, cmd.Stderr = stdout, os.Stderr
 		if cmd.Run() != nil {
-			// The renderer failed: fall back to the raw diff so the panel is
-			// never empty.
 			_, _ = stdout.Write(data)
 		}
 	} else {
 		_, _ = stdout.Write(data)
 	}
 	if f, ok := stdout.(*os.File); ok {
-		_ = f.Close() // lazygit renders as soon as the pipe closes
+		_ = f.Close()
 	}
 
-	// 2. Fire and forget to watch.
 	if len(data) == 0 {
 		return 0
 	}

@@ -15,8 +15,6 @@ import (
 	"github.com/k22i/clump/internal/gitdiff"
 )
 
-// mkDiff builds a Diff by hand: mkDiff(2, 1, 3) has three files f0..f2 with
-// 2, 1 and 3 hunks, IDs h1..h6 in file order.
 func mkDiff(hunksPerFile ...int) *gitdiff.Diff {
 	d := &gitdiff.Diff{}
 	n := 0
@@ -33,7 +31,6 @@ func mkDiff(hunksPerFile ...int) *gitdiff.Diff {
 	return d
 }
 
-// mustCheck fails the test unless r is Check-clean against d.
 func mustCheck(t *testing.T, d *gitdiff.Diff, r Result) {
 	t.Helper()
 	if err := Check(d, r.Grouping); err != nil {
@@ -41,7 +38,6 @@ func mustCheck(t *testing.T, d *gitdiff.Diff, r Result) {
 	}
 }
 
-// wantGroup is the expected shape of one group.
 type wantGroup struct {
 	id    string
 	title string
@@ -49,8 +45,6 @@ type wantGroup struct {
 	hunks []string
 }
 
-// checkGroups compares got against want field by field, ignoring the
-// description when the want entry leaves it empty (most cases do not care).
 func checkGroups(t *testing.T, got []Group, want []wantGroup) {
 	t.Helper()
 	if len(got) != len(want) {
@@ -262,7 +256,7 @@ func TestValidateFallback(t *testing.T) {
 		text       string
 		opts       ValidateOpts
 		diff       *gitdiff.Diff
-		wantPrefix string // notice must have this prefix
+		wantPrefix string
 		wantGroups []wantGroup
 	}{
 		{
@@ -405,8 +399,6 @@ func TestValidateSanitises(t *testing.T) {
 	})
 }
 
-// assertNoControl fails if any title carries a control rune, or any
-// description carries a control rune other than a newline.
 func assertNoControl(t *testing.T, r Result) {
 	t.Helper()
 	for _, g := range r.Groups {
@@ -494,9 +486,6 @@ func TestExtractJSON(t *testing.T) {
 	}
 }
 
-// TestValidateProperty fuzzes Validate over random diffs, alias maps, model
-// answers and caps, asserting the invariants hold whatever the model says.
-// Set CLUMP_SEED to replay a failing run.
 func TestValidateProperty(t *testing.T) {
 	seed := uint64(time.Now().UnixNano())
 	if s := os.Getenv("CLUMP_SEED"); s != "" {
@@ -575,9 +564,6 @@ func TestValidateProperty(t *testing.T) {
 		}
 	}
 
-	// Guard against a vacuous run: the fuzzer must reach both the repaired and
-	// the fallback paths, and it must exercise the cap merge and the
-	// missing-hunk repair.
 	t.Logf("seed %d: %d fallbacks, %d repaired, %d cap merges, %d missing-hunk repairs", seed, fallbacks, nonFallbacks, merges, missings)
 	if fallbacks == 0 || nonFallbacks == 0 || merges == 0 || missings == 0 {
 		t.Fatalf("seed %d: iterations did not cover every path (fallbacks %d, repaired %d, merges %d, missing %d)",
@@ -585,9 +571,6 @@ func TestValidateProperty(t *testing.T) {
 	}
 }
 
-// assertGroupShape checks the presentation invariants of a validated result:
-// safe text, bounded lengths and g1..gK IDs with an optional trailing
-// ungrouped group.
 func assertGroupShape(t *testing.T, r Result, fail func(string, ...any)) {
 	t.Helper()
 	k := 0
@@ -624,9 +607,6 @@ func assertGroupShape(t *testing.T, r Result, fail func(string, ...any)) {
 	}
 }
 
-// randomModelText builds a model answer: usually JSON with random groups and
-// IDs, sometimes wrapped in prose or fenced, sometimes truncated, sometimes
-// garbage.
 func randomModelText(rng *rand.Rand, realIDs []string, aliases map[string][]string) string {
 	if rng.IntN(10) == 0 {
 		return randomGarbage(rng)
@@ -685,8 +665,6 @@ func randomModelText(rng *rand.Rand, realIDs []string, aliases map[string][]stri
 	return s
 }
 
-// randomText builds a short string that mixes control runes, spaces and
-// JSON-significant characters.
 func randomText(rng *rand.Rand) string {
 	alphabet := []rune("abcXYZ \t\n\x1b\x00\x7fé中…_-[]{}@#/\"\\")
 	n := rng.IntN(100)
@@ -697,7 +675,6 @@ func randomText(rng *rand.Rand) string {
 	return b.String()
 }
 
-// randomGarbage builds text no JSON object can be extracted from.
 func randomGarbage(rng *rand.Rand) string {
 	alphabet := []rune("abc XYZ,.;:!?\n\t")
 	n := rng.IntN(60)
@@ -705,15 +682,12 @@ func randomGarbage(rng *rand.Rand) string {
 	for i := 0; i < n; i++ {
 		b.WriteRune(alphabet[rng.IntN(len(alphabet))])
 	}
-	// Sometimes append an unbalanced fragment, so ExtractJSON has to give up.
 	if rng.IntN(2) == 0 {
 		b.WriteString("{\"groups\":[")
 	}
 	return b.String()
 }
 
-// TestValidateNeverPanics feeds Validate random byte soup and requires both
-// that it does not panic and that whatever it returns is Check-clean.
 func TestValidateNeverPanics(t *testing.T) {
 	seed := uint64(time.Now().UnixNano())
 	if s := os.Getenv("CLUMP_SEED"); s != "" {

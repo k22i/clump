@@ -6,29 +6,13 @@ import (
 	"strings"
 )
 
-// Pattern is one compiled path pattern.
 type Pattern struct {
-	// Text is the pattern as written.
 	Text string
 	re   *regexp.Regexp
 }
 
-// Match reports whether the slash-separated, repo-relative path p matches.
 func (p Pattern) Match(path string) bool { return p.re.MatchString(path) }
 
-// Compile compiles a gitignore-style path pattern:
-//
-//   - A pattern with no "/" (other than a trailing one) matches a file or
-//     directory name at any depth: "go.sum", "*.min.js", "vendor/".
-//   - A pattern with a "/" is anchored at the repository root (a leading "/"
-//     is optional): "db/schema.rb". Start it with "**/" to match at any depth.
-//   - "*" matches within one path segment, "?" one character, "**" any
-//     number of segments.
-//   - A pattern that matches a directory matches everything below it, so
-//     "vendor/" and "**/__generated__" skip whole trees.
-//
-// Character classes and braces are not supported; "[", "]", "{" and "}"
-// match themselves.
 func Compile(text string) (Pattern, error) {
 	p := strings.TrimSpace(text)
 	if p == "" {
@@ -82,7 +66,6 @@ func Compile(text string) (Pattern, error) {
 	return Pattern{Text: strings.TrimSpace(text), re: re}, nil
 }
 
-// CompileAll compiles every pattern, failing on the first bad one.
 func CompileAll(texts []string) ([]Pattern, error) {
 	out := make([]Pattern, 0, len(texts))
 	for _, t := range texts {
@@ -95,7 +78,6 @@ func CompileAll(texts []string) ([]Pattern, error) {
 	return out, nil
 }
 
-// firstMatch returns the first pattern matching path.
 func firstMatch(ps []Pattern, path string) (Pattern, bool) {
 	for _, p := range ps {
 		if p.Match(path) {

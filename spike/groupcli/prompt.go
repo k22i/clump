@@ -15,21 +15,19 @@ const PromptVersion = "v1"
 
 type BuildOpts struct {
 	MaxGroups    int
-	TokenBudget  int // for the whole prompt
+	TokenBudget  int
 	Context      string
-	ForceMaxBody int // >0 forces a per-hunk body cap (testing)
+	ForceMaxBody int
 }
 
 type Built struct {
 	Prompt       string
 	EstTokens    int
-	BodyCap      int // lines kept per hunk; -1 means untruncated
-	Truncated    int // hunks truncated
+	BodyCap      int
+	Truncated    int
 	DroppedLines int
 }
 
-// EstimateTokens is the cheap heuristic used before sending (bytes/4, rounded up).
-// The spike compares it with the token counts providers report.
 func EstimateTokens(s string) int { return (len(s) + 3) / 4 }
 
 func catalogLine(h *Hunk) string {
@@ -86,9 +84,6 @@ func render(d *Diff, o BuildOpts, capLines int, n string) Built {
 	return out
 }
 
-// Build renders the prompt, shrinking hunk bodies (never headers or catalog entries)
-// until it fits the token budget. Strategy: try untruncated, then binary-search the
-// largest per-hunk line cap that fits; cap 0 keeps only catalog + headers.
 func Build(d *Diff, o BuildOpts) Built {
 	n := nonce()
 	if o.ForceMaxBody > 0 {

@@ -1,16 +1,3 @@
-// Command clump groups the hunks of a git diff into logical changes with an
-// LLM and lets you review and edit them in a TUI. See README.md.
-//
-//	clump [flags] [<rev> | <base>...<head> | <from>..<to>]   one commit or range (default HEAD)
-//	clump --branch                                          this branch vs its default base
-//	clump --pr 123 | --pr OWNER/REPO#123 | --pr <pr-url>    a GitHub pull request
-//	git diff | clump                                        a patch on stdin
-//	clump watch [--repo DIR]                                follow lazygit's selection
-//	clump push [--then CMD]                                 lazygit diff filter (forwards to watch)
-//	clump config init | path                                print the default config / its path
-//	clump rex install [--write]                             Rex integration
-//	clump lazygit install [--write]                         lazygit integration
-//	clump update (alias: upgrade)                           replace this binary with the latest release
 package main
 
 import (
@@ -29,7 +16,6 @@ func main() {
 	os.Exit(run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 }
 
-// usageError is reported with exit status 2.
 type usageError struct{ msg string }
 
 func (e usageError) Error() string { return e.msg }

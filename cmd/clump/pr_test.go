@@ -10,8 +10,6 @@ import (
 	"testing"
 )
 
-// stubGh answers clump's gh calls from the gitdiff package's fixture files.
-// Every invocation appends "<cwd> <args>" to $CLUMP_GH_LOG.
 func stubGh(t *testing.T) (dir string) {
 	t.Helper()
 	dir = t.TempDir()
@@ -88,15 +86,11 @@ func TestLoadInputPR(t *testing.T) {
 	}
 }
 
-// TestRunPRBin runs the real binary end to end against a stub gh: --dry-run
-// sends nothing, so no provider is needed, yet every step that would run
-// before a real call does: flag parsing, gh loading, generated marking,
-// prompt preparation.
 func TestRunPRBin(t *testing.T) {
 	ghDir := stubGh(t)
 	bin := clumpBin(t)
-	home := t.TempDir()                         // not a git clone: the URL spec needs none
-	cfgPath := filepath.Join(home, "none.toml") // absent: the defaults apply
+	home := t.TempDir()
+	cfgPath := filepath.Join(home, "none.toml")
 	buf := &bytes.Buffer{}
 	cmd := exec.Command(bin, "--dry-run", "--pr", "https://github.com/k22i/clump/pull/42")
 	cmd.Dir = home
@@ -111,8 +105,6 @@ func TestRunPRBin(t *testing.T) {
 		}
 		cmd.Env = append(cmd.Env, k+"="+v)
 	}
-	// The stub's CLUMP_GH_* control comes through the inherited environment;
-	// HOME and the config overrides must be replaced in place, not dropped.
 	setEnv("PATH", ghDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 	setEnv("HOME", home)
 	setEnv("CLUMP_CONFIG", cfgPath)

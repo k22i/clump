@@ -1,6 +1,3 @@
-// Package diffview renders hunks for clump's diff pane: syntax highlighting
-// with Chroma by file extension, and word-level highlighting of paired -/+
-// lines.
 package diffview
 
 import (
@@ -18,38 +15,24 @@ import (
 	"github.com/k22i/clump/internal/tui/view"
 )
 
-// tabWidth is the tab stop used when expanding tabs in hunk bodies.
 const tabWidth = 4
 
-// ellipsisMark ends a line that view.Truncate had to cut.
 const ellipsisMark = "…"
 
-// Limits for WordDiff: longer lines or token lists are not worth diffing.
 const (
 	maxWordTokens    = 200
 	maxWordBytes     = 1000
 	maxWordChangedPc = 60
 )
 
-// HunkOpts configures RenderHunk.
 type HunkOpts struct {
-	// Width caps every line (<= 0 means no cap).
-	Width int
-	// Marked draws the hunk's gutter as marked ("x ").
-	Marked bool
-	// Path picks the syntax lexer by file name ("" disables highlighting).
-	Path string
-	// Numbers is the digit width of the old/new line-number columns drawn
-	// after the mark gutter; 0 draws none. See NumberWidth.
+	Width   int
+	Marked  bool
+	Path    string
 	Numbers int
-	// Split draws the body side by side: old lines left, new lines right,
-	// one separator column between the halves. It needs a width of at
-	// least 3 columns; less falls back to the unified layout.
-	Split bool
+	Split   bool
 }
 
-// NumberWidth is the digit width that fits every line number of d (at
-// least 2), for HunkOpts.Numbers.
 func NumberWidth(d *gitdiff.Diff) int {
 	top := 0
 	if d != nil {
@@ -64,8 +47,6 @@ func NumberWidth(d *gitdiff.Diff) int {
 	return w
 }
 
-// numberCol is one line-number column: n right-aligned in w digits, blank
-// when n <= 0.
 func numberCol(w, n int) string {
 	if n <= 0 {
 		return strings.Repeat(" ", w)
@@ -77,13 +58,10 @@ func numberCol(w, n int) string {
 	return s
 }
 
-// numberCols renders the line-number columns: "old new " right-aligned in
-// w digits each, blank on the side a line does not have.
 func numberCols(w, oldLine, newLine int) string {
 	return numberCol(w, oldLine) + " " + numberCol(w, newLine) + " "
 }
 
-// RenderHunk renders one hunk: its header line, then its body lines.
 func RenderHunk(h *gitdiff.Hunk, th view.Theme, o HunkOpts) []view.Line {
 	if h == nil {
 		return []view.Line{}
@@ -94,7 +72,6 @@ func RenderHunk(h *gitdiff.Hunk, th view.Theme, o HunkOpts) []view.Line {
 	}
 
 	out := make([]view.Line, 0, len(h.Lines)+1)
-	// The header starts at the line-number column: it carries the numbers.
 	out = append(out, withGutter(renderLine([]segment{
 		{text: gutter, styles: gutterStyles},
 		{text: h.Header, styles: themeStyles(th, th.HunkHeader)},
@@ -112,7 +89,6 @@ func RenderHunk(h *gitdiff.Hunk, th view.Theme, o HunkOpts) []view.Line {
 		return append(out, renderHunkSplit(h, th, o, gutter, gutterStyles, hl, delSpans, addSpans)...)
 	}
 
-	// lead is the mark gutter plus, when on, the line-number columns.
 	lead := func(oldLine, newLine int) []segment {
 		segs := []segment{{text: gutter, styles: gutterStyles}}
 		if o.Numbers > 0 {
@@ -144,8 +120,6 @@ func RenderHunk(h *gitdiff.Hunk, th view.Theme, o HunkOpts) []view.Line {
 
 		segs := lead(oldLine, newLine)
 		if kind == view.KindNoNewline {
-			// git's marker line has no -/+ prefix and no line number; its
-			// text is rendered as it is.
 			segs = append(segs, segment{text: raw})
 		} else {
 			segs = append(segs, body...)
@@ -161,17 +135,11 @@ func RenderHunk(h *gitdiff.Hunk, th view.Theme, o HunkOpts) []view.Line {
 	return out
 }
 
-// withGutter sets l.Gutter, capped to what survived truncation.
 func withGutter(l view.Line, n int) view.Line {
 	l.Gutter = min(n, len(l.Plain))
 	return l
 }
 
-// bodySegments builds the content segments of the body line raw (hunk body
-// line index i): git writes " ", "+", "-" or "\" first; an empty body line
-// (an empty context line with its trailing space stripped) counts as
-// context. A "\ No newline" marker returns KindNoNewline and no segments —
-// callers render its text as it is, like the unified layout does.
 func bodySegments(raw string, i int, th view.Theme, hl *highlighter, delSpans, addSpans map[int][]Span) (view.LineKind, []segment) {
 	prefix, content := " ", ""
 	if raw != "" {
@@ -195,8 +163,6 @@ func bodySegments(raw string, i int, th view.Theme, hl *highlighter, delSpans, a
 	}
 	body = append(body, runs...)
 	if bg, ok := lineStyle(th, kind); ok {
-		// The tint is the outermost style, so syntax colours and the
-		// stronger changed-word background still show on top.
 		for j := range body {
 			body[j].styles = append(append([]lipgloss.Style{}, body[j].styles...), bg)
 		}
@@ -204,37 +170,23 @@ func bodySegments(raw string, i int, th view.Theme, hl *highlighter, delSpans, a
 	return kind, body
 }
 
-// splitCell is one cell of a side-by-side row: a "-" line on the left, a
-// "+" line on the right, a context line on both, or a "\ No newline"
-// marker rendered below its line on its own side.
 type splitCell struct {
-	kind view.LineKind
-	raw  string
-	idx  int // index in h.Lines, for the word-diff spans
-	// oldNo and newNo are the cell's line numbers (0 on the side it has
-	// none; markers keep both 0).
+	kind         view.LineKind
+	raw          string
+	idx          int
 	oldNo, newNo int
 }
 
-// splitRow is one side-by-side row: a stack of cells per side, because a
-// no-newline marker renders as a second line under its own side's cell.
 type splitRow struct{ left, right []*splitCell }
 
-// renderHunkSplit renders h's body side by side: the old lines in the left
-// half of o.Width, the new ones in the right half, one separator column
-// between the two (see HunkOpts.Split). Every row's left half starts with
-// the mark gutter; each side shows its own line number.
 func renderHunkSplit(h *gitdiff.Hunk, th view.Theme, o HunkOpts, gutter string, gutterStyles []lipgloss.Style, hl *highlighter, delSpans, addSpans map[int][]Span) []view.Line {
-	lw := (o.Width - 1) / 2 // left half
-	rw := o.Width - 1 - lw  // right half
+	lw := (o.Width - 1) / 2
+	rw := o.Width - 1 - lw
 	leadLen := len(gutter)
 	if o.Numbers > 0 {
 		leadLen += o.Numbers + 1
 	}
 
-	// sideSegs renders one side of a row: the leading columns, then the
-	// body (or the marker text, which git writes as it is). The left side
-	// starts with the row's mark gutter even when its cell is blank.
 	sideSegs := func(c *splitCell, left bool) []segment {
 		var segs []segment
 		if left {
@@ -256,8 +208,6 @@ func renderHunkSplit(h *gitdiff.Hunk, th view.Theme, o HunkOpts, gutter string, 
 		_, body := bodySegments(c.raw, c.idx, th, hl, delSpans, addSpans)
 		return append(segs, body...)
 	}
-	// cellStyle is the background tint of a side's cell; markers and
-	// blanks have none.
 	cellStyle := func(c *splitCell) (lipgloss.Style, bool) {
 		if c == nil || c.kind == view.KindNoNewline {
 			return lipgloss.Style{}, false
@@ -284,8 +234,6 @@ func renderHunkSplit(h *gitdiff.Hunk, th view.Theme, o HunkOpts, gutter string, 
 			}
 			lt, lp := renderSegments(sideSegs(lc, true), lw)
 			rt, rp := renderSegments(sideSegs(rc, false), rw)
-			// Each half carries its own line's tint out to its column, so
-			// a "-" cell tints the left half and a blank side stays clear.
 			lpad, rpad := padLine(lp, lw), padLine(rp, rw)
 			if bg, ok := cellStyle(lc); ok {
 				lt += bg.Render(lpad)
@@ -319,22 +267,12 @@ func renderHunkSplit(h *gitdiff.Hunk, th view.Theme, o HunkOpts, gutter string, 
 	return out
 }
 
-// pairSplitRows walks h's body lines and pairs them into side-by-side
-// rows: a context line fills both sides, and the i-th removed line of a
-// -/+ run faces the i-th added one; the excess of one side stands alone
-// against blanks. Cells carry their side's line number; a "\ No newline"
-// marker renders as a second cell under the line it follows, on that
-// line's side (left for a lone marker at the hunk's start).
 func pairSplitRows(h *gitdiff.Hunk) []splitRow {
 	lines := h.Lines
 	oldNo, newNo := h.OldStart, h.NewStart
 	nextOld := func() int { n := oldNo; oldNo++; return n }
 	nextNew := func() int { n := newNo; newNo++; return n }
 
-	// runStacks collects the run of body lines starting at i that match
-	// isRun (with the kind and the counter of that side), each followed by
-	// its no-newline markers, and returns one stack per line plus the
-	// index after the run.
 	runStacks := func(i int, isRun func(string) bool, kind view.LineKind, next func() int) ([][]*splitCell, int) {
 		var stacks [][]*splitCell
 		for i < len(lines) && isRun(lines[i]) {
@@ -384,7 +322,7 @@ func pairSplitRows(h *gitdiff.Hunk) []splitRow {
 		case strings.HasPrefix(lines[i], "\\"):
 			rows = append(rows, splitRow{left: []*splitCell{{kind: view.KindNoNewline, raw: lines[i], idx: i}}})
 			i++
-		default: // context (an empty body line is one, stripped)
+		default:
 			c := &splitCell{kind: view.KindContext, raw: lines[i], idx: i, oldNo: nextOld(), newNo: nextNew()}
 			row := splitRow{left: []*splitCell{c}, right: []*splitCell{c}}
 			i++
@@ -398,35 +336,22 @@ func pairSplitRows(h *gitdiff.Hunk) []splitRow {
 	return rows
 }
 
-// RenderGroupLines renders the given hunks grouped by file in diff order:
-// for each file a view.RenderFileHeader line, then its hunks, then a blank
-// line between files. Unknown IDs are skipped; order of hunkIDs is ignored.
 func RenderGroupLines(d *gitdiff.Diff, hunkIDs []string, th view.Theme, width int, marked map[string]bool) []view.Line {
 	return RenderGroupLinesOpts(d, hunkIDs, th, width, GroupOpts{Marked: marked})
 }
 
-// GroupOpts configures RenderGroupLinesOpts.
 type GroupOpts struct {
-	// Marked draws these hunks as marked.
-	Marked map[string]bool
-	// Numbers is HunkOpts.Numbers for every hunk.
+	Marked  map[string]bool
 	Numbers int
-	// File gives each file block's header state from its file index and the
-	// hunk IDs listed under it; nil draws every block expanded. A folded
-	// block renders its header only.
-	File func(fileIdx int, hunkIDs []string) view.FileState
-	// Split is HunkOpts.Split for every hunk.
-	Split bool
+	File    func(fileIdx int, hunkIDs []string) view.FileState
+	Split   bool
 }
 
-// RenderGroupLinesOpts is RenderGroupLines with folding, review marks and
-// line numbers.
 func RenderGroupLinesOpts(d *gitdiff.Diff, hunkIDs []string, th view.Theme, width int, o GroupOpts) []view.Line {
 	out := []view.Line{}
 	if d == nil {
 		return out
 	}
-	// A hunk given twice is rendered once; unknown IDs are dropped.
 	hunks := make([]*gitdiff.Hunk, 0, len(hunkIDs))
 	seen := make(map[string]bool, len(hunkIDs))
 	for _, id := range hunkIDs {
@@ -442,8 +367,6 @@ func RenderGroupLinesOpts(d *gitdiff.Diff, hunkIDs []string, th view.Theme, widt
 	}
 	sort.SliceStable(hunks, func(i, j int) bool { return hunks[i].Index < hunks[j].Index })
 
-	// Hunks carry the same Index order as their files, so grouping the
-	// consecutive runs walks the files in increasing order.
 	type fileGroup struct {
 		fileIdx int
 		hunks   []*gitdiff.Hunk
@@ -477,13 +400,11 @@ func RenderGroupLinesOpts(d *gitdiff.Diff, hunkIDs []string, th view.Theme, widt
 		if g.fileIdx >= 0 && g.fileIdx < len(d.Files) {
 			out = append(out, view.RenderFileHeaderState(d.Files[g.fileIdx], g.fileIdx, add, del, ids, st, th, width))
 		} else {
-			st.Folded = false // nothing to unfold from
+			st.Folded = false
 		}
 		if st.Folded {
 			continue
 		}
-		// A hunk whose FileIdx is out of range (only possible for a
-		// hand-built Diff) keeps its hunks but gets no header.
 		for _, h := range g.hunks {
 			out = append(out, RenderHunk(h, th, HunkOpts{
 				Width:   width,
@@ -497,12 +418,8 @@ func RenderGroupLinesOpts(d *gitdiff.Diff, hunkIDs []string, th view.Theme, widt
 	return out
 }
 
-// Span is a byte range [Start, End) of changed text.
 type Span struct{ Start, End int }
 
-// WordDiff finds the changed spans between a removed line and the added
-// line paired with it (both without their -/+ prefix). ok is false when the
-// lines are too long or too different to be worth highlighting.
 func WordDiff(oldText, newText string) (oldSpans, newSpans []Span, ok bool) {
 	if len(oldText) > maxWordBytes || len(newText) > maxWordBytes {
 		return nil, nil, false
@@ -532,12 +449,8 @@ func WordDiff(oldText, newText string) (oldSpans, newSpans []Span, ok bool) {
 	return oldSpans, newSpans, true
 }
 
-// token is one word-diff token as a byte range of its line.
 type token struct{ start, end int }
 
-// wordTokens splits s into tokens: a maximal run of [A-Za-z0-9_] is one
-// token, any other single rune is one token. Offsets are byte offsets, so
-// they always fall on rune boundaries.
 func wordTokens(s string) []token {
 	toks := make([]token, 0, len(s))
 	for i := 0; i < len(s); {
@@ -555,7 +468,6 @@ func wordTokens(s string) []token {
 	return toks
 }
 
-// isWordByte reports whether b is part of a word token.
 func isWordByte(b byte) bool {
 	switch {
 	case b >= 'a' && b <= 'z', b >= 'A' && b <= 'Z', b >= '0' && b <= '9', b == '_':
@@ -564,14 +476,9 @@ func isWordByte(b byte) bool {
 	return false
 }
 
-// keptTokens says which tokens of each side are part of the longest common
-// subsequence of the two token lists.
 type keptTokens struct{ old, new []bool }
 
-// lcsTokens marks the tokens of a and b that belong to a longest common
-// subsequence of their texts.
 func lcsTokens(a string, at []token, b string, bt []token) keptTokens {
-	// dp[i][j] is the LCS length of at[i:] and bt[j:].
 	dp := make([][]int, len(at)+1)
 	for i := range dp {
 		dp[i] = make([]int, len(bt)+1)
@@ -604,8 +511,6 @@ func lcsTokens(a string, at []token, b string, bt []token) keptTokens {
 	return kept
 }
 
-// changedSpans merges the tokens that are not kept into spans of byte
-// offsets, joining neighbours that touch.
 func changedSpans(toks []token, kept []bool) []Span {
 	var spans []Span
 	for i, t := range toks {
@@ -621,15 +526,11 @@ func changedSpans(toks []token, kept []bool) []Span {
 	return spans
 }
 
-// segment is one run of a rendered line: its plain text and the styles to
-// wrap around it, innermost first.
 type segment struct {
 	text   string
 	styles []lipgloss.Style
 }
 
-// renderLine joins segs into one view.Line, cutting the plain text to width
-// (with view.Truncate) and styling only what survives the cut.
 func renderLine(segs []segment, width int, kind view.LineKind, hunkID string, fileIdx, oldLine, newLine int) view.Line {
 	text, plain := renderSegments(segs, width)
 	return view.Line{
@@ -643,8 +544,6 @@ func renderLine(segs []segment, width int, kind view.LineKind, hunkID string, fi
 	}
 }
 
-// renderSegments returns the styled and the plain text of segs. Truncation
-// happens on the plain text, so styling never changes the visible characters.
 func renderSegments(segs []segment, width int) (text, plain string) {
 	var whole strings.Builder
 	for _, s := range segs {
@@ -660,8 +559,6 @@ func renderSegments(segs []segment, width int) (text, plain string) {
 	}
 	kept := plain
 	if cut {
-		// Truncate ends the text with ellipsisMark; only the bytes before
-		// it survive, and the styled text gets the mark back below.
 		kept = plain[:len(plain)-len(ellipsisMark)]
 		plain = kept
 	}
@@ -687,7 +584,6 @@ func renderSegments(segs []segment, width int) (text, plain string) {
 	return b.String(), plain
 }
 
-// applyStyles wraps s in styles, innermost first.
 func applyStyles(s string, styles []lipgloss.Style) string {
 	for _, st := range styles {
 		s = st.Render(s)
@@ -695,7 +591,6 @@ func applyStyles(s string, styles []lipgloss.Style) string {
 	return s
 }
 
-// themeStyles is st as a style list, or none under the plain theme.
 func themeStyles(th view.Theme, st lipgloss.Style) []lipgloss.Style {
 	if th.Plain {
 		return nil
@@ -703,7 +598,6 @@ func themeStyles(th view.Theme, st lipgloss.Style) []lipgloss.Style {
 	return []lipgloss.Style{st}
 }
 
-// baseStyle is the theme's style for a body line of the given kind.
 func baseStyle(th view.Theme, kind view.LineKind) lipgloss.Style {
 	switch kind {
 	case view.KindAdd:
@@ -715,8 +609,6 @@ func baseStyle(th view.Theme, kind view.LineKind) lipgloss.Style {
 	}
 }
 
-// lineStyle is the background tint for a whole "+" or "-" line; false for
-// other kinds and under the plain theme.
 func lineStyle(th view.Theme, kind view.LineKind) (lipgloss.Style, bool) {
 	if th.Plain {
 		return lipgloss.Style{}, false
@@ -730,8 +622,6 @@ func lineStyle(th view.Theme, kind view.LineKind) (lipgloss.Style, bool) {
 	return lipgloss.Style{}, false
 }
 
-// padLine is the run of spaces that carries a tinted line's background to
-// width columns ("" when width <= 0).
 func padLine(plain string, width int) string {
 	n := width - lipgloss.Width(plain)
 	if width <= 0 || n <= 0 {
@@ -740,7 +630,6 @@ func padLine(plain string, width int) string {
 	return strings.Repeat(" ", n)
 }
 
-// wordStyle is the theme's style for changed words on a body line.
 func wordStyle(th view.Theme, kind view.LineKind) lipgloss.Style {
 	if kind == view.KindAdd {
 		return th.AddWord
@@ -748,8 +637,6 @@ func wordStyle(th view.Theme, kind view.LineKind) lipgloss.Style {
 	return th.DelWord
 }
 
-// expandTabs replaces every tab in s with spaces up to the next multiple of
-// tabWidth columns, counting columns from the start of s.
 func expandTabs(s string) string {
 	if !strings.ContainsRune(s, '\t') {
 		return s
@@ -770,17 +657,12 @@ func expandTabs(s string) string {
 	return b.String()
 }
 
-// highlighter tokenises hunk body lines with one lexer and one style.
 type highlighter struct {
-	lexer chroma.Lexer
-	style *chroma.Style
-	// tokenStyles caches the foreground style per token type; a nil entry
-	// means the style gives the type no colour.
+	lexer       chroma.Lexer
+	style       *chroma.Style
 	tokenStyles map[chroma.TokenType]*lipgloss.Style
 }
 
-// newHighlighter returns the highlighter for path, whose lexer is nil when
-// the path has no known lexer.
 func newHighlighter(th view.Theme, path string) *highlighter {
 	lx := chromalexers.Match(path)
 	if lx == nil {
@@ -794,8 +676,6 @@ func newHighlighter(th view.Theme, path string) *highlighter {
 	}
 }
 
-// contentRuns splits one body line's content into styled segments: the
-// theme's base colour, with the lexer's colours on top when hl has a lexer.
 func contentRuns(content string, th view.Theme, base lipgloss.Style, hl *highlighter) []segment {
 	if content == "" {
 		return nil
@@ -814,7 +694,6 @@ func contentRuns(content string, th view.Theme, base lipgloss.Style, hl *highlig
 	for _, t := range toks {
 		styles := []lipgloss.Style{base}
 		if tokStyle := hl.styleFor(t.Type); tokStyle != nil {
-			// The token colour goes inside the base colour, so it wins.
 			styles = []lipgloss.Style{*tokStyle, base}
 		}
 		segs = append(segs, segment{text: t.Value, styles: styles})
@@ -822,9 +701,6 @@ func contentRuns(content string, th view.Theme, base lipgloss.Style, hl *highlig
 	return segs
 }
 
-// tokenise returns the tokens of one line. ok is false when the lexer fails
-// or when it does not reproduce content byte for byte (so that highlighting
-// can never change the visible text).
 func (hl *highlighter) tokenise(content string) ([]chroma.Token, bool) {
 	it, err := hl.lexer.Tokenise(nil, content)
 	if err != nil {
@@ -846,8 +722,6 @@ func (hl *highlighter) tokenise(content string) ([]chroma.Token, bool) {
 	return toks, true
 }
 
-// styleFor returns the foreground style for a token type, or nil when the
-// style gives the type no colour.
 func (hl *highlighter) styleFor(t chroma.TokenType) *lipgloss.Style {
 	if st, ok := hl.tokenStyles[t]; ok {
 		return st
@@ -864,8 +738,6 @@ func (hl *highlighter) styleFor(t chroma.TokenType) *lipgloss.Style {
 	return st
 }
 
-// wordSpans computes the word-diff spans of every paired -/+ run in lines,
-// keyed by body line index. It returns nothing under the plain theme.
 func wordSpans(lines []string, th view.Theme) (delSpans, addSpans map[int][]Span) {
 	if th.Plain {
 		return nil, nil
@@ -902,15 +774,10 @@ func wordSpans(lines []string, th view.Theme) (delSpans, addSpans map[int][]Span
 	return delSpans, addSpans
 }
 
-// isDelLine reports whether a body line is a "-" line.
 func isDelLine(l string) bool { return strings.HasPrefix(l, "-") }
 
-// isAddLine reports whether a body line is a "+" line.
 func isAddLine(l string) bool { return strings.HasPrefix(l, "+") }
 
-// spansFor returns the word-diff spans of body line i, which apply to the
-// content of a "-" line when it is the old side of a pair and to a "+" line
-// when it is the new side.
 func spansFor(i int, kind view.LineKind, delSpans, addSpans map[int][]Span) []Span {
 	if kind == view.KindAdd {
 		return addSpans[i]
@@ -918,8 +785,6 @@ func spansFor(i int, kind view.LineKind, delSpans, addSpans map[int][]Span) []Sp
 	return delSpans[i]
 }
 
-// applyWordSpans copies segs, splitting them so that every byte inside a
-// span also carries the word style.
 func applyWordSpans(segs []segment, spans []Span, word lipgloss.Style) []segment {
 	if len(spans) == 0 {
 		return segs
@@ -950,7 +815,6 @@ func applyWordSpans(segs []segment, spans []Span, word lipgloss.Style) []segment
 	return out
 }
 
-// hunkPath is the file path of a hunk, which picks its lexer.
 func hunkPath(h *gitdiff.Hunk) string {
 	if h.File == nil {
 		return ""
@@ -958,9 +822,6 @@ func hunkPath(h *gitdiff.Hunk) string {
 	return h.File.Path()
 }
 
-// clump builds its two syntax palettes in code (after GitHub's light and dark
-// themes) instead of importing chroma/v2/styles, whose package init parses
-// every bundled style (~3.6 ms on every start, including `clump push`).
 var (
 	paletteOnce           sync.Once
 	darkStyle, lightStyle *chroma.Style

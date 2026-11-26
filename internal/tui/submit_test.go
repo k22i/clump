@@ -9,8 +9,6 @@ import (
 	"github.com/k22i/clump/internal/comment"
 )
 
-// stubSubmitGh puts a gh on PATH that records "api" invocations and answers
-// like a posted review. It fails when $CLUMP_GH_FAIL is set.
 func stubSubmitGh(t *testing.T) (logPath string) {
 	t.Helper()
 	dir := t.TempDir()
@@ -84,7 +82,6 @@ func TestSubmitPicksAndPosts(t *testing.T) {
 	h := newHarness(t, nil, nil)
 	h.m.o.PR = "k22i/clump#42"
 	h.load(testPatch)
-	// Comment on the diff's first added line directly through the store.
 	anchors := comment.Anchors(h.m.doc.L.Diff, h.m.doc.Hash, h.m.groupIDs())
 	if len(anchors) == 0 {
 		t.Fatal("no anchors")
@@ -114,7 +111,7 @@ func TestSubmitPicksAndPosts(t *testing.T) {
 	if !strings.Contains(h.m.submit.title, "1 line comment") {
 		t.Errorf("title = %q", h.m.submit.title)
 	}
-	h.keys("j", "j") // request changes
+	h.keys("j", "j")
 	h.keys("enter")
 	if !strings.Contains(h.m.flash, "request changes review submitted: https://github.com/k22i/clump/pull/42") {
 		t.Errorf("flash = %q", h.m.flash)

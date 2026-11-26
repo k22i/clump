@@ -11,15 +11,10 @@ import (
 	"strings"
 )
 
-// PRSpec is a --pr argument parsed to a pull request location. Owner and
-// Repo are empty when the argument was number-only ("42", "#42"): gh then
-// resolves the pull request against the repository it runs in.
 type PRSpec struct {
 	Owner, Repo, Number string
 }
 
-// slug returns the "OWNER/REPO" gh repository slug, or "" when the spec is
-// number-only.
 func (p PRSpec) slug() string {
 	if p.Owner == "" {
 		return ""
@@ -27,9 +22,6 @@ func (p PRSpec) slug() string {
 	return p.Owner + "/" + p.Repo
 }
 
-// ParsePRSpec parses the --pr argument forms: "42", "#42", "OWNER/REPO#42"
-// and a GitHub pull request URL, with or without scheme, with an optional
-// trailing slash or ".diff"/".patch" suffix.
 func ParsePRSpec(spec string) (PRSpec, error) {
 	s := strings.TrimSpace(spec)
 	if strings.HasPrefix(s, "#") || isDigits(s) {
@@ -63,8 +55,6 @@ func ParsePRSpec(spec string) (PRSpec, error) {
 	return PRSpec{}, fmt.Errorf("%q is not a pull request: use 123, #123, OWNER/REPO#123 or a github.com pull request URL", spec)
 }
 
-// parsePRNumber validates the number and returns the spec, applying fill when
-// the argument also named a repository.
 func parsePRNumber(n, spec string, fill func(PRSpec) PRSpec) (PRSpec, error) {
 	if !isDigits(n) {
 		return PRSpec{}, fmt.Errorf("%q does not name a pull request number", spec)
@@ -80,7 +70,6 @@ func parsePRNumber(n, spec string, fill func(PRSpec) PRSpec) (PRSpec, error) {
 	return p, nil
 }
 
-// isDigits reports whether s is non-empty decimal digits.
 func isDigits(s string) bool {
 	if s == "" {
 		return false
@@ -93,9 +82,6 @@ func isDigits(s string) bool {
 	return true
 }
 
-// isRepoName reports whether s is a plausible GitHub owner or repository
-// name: up to 100 characters of letters, digits, '-', '_' and '.', not
-// starting or ending with '.'.
 func isRepoName(s string) bool {
 	if s == "" || len(s) > 100 || strings.HasPrefix(s, ".") || strings.HasSuffix(s, ".") {
 		return false
@@ -110,17 +96,10 @@ func isRepoName(s string) bool {
 	return true
 }
 
-// runGh runs one gh command in dir ("" is the current directory) and returns
-// its stdout. Like runGit it never lets gh wait on a terminal for
-// credentials, clips its error text, and respects ctx cancellation.
 func runGh(ctx context.Context, dir string, args ...string) (string, error) {
 	return Gh(ctx, dir, "", args...)
 }
 
-// Gh runs one gh command in dir ("" is the current directory) and returns
-// its stdout. It behaves like the git runner: gh never waits on a terminal
-// for credentials, error text is clipped, and ctx cancellation is honoured.
-// A non-empty stdin is piped to the command (gh api --input -).
 func Gh(ctx context.Context, dir, stdin string, args ...string) (string, error) {
 	name := "gh"
 	if len(args) > 0 {
@@ -133,8 +112,6 @@ func Gh(ctx context.Context, dir, stdin string, args ...string) (string, error) 
 	if dir != "" {
 		cmd.Dir = dir
 	}
-	// NO_COLOR: the patch must be plain text; GH_NO_UPDATE_NOTIFIER: never
-	// spend the run on an update check.
 	cmd.Env = append(os.Environ(), "NO_COLOR=1", "GH_NO_UPDATE_NOTIFIER=1")
 	var stdouts, stderrs strings.Builder
 	cmd.Stdout = &stdouts
@@ -156,9 +133,6 @@ func Gh(ctx context.Context, dir, stdin string, args ...string) (string, error) 
 	return "", fmt.Errorf("%s: %s", strings.Join(args, " "), clip(strings.TrimSpace(stderrs.String()), 500))
 }
 
-// LoadPR loads a GitHub pull request the way the one-shot loaders load git:
-
-// prView is the subset of `gh pr view --json` LoadPR reads.
 type prView struct {
 	Number  int    `json:"number"`
 	Title   string `json:"title"`
@@ -169,13 +143,6 @@ type prView struct {
 	} `json:"commits"`
 }
 
-// LoadPR loads a GitHub pull request the way the one-shot loaders load git:
-// the patch from `gh pr diff` (parsed like any other git diff), the prompt
-// context from `gh pr view --json` (title, body and commit subjects). Title
-// is "#N <subject>"; Ref is "pr/N" (this repository) or "OWNER/REPO#N".
-// repo is the repository root to run gh in; the PR's repository may always
-// be named in spec ("OWNER/REPO#42", URL), so repo may be empty outside a
-// clone, or point at a different repository than the PR's.
 func LoadPR(ctx context.Context, repo, spec string) (*Loaded, error) {
 	p, err := ParsePRSpec(spec)
 	if err != nil {
@@ -185,7 +152,6 @@ func LoadPR(ctx context.Context, repo, spec string) (*Loaded, error) {
 	if slug == "" && repo == "" {
 		return nil, fmt.Errorf("pr #%s: run inside a clone of the repository, or name it: --pr OWNER/REPO#%s", p.Number, p.Number)
 	}
-	// --color is a flag of "gh pr diff" alone; "gh pr view" rejects it.
 	repoArgs := func(sub string, extra ...string) []string {
 		args := []string{"pr", sub, p.Number}
 		if sub == "diff" {
@@ -233,10 +199,6 @@ func LoadPR(ctx context.Context, repo, spec string) (*Loaded, error) {
 	}, nil
 }
 
-// prContext builds the prompt context from a prView: the pull request
-// title and body, then the commit subjects oldest first. gh lists a pull
-// request's commits oldest first; the git loaders list theirs newest first,
-// but a review reads a pull request in reading order.
 func prContext(view prView) string {
 	ctx := "PULL REQUEST: " + strings.TrimSpace(view.Title) + "\n"
 	if body := strings.TrimSpace(view.Body); body != "" {

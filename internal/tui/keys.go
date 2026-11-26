@@ -7,7 +7,6 @@ import (
 	"github.com/k22i/clump/internal/tui/view"
 )
 
-// HelpSections is the key reference shown by ? (and in the README).
 func HelpSections(watch bool) []view.HelpSection {
 	s := []view.HelpSection{
 		{Title: "Navigate", Entries: []view.HelpEntry{
@@ -61,8 +60,6 @@ func HelpSections(watch bool) []view.HelpSection {
 	return s
 }
 
-// onKey dispatches a key press: overlays first, then global keys, then the
-// focused pane.
 func (m *Model) onKey(k tea.KeyPressMsg) tea.Cmd {
 	key := k.String()
 	if key == "ctrl+c" {
@@ -309,7 +306,6 @@ func (m *Model) jumpMatchFrom(from int, forward bool) {
 	m.setDcur(i)
 }
 
-// forwardInput sends pasted text to the active input.
 func (m *Model) forwardInput(p tea.PasteMsg) tea.Cmd {
 	switch m.ov {
 	case ovSearch:

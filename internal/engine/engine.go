@@ -1,7 +1,3 @@
-// Package engine runs the grouping pipeline shared by one-shot mode, watch
-// mode and the --json/--plain/--dry-run outputs: cache lookup, Build,
-// estimate, provider calls (tier 1 or tier 2), Validate, cache write and
-// calibration. See DESIGN.md §6.
 package engine
 
 import (
@@ -20,47 +16,38 @@ import (
 	"github.com/k22i/clump/internal/provider"
 )
 
-// Engine ties config, providers and the cache together. Safe for
-// concurrent use (its parts are).
 type Engine struct {
 	Cfg   *config.Config
 	Reg   *provider.Registry
 	Store *cache.Store
-	// Now is time.Now unless a test replaces it.
-	Now func() time.Time
+	Now   func() time.Time
 
 	detOnce sync.Once
 	det     *generated.Detector
 	detErr  error
 }
 
-// New returns an Engine.
 func New(cfg *config.Config, reg *provider.Registry, store *cache.Store) *Engine {
 	return &Engine{Cfg: cfg, Reg: reg, Store: store, Now: time.Now}
 }
 
-// Input is one diff to group.
 type Input struct {
-	Diff *gitdiff.Diff
-	// Context is the commit message(s) for the prompt.
+	Diff    *gitdiff.Diff
 	Context string
 }
 
-// Estimate is what a Job would cost before the cache is consulted for
-// summaries (tier 2 summaries already cached are excluded).
 type Estimate struct {
 	Provider      string
 	Tier          int
-	Calls         int // provider calls still needed
-	Tokens        int // input tokens, including per-call overhead
-	OutTokens     int // a rough guess of output tokens
+	Calls         int
+	Tokens        int
+	OutTokens     int
 	CostUSD       float64
 	Ceiling       int
 	OverCeiling   bool
 	BytesPerToken float64
 }
 
-// String is e.g. "~12,345 tokens, ~$0.0123" (plus ", N calls" when > 1).
 func (e Estimate) String() string {
 	s := fmt.Sprintf("~%s tokens, ~$%.4f", thousands(e.Tokens), e.CostUSD)
 	if e.Calls > 1 {
@@ -81,33 +68,28 @@ func thousands(n int) string {
 	return b.String()
 }
 
-// Job is a prepared grouping request.
 type Job struct {
 	In       Input
-	Provider string // resolved provider name
+	Provider string
 	PCfg     provider.Config
 	DiffHash string
-	Key      string // result cache key
+	Key      string
 	Plan     *group.Plan
 	Est      Estimate
 }
 
-// Outcome is a finished grouping.
 type Outcome struct {
 	Result   group.Result
 	Usage    provider.Usage
 	Provider string
 	Key      string
 	DiffHash string
-	Calls    int  // provider calls made
-	Cached   bool // served from the result cache, no call
+	Calls    int
+	Cached   bool
 	Elapsed  time.Duration
-	// Raw is the grouping call's raw answer (empty for cache hits); for
-	// logs when the validator had to repair or fall back.
-	Raw string
+	Raw      string
 }
 
-// ResultKey resolves the provider and returns the result cache key for d.
 func (e *Engine) ResultKey(d *gitdiff.Diff, providerName string) (key, name string, pc provider.Config, err error) {
 	name, err = e.Reg.Resolve(providerName)
 	if err != nil {
@@ -117,9 +99,6 @@ func (e *Engine) ResultKey(d *gitdiff.Diff, providerName string) (key, name stri
 	return cache.KeyWith(d.Hash(), name, pc.ModelID(), e.maxGroups(), generated.Signature(d)), name, pc, nil
 }
 
-// MarkGenerated sets gitdiff.File.Generated on d's files from the
-// [generated] config (repo is for .gitattributes; "" skips it). Call it once
-// after loading a diff and before Lookup or Prepare.
 func (e *Engine) MarkGenerated(ctx context.Context, d *gitdiff.Diff, repo string) {
 	if e == nil || e.Cfg == nil {
 		return
@@ -128,7 +107,7 @@ func (e *Engine) MarkGenerated(ctx context.Context, d *gitdiff.Diff, repo string
 		e.det, e.detErr = generated.New(e.Cfg.Generated.Options())
 	})
 	if e.detErr != nil {
-		return // patterns are validated with the config; nothing to mark
+		return
 	}
 	e.det.Mark(ctx, d, repo)
 }
@@ -140,8 +119,6 @@ func (e *Engine) maxGroups() int {
 	return group.DefaultMaxGroups
 }
 
-// Lookup returns the cached result for d with providerName, if any. It is a
-// single file read.
 func (e *Engine) Lookup(d *gitdiff.Diff, providerName string) (*Outcome, bool, error) {
 	key, name, _, err := e.ResultKey(d, providerName)
 	if err != nil {
@@ -152,13 +129,11 @@ func (e *Engine) Lookup(d *gitdiff.Diff, providerName string) (*Outcome, bool, e
 		return nil, false, err
 	}
 	if group.Check(d, ent.Result.Grouping) != nil {
-		return nil, false, nil // a stale or foreign entry; treat as a miss
+		return nil, false, nil
 	}
 	return &Outcome{Result: ent.Result, Usage: ent.Usage, Provider: name, Key: key, DiffHash: ent.DiffHash, Cached: true}, true, nil
 }
 
-// BytesPerToken is the calibrated value for a provider, else its config
-// value, else the default.
 func (e *Engine) BytesPerToken(name string, pc provider.Config) float64 {
 	if v, ok := e.Store.Calibration(name); ok && v > 0 {
 		return v
@@ -169,7 +144,6 @@ func (e *Engine) BytesPerToken(name string, pc provider.Config) float64 {
 	return provider.DefaultBytesPerToken(pc)
 }
 
-// Prepare builds the prompt(s) for in and estimates them. It makes no call.
 func (e *Engine) Prepare(in Input, providerName string) (*Job, error) {
 	key, name, pc, err := e.ResultKey(in.Diff, providerName)
 	if err != nil {
@@ -190,7 +164,7 @@ func (e *Engine) Prepare(in Input, providerName string) (*Job, error) {
 func (e *Engine) estimate(j *Job, bpt float64) Estimate {
 	est := Estimate{Provider: j.Provider, Tier: j.Plan.Tier, Ceiling: e.Cfg.Ceiling, BytesPerToken: bpt}
 	if len(j.Plan.Units) == 0 {
-		return est // every hunk is generated: no call
+		return est
 	}
 	addCall := func(promptTokens, out int) {
 		est.Calls++
@@ -228,16 +202,12 @@ func (e *Engine) chunkCached(j *Job, c group.SummaryChunk) bool {
 	return true
 }
 
-// Progress reports the pipeline's steps.
 type Progress struct {
-	Step  int // 1-based call number
-	Steps int // calls planned
+	Step  int
+	Steps int
 	What  string
 }
 
-// Run executes j: the uncached tier-2 summary calls, then the grouping call;
-// validates the answer, writes the result cache and calibrates. progress may
-// be nil. A provider error aborts the run (nothing is cached).
 func (e *Engine) Run(ctx context.Context, j *Job, progress func(Progress)) (*Outcome, error) {
 	start := e.Now()
 	p, pc, err := e.Reg.Get(j.Provider)
@@ -246,7 +216,6 @@ func (e *Engine) Run(ctx context.Context, j *Job, progress func(Progress)) (*Out
 	}
 	out := &Outcome{Provider: j.Provider, Key: j.Key, DiffHash: j.DiffHash}
 	if res, ok := group.AllGenerated(j.In.Diff); ok {
-		// Nothing to send. Not cached: it costs nothing to rebuild.
 		out.Result, out.Elapsed = res, e.Now().Sub(start)
 		return out, nil
 	}
@@ -295,8 +264,6 @@ func (e *Engine) Run(ctx context.Context, j *Job, progress func(Progress)) (*Out
 	return out, nil
 }
 
-// summarise returns file index -> summary for every file, calling the
-// provider for chunks that are not fully cached.
 func (e *Engine) summarise(j *Job, call func(prompt, what string) (string, error)) (map[int]string, []string, error) {
 	d := j.In.Diff
 	out := map[int]string{}
@@ -342,9 +309,6 @@ func (e *Engine) summarise(j *Job, call func(prompt, what string) (string, error
 	return out, notices, nil
 }
 
-// calibrate refines bytes per token from a provider's reported usage. Fake
-// providers and raw command output report estimates, not counts, so they
-// are skipped.
 func (e *Engine) calibrate(name string, pc provider.Config, promptBytes int, u provider.Usage) {
 	if pc.Type == provider.TypeFake || (pc.Type == provider.TypeCommand && (pc.Format == "" || pc.Format == provider.FormatRaw)) {
 		return
@@ -352,11 +316,9 @@ func (e *Engine) calibrate(name string, pc provider.Config, promptBytes int, u p
 	if u.InputTokens <= 0 {
 		return
 	}
-	_, _ = e.Store.Calibrate(name, promptBytes, u.InputTokens, pc.OverheadTokens) // best effort
+	_, _ = e.Store.Calibrate(name, promptBytes, u.InputTokens, pc.OverheadTokens)
 }
 
-// DryRun returns exactly what j would send, with the estimate, without
-// sending anything.
 func (e *Engine) DryRun(j *Job) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "# clump dry run: provider %s, tier %d, %s (budget %d, ceiling %d)\n",
@@ -393,5 +355,4 @@ func (e *Engine) DryRun(j *Job) string {
 	return b.String()
 }
 
-// ErrOverCeiling is returned by callers that refuse a job above the ceiling.
 var ErrOverCeiling = errors.New("estimate is above the ceiling")

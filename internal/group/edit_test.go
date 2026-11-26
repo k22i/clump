@@ -13,8 +13,6 @@ import (
 	"github.com/k22i/clump/internal/gitdiff"
 )
 
-// editTestDiff returns a diff with n hunks h1..hn spread over files of 3
-// hunks each, and the grouping with one group per file (g1.., titled "F<i>").
 func editTestDiff(n int) (*gitdiff.Diff, Grouping) {
 	d := &gitdiff.Diff{}
 	g := Grouping{}
@@ -53,9 +51,6 @@ func editTestDiff(n int) (*gitdiff.Diff, Grouping) {
 	return d, g
 }
 
-// editWant builds a Grouping from specs of the form
-// "ID|Title|Description|h1 h2" (the hunk list may be empty). It keeps test
-// expectations readable and explicit about every field.
 func editWant(specs ...string) Grouping {
 	g := Grouping{}
 	for _, s := range specs {
@@ -72,10 +67,6 @@ func editWant(specs ...string) Grouping {
 	return g
 }
 
-// editDiffFor returns a diff whose hunks are exactly the hunks listed in g
-// (one file per hunk). It lets Check be applied to groupings that use only a
-// subset of the standard h1..hn hunks, while still catching a hunk that an
-// operation lost.
 func editDiffFor(g Grouping) *gitdiff.Diff {
 	d := &gitdiff.Diff{}
 	for _, gr := range g.Groups {
@@ -108,10 +99,8 @@ func editDiffFor(g Grouping) *gitdiff.Diff {
 	return d
 }
 
-// editUngrouped is the editWant spec prefix of the Ungrouped group.
 const editUngrouped = "ungrouped|Ungrouped|Hunks not in any group.|"
 
-// editShow renders a grouping on one line per group for failure messages.
 func editShow(g Grouping) string {
 	if len(g.Groups) == 0 {
 		return "  (<no groups>)\n"
@@ -123,8 +112,6 @@ func editShow(g Grouping) string {
 	return b.String()
 }
 
-// editAssertEqual fails unless got equals want; when d is non-nil it also
-// requires got to be Check-clean against d.
 func editAssertEqual(t *testing.T, d *gitdiff.Diff, got, want Grouping) {
 	t.Helper()
 	if !Equal(got, want) {
@@ -449,7 +436,7 @@ func TestDelete(t *testing.T) {
 }
 
 func TestReorder(t *testing.T) {
-	d, base := editTestDiff(9) // g1 [h1 h2 h3], g2 [h4 h5 h6], g3 [h7 h8 h9]
+	d, base := editTestDiff(9)
 	cases := []struct {
 		name  string
 		id    string
@@ -487,7 +474,7 @@ func TestReorder(t *testing.T) {
 }
 
 func TestMerge(t *testing.T) {
-	d, base := editTestDiff(9) // g1 F1, g2 F2, g3 F3, three hunks each
+	d, base := editTestDiff(9)
 
 	t.Run("dst keeps its title and position", func(t *testing.T) {
 		got, err := Merge(base, "g1", "g2")
@@ -558,7 +545,7 @@ func TestOpsDoNotMutate(t *testing.T) {
 	)
 	cases := []struct {
 		name string
-		in   Grouping // nil for the shared base
+		in   Grouping
 		op   func(Grouping) (Grouping, error)
 	}{
 		{name: "Move between groups", op: func(g Grouping) (Grouping, error) {
@@ -624,8 +611,6 @@ func TestOpsDoNotMutate(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			// Each case works on its own copy, so the shared base is never
-			// involved and the input checks below are exact.
 			in := base.Clone()
 			if c.in.Groups != nil {
 				in = c.in.Clone()
@@ -640,8 +625,6 @@ func TestOpsDoNotMutate(t *testing.T) {
 				if cerr := Check(d, out); cerr != nil {
 					t.Fatalf("Check on result = %v\nresult:\n%s", cerr, editShow(out))
 				}
-				// Mutating the result must not reach the input: this catches
-				// shared Hunks backing arrays.
 				for i := range out.Groups {
 					out.Groups[i].Title = "mutated"
 					out.Groups[i].Description = "mutated"
@@ -660,7 +643,7 @@ func TestOpsDoNotMutate(t *testing.T) {
 }
 
 func TestExampleSequence(t *testing.T) {
-	d, _ := editTestDiff(5) // h1..h5
+	d, _ := editTestDiff(5)
 	const ungroupedSpec = editUngrouped + "h2 h3 h4"
 
 	states := []struct {
@@ -689,7 +672,6 @@ func TestExampleSequence(t *testing.T) {
 	h := NewHistory(start)
 	editAssertEqual(t, d, h.Current(), states[0].want)
 
-	// Each step is an Apply whose change the history records.
 	steps := []struct {
 		action string
 		op     func(Grouping) (Grouping, error)
@@ -730,7 +712,6 @@ func TestExampleSequence(t *testing.T) {
 		}
 	}
 
-	// Step 10: undo all nine back to the start.
 	for i := 9; i >= 1; i-- {
 		if !h.Undo() {
 			t.Fatalf("Undo %d returned false", 10-i)
@@ -744,7 +725,6 @@ func TestExampleSequence(t *testing.T) {
 		t.Fatalf("Len() = (%d, %d), want (0, 9)", undo, redo)
 	}
 
-	// Step 11: redo all nine forward again.
 	for i := 1; i <= 9; i++ {
 		if !h.Redo() {
 			t.Fatalf("Redo %d returned false", i)
@@ -755,7 +735,6 @@ func TestExampleSequence(t *testing.T) {
 		t.Fatalf("CanRedo() = true after redoing everything")
 	}
 
-	// Step 12: undo once, then a different change drops the redo stack.
 	if !h.Undo() {
 		t.Fatalf("Undo returned false")
 	}
@@ -774,10 +753,8 @@ func TestExampleSequence(t *testing.T) {
 		"g3|Tests|covers x|h1"))
 }
 
-// unknownNumber is a hunk ID no diff contains.
 const unknownNumber = "h99"
 
-// editRandomHunks returns 1-3 hunk IDs of d, sometimes an unknown one.
 func editRandomHunks(rng *rand.Rand, d *gitdiff.Diff) []string {
 	n := 1 + rng.IntN(3)
 	ids := make([]string, 0, n)
@@ -791,7 +768,6 @@ func editRandomHunks(rng *rand.Rand, d *gitdiff.Diff) []string {
 	return ids
 }
 
-// editRandomTarget returns an existing group ID, UngroupedID or a bogus one.
 func editRandomTarget(rng *rand.Rand, g Grouping) string {
 	switch rng.IntN(6) {
 	case 0:
@@ -805,8 +781,6 @@ func editRandomTarget(rng *rand.Rand, g Grouping) string {
 	return g.Groups[rng.IntN(len(g.Groups))].ID
 }
 
-// editRandomPair returns two group IDs of g (sometimes equal), sometimes with
-// a bogus one.
 func editRandomPair(rng *rand.Rand, g Grouping) (string, string) {
 	if len(g.Groups) == 0 {
 		return "gZZ", UngroupedID
@@ -821,7 +795,6 @@ func editRandomPair(rng *rand.Rand, g Grouping) (string, string) {
 	return src, g.Groups[rng.IntN(len(g.Groups))].ID
 }
 
-// editRandomTitle returns a title, blank now and then.
 func editRandomTitle(rng *rand.Rand) string {
 	switch rng.IntN(6) {
 	case 0:
@@ -834,7 +807,6 @@ func editRandomTitle(rng *rand.Rand) string {
 	return "Title" + strconv.Itoa(rng.IntN(10))
 }
 
-// editLast returns the last n elements of s.
 func editLast(s []string, n int) []string {
 	if len(s) <= n {
 		return s
@@ -842,8 +814,6 @@ func editLast(s []string, n int) []string {
 	return s[len(s)-n:]
 }
 
-// editSeed returns the seed for the property test: CLUMP_SEED when set, else
-// the wall clock.
 func editSeed(t *testing.T) uint64 {
 	t.Helper()
 	if s := os.Getenv("CLUMP_SEED"); s != "" {
@@ -868,8 +838,6 @@ func TestEditPropertyRandom(t *testing.T) {
 	}
 	h := NewHistory(start)
 
-	// An independent model of the history: myPast/myFuture mirror the stacks,
-	// myCur is the state the current step must produce.
 	myPast := []Grouping{}
 	myFuture := []Grouping{}
 	myCur := start.Clone()
@@ -1017,15 +985,12 @@ func TestEditPropertyRandom(t *testing.T) {
 
 	t.Logf("ran %d steps: %d changes, %d errors, %d no-ops, %d undos, %d redos; final stacks (%d, %d)",
 		steps, changes, errs, noops, undos, redos, len(myPast), len(myFuture))
-	// A redo only succeeds directly after an undo, so it is the rarest event;
-	// the thresholds just prove the walk reaches every path.
 	if changes < steps/10 || undos < steps/20 || redos < steps/250 || errs == 0 || noops == 0 {
 		t.Fatalf("the random walk did not exercise the interesting paths: changes=%d errors=%d no-ops=%d undos=%d redos=%d",
 			changes, errs, noops, undos, redos)
 	}
 }
 
-// isEditError reports whether err wraps one of the edit sentinel errors.
 func isEditError(err error) bool {
 	for _, want := range []error{ErrNoGroup, ErrNoHunk, ErrNoHunks, ErrSameGroup,
 		ErrEmptyTitle, ErrUngroupedOp} {

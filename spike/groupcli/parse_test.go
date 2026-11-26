@@ -18,7 +18,7 @@ type fileWant struct {
 func TestParseLazygitSamples(t *testing.T) {
 	cases := []struct {
 		file    string
-		commit  string // expected commit hash prefix, "" if none
+		commit  string
 		subject string
 		files   []fileWant
 	}{
@@ -33,7 +33,7 @@ func TestParseLazygitSamples(t *testing.T) {
 		{"stash-entry.txt", "", "", []fileWant{{"README.md", "M", 1, false}}},
 		{"range-selection.txt", "", "", []fileWant{{"docs/new.txt", "R", 1, false},
 			{"logo.bin", "A", 1, true}, {"nonl.txt", "A", 1, false}, {"src/main.go", "T", 1, false}}},
-		{"branch-log-main.txt", "", "", nil}, // not a diff: no files
+		{"branch-log-main.txt", "", "", nil},
 	}
 	for _, c := range cases {
 		t.Run(c.file, func(t *testing.T) {
@@ -178,7 +178,6 @@ func TestValidateRepairs(t *testing.T) {
 	}
 }
 
-// Property: whatever the model returns, the validated result keeps every hunk exactly once.
 func TestValidateProperty(t *testing.T) {
 	var sb strings.Builder
 	for f := 0; f < 6; f++ {
@@ -198,7 +197,7 @@ func TestValidateProperty(t *testing.T) {
 		for g := 0; g < ng; g++ {
 			var ids []string
 			for k := rng.Intn(6); k > 0; k-- {
-				ids = append(ids, fmt.Sprintf("\"h%d\"", rng.Intn(22))) // includes unknown h0, h19..h21
+				ids = append(ids, fmt.Sprintf("\"h%d\"", rng.Intn(22)))
 			}
 			parts = append(parts, fmt.Sprintf(`{"title":"g%d","hunks":[%s]}`, g, strings.Join(ids, ",")))
 		}

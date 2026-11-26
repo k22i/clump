@@ -42,7 +42,6 @@ func TestCommentsRoundTrip(t *testing.T) {
 	if len(got[b]) != 1 || got[b][0].Text != "other anchor" {
 		t.Fatalf("b: %+v", got[b])
 	}
-	// Empty text is refused.
 	if _, err := s.AddComment(a, "  ", now); err == nil {
 		t.Fatal("empty comment should fail")
 	}
@@ -80,14 +79,12 @@ func TestCommentDelete(t *testing.T) {
 	if len(got[a]) != 1 || got[a][0].ID != c1.ID {
 		t.Fatalf("after delete: %+v", got[a])
 	}
-	// Deleting the last comment removes the shard file.
 	if err := s.DeleteComment(a, c1.ID); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Join(dir, "comments", "a.json")); !os.IsNotExist(err) {
 		t.Fatalf("shard a kept: %v", err)
 	}
-	// Idempotent: unknown ids and keys are fine.
 	if err := s.DeleteComment(a, "nope"); err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +104,6 @@ func TestCommentsTTLAndCorruptShard(t *testing.T) {
 	if _, err := s.AddComment(f, "will expire", now); err != nil {
 		t.Fatal(err)
 	}
-	// Adding to the same shard later prunes the expired entry.
 	later := now.Add(CommentTTL + time.Hour)
 	if _, err := s.AddComment(f, "fresh", later); err != nil {
 		t.Fatal(err)
@@ -116,7 +112,6 @@ func TestCommentsTTLAndCorruptShard(t *testing.T) {
 	if len(got[f]) != 1 || got[f][0].Text != "fresh" {
 		t.Fatalf("expired comment kept: %+v", got[f])
 	}
-	// A corrupt shard reads as empty, and writing works over it.
 	if err := os.WriteFile(filepath.Join(dir, "comments", "a.json"), []byte("{"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -126,12 +121,11 @@ func TestCommentsTTLAndCorruptShard(t *testing.T) {
 	if _, err := s.AddComment(a, "over corrupt", now); err != nil {
 		t.Fatal(err)
 	}
-	// AllComments returns by anchor, TTL-dropped.
 	all, err := s.AllComments(later)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(all) != 1 || all[f][0].Text != "fresh" { // "over corrupt" is past the TTL
+	if len(all) != 1 || all[f][0].Text != "fresh" {
 		t.Fatalf("all comments: %+v", all)
 	}
 }
@@ -164,5 +158,5 @@ func TestCommentShardVersionMismatch(t *testing.T) {
 	if err != nil || len(got) != 0 {
 		t.Fatalf("other version should read as empty: %v %v", got, err)
 	}
-	var _ comment.Kind // keep the import shape stable
+	var _ comment.Kind
 }

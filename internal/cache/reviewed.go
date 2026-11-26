@@ -10,18 +10,6 @@ import (
 	"time"
 )
 
-// Reviewed hunks are kept by content (gitdiff.Hunk.ReviewKey), not by diff:
-// a hunk reviewed in one commit stays reviewed in the branch range that
-// contains it, after a regroup, an edit, a provider switch or a rebase that
-// only moves it, and becomes unreviewed as soon as its text changes.
-//
-// They live in 16 shards, reviewed/<key[0]>.json, each
-//
-//	{"version":1,"hunks":{"<key>":"<RFC 3339 time>", ...}}
-//
-// Entries older than ReviewedTTL are dropped when their shard is written.
-
-// ReviewedTTL is how long a reviewed mark is kept.
 const ReviewedTTL = 180 * 24 * time.Hour
 
 type reviewedShard struct {
@@ -33,9 +21,6 @@ func (s *Store) reviewedPath(shard byte) string {
 	return filepath.Join(s.dir, "reviewed", string(shard)+".json")
 }
 
-// readReviewedShard reads one shard; a missing, corrupt or other-version
-// file is an empty shard (reviewed marks are a convenience, not data that
-// must never be lost).
 func (s *Store) readReviewedShard(shard byte) reviewedShard {
 	sh := reviewedShard{Version: FormatVersion, Hunks: map[string]time.Time{}}
 	data, err := s.fs.ReadFile(s.reviewedPath(shard))
@@ -49,7 +34,6 @@ func (s *Store) readReviewedShard(shard byte) reviewedShard {
 	return got
 }
 
-// byShard groups valid keys by their shard; invalid keys are an error.
 func byShard(keys []string) (map[byte][]string, error) {
 	out := map[byte][]string{}
 	for _, k := range keys {
@@ -61,7 +45,6 @@ func byShard(keys []string) (map[byte][]string, error) {
 	return out, nil
 }
 
-// Reviewed returns which of keys are marked reviewed.
 func (s *Store) Reviewed(keys []string) (map[string]bool, error) {
 	shards, err := byShard(keys)
 	if err != nil {
@@ -79,9 +62,6 @@ func (s *Store) Reviewed(keys []string) (map[string]bool, error) {
 	return out, nil
 }
 
-// SetReviewed marks keys reviewed (on) or not, at now. Each touched shard is
-// re-read just before it is written, so two clump processes lose at most a
-// mark made in the same instant.
 func (s *Store) SetReviewed(keys []string, on bool, now time.Time) error {
 	shards, err := byShard(keys)
 	if err != nil {

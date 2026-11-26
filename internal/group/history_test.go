@@ -6,7 +6,7 @@ import (
 )
 
 func TestHistoryBasics(t *testing.T) {
-	d, start := editTestDiff(6) // g1 [h1 h2 h3], g2 [h4 h5 h6]
+	d, start := editTestDiff(6)
 	second := editWant("g1|A||h1 h2 h3 h4 h5 h6")
 	third := editWant("g1|A||h1 h2 h3 h4 h5 h6", "g2|B||")
 
@@ -127,7 +127,7 @@ func TestHistoryBasics(t *testing.T) {
 	t.Run("Apply of an error leaves the history unchanged", func(t *testing.T) {
 		h := NewHistory(start)
 		h.Do(second)
-		h.Undo() // one redoable change, so a wrong Apply would show up in Len
+		h.Undo()
 		changed, err := h.Apply(func(g Grouping) (Grouping, error) { return Move(g, []string{"h99"}, "g1") })
 		if !errors.Is(err, ErrNoHunk) {
 			t.Fatalf("Apply error = %v, want ErrNoHunk", err)

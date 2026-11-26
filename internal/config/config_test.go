@@ -10,7 +10,6 @@ import (
 	"github.com/k22i/clump/internal/provider"
 )
 
-// providerNames lists the names of ps in order.
 func providerNames(ps []provider.Config) []string {
 	names := make([]string, len(ps))
 	for i, p := range ps {

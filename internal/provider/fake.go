@@ -10,29 +10,17 @@ import (
 	"time"
 )
 
-// Fake is a scripted provider for tests and for the "fake" provider type.
-// Its zero value answers every prompt with AutoAnswer(prompt).
 type Fake struct {
-	// ProviderName is returned by Name; "fake" when empty.
 	ProviderName string
-	// Responses are returned in order, one per call. After the last one, the
-	// last response repeats. Empty means AutoAnswer.
-	Responses []string
-	// Err, when set, is returned by every call (after Delay).
-	Err error
-	// Delay is waited before answering; ctx cancellation ends the wait early
-	// and returns ctx.Err().
-	Delay time.Duration
-	// Usage is returned by every successful call. When zero, the usage is
-	// InputTokens = len(prompt)/2, OutputTokens = len(text)/2, CostUSD 0,
-	// CostSource CostEstimated.
-	Usage Usage
+	Responses    []string
+	Err          error
+	Delay        time.Duration
+	Usage        Usage
 
 	mu      sync.Mutex
 	prompts []string
 }
 
-// Name implements Provider.
 func (f *Fake) Name() string {
 	if f.ProviderName == "" {
 		return "fake"
@@ -40,7 +28,6 @@ func (f *Fake) Name() string {
 	return f.ProviderName
 }
 
-// Complete implements Provider. It records the prompt before waiting.
 func (f *Fake) Complete(ctx context.Context, prompt string) (string, Usage, error) {
 	f.mu.Lock()
 	call := len(f.prompts)
@@ -84,21 +71,18 @@ func (f *Fake) Complete(ctx context.Context, prompt string) (string, Usage, erro
 	return text, u, nil
 }
 
-// Calls returns how many times Complete was called.
 func (f *Fake) Calls() int {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return len(f.prompts)
 }
 
-// Prompts returns a copy of every prompt received, in order.
 func (f *Fake) Prompts() []string {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return append([]string(nil), f.prompts...)
 }
 
-// Prompt markers and answer shapes of the fake provider.
 const (
 	groupTaskPrefix     = "# clump-task: group"
 	summarizeTaskPrefix = "# clump-task: summarize"
@@ -108,49 +92,29 @@ const (
 )
 
 var (
-	// catalogLineRe matches a catalog line: `id | status | path | ...`.
 	catalogLineRe = regexp.MustCompile(`^([hc][0-9]+) \| [A-Z] \| (.+?) \| `)
-	// summaryFileRe matches the heading of a per-file block in a summary prompt.
 	summaryFileRe = regexp.MustCompile(`^=== file (.+?) \(`)
 )
 
-// fakeGroup is one entry of a fake {"groups":[...]} answer.
 type fakeGroup struct {
 	Title       string   `json:"title"`
 	Description string   `json:"description"`
 	Hunks       []string `json:"hunks"`
 }
 
-// fakeGroups is the fake answer to a grouping prompt.
 type fakeGroups struct {
 	Groups []fakeGroup `json:"groups"`
 }
 
-// fakeFileSummary is one entry of a fake {"files":[...]} answer.
 type fakeFileSummary struct {
 	Path    string `json:"path"`
 	Summary string `json:"summary"`
 }
 
-// fakeSummaries is the fake answer to a summary prompt.
 type fakeSummaries struct {
 	Files []fakeFileSummary `json:"files"`
 }
 
-// AutoAnswer produces a deterministic, valid answer to a clump prompt
-// without a model:
-//
-//   - A grouping prompt (its first line is "# clump-task: group") gets
-//     {"groups":[...]} with one group per top-level directory of the catalog
-//     paths (files at the repo root form the group "(root)"), in order of
-//     first appearance. Title "Changes in <dir>", description
-//     "Fake grouping of <n> hunks in <dir>.". Catalog lines are the lines
-//     matching `^([hc][0-9]+) \| [A-Z] \| (.+?) \| ` between the data markers;
-//     for "old -> new" the new path counts.
-//   - A summary prompt (first line "# clump-task: summarize") gets
-//     {"files":[{"path":p,"summary":"Fake summary of <p>."}...]} for every
-//     line matching `^=== file (.+) \(` in order.
-//   - Anything else gets {"groups":[]}.
 func AutoAnswer(prompt string) string {
 	data := promptData(prompt)
 	switch task := taskLine(prompt); {
@@ -163,15 +127,11 @@ func AutoAnswer(prompt string) string {
 	}
 }
 
-// taskLine is the first line of prompt, trimmed.
 func taskLine(prompt string) string {
 	first, _, _ := strings.Cut(prompt, "\n")
 	return strings.TrimSpace(first)
 }
 
-// promptData is the text between the line starting with the
-// <<<CLUMP-DATA- marker and the line starting with <<<END-CLUMP-DATA- (or the
-// end of the prompt). It is empty when the opening marker is missing.
 func promptData(prompt string) string {
 	lines := strings.Split(prompt, "\n")
 	start := -1
@@ -193,8 +153,6 @@ func promptData(prompt string) string {
 	return strings.Join(lines[start:], "\n")
 }
 
-// groupFakeAnswer builds one group per top-level directory, in order of first
-// appearance, with the hunk IDs in catalog order.
 func groupFakeAnswer(data string) fakeGroups {
 	answer := fakeGroups{Groups: []fakeGroup{}}
 	var dirs []string
@@ -221,7 +179,6 @@ func groupFakeAnswer(data string) fakeGroups {
 	return answer
 }
 
-// summaryFakeAnswer builds one summary per "=== file" block heading.
 func summaryFakeAnswer(data string) fakeSummaries {
 	answer := fakeSummaries{Files: []fakeFileSummary{}}
 	for _, line := range strings.Split(data, "\n") {
@@ -237,8 +194,6 @@ func summaryFakeAnswer(data string) fakeSummaries {
 	return answer
 }
 
-// catalogPath is the path a catalog line counts for grouping: for a rename the
-// new path, and for a collapsed unit (`docs/*.md (45 files)`) the pattern.
 func catalogPath(path string) string {
 	if _, after, ok := strings.Cut(path, " -> "); ok {
 		path = after
@@ -249,7 +204,6 @@ func catalogPath(path string) string {
 	return path
 }
 
-// dirOf is the path's first segment, or rootGroup when it has none.
 func dirOf(path string) string {
 	dir, _, ok := strings.Cut(path, "/")
 	if !ok {
@@ -258,8 +212,6 @@ func dirOf(path string) string {
 	return dir
 }
 
-// marshalGroups renders answer as JSON. It cannot fail: fakeGroups has no
-// value encoding/json rejects.
 func marshalGroups(answer fakeGroups) string {
 	b, err := json.Marshal(answer)
 	if err != nil {
@@ -268,8 +220,6 @@ func marshalGroups(answer fakeGroups) string {
 	return string(b)
 }
 
-// marshalSummaries renders answer as JSON. It cannot fail: fakeSummaries has
-// no value encoding/json rejects.
 func marshalSummaries(answer fakeSummaries) string {
 	b, err := json.Marshal(answer)
 	if err != nil {

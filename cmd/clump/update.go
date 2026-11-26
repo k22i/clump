@@ -1,9 +1,3 @@
-// Command clump update downloads the latest release published on GitHub
-// and replaces this binary with it: the same prebuilt, checksummed archive
-// scripts/install.sh installs, without a Go toolchain. clump stores no
-// tokens: the GitHub API call is anonymous, or authenticated with
-// $GITHUB_TOKEN, else the gh CLI's token when gh is logged in — like the
-// other GitHub integrations.
 package main
 
 import (
@@ -22,8 +16,6 @@ import (
 	"github.com/k22i/clump/internal/update"
 )
 
-// updateAPI and updateRepo are where releases come from; tests point them
-// at a fake server. selfExe is the binary update.Install replaces.
 var (
 	updateAPI  = update.API
 	updateRepo = update.Repo
@@ -41,14 +33,10 @@ func executablePath() (string, error) {
 	return exe, nil
 }
 
-// runUpdate implements clump update (and its upgrade alias): fetch the
-// latest release, and when it is newer than this binary, download this
-// platform's archive, verify its checksum and install it in place.
 func runUpdate(args []string, stdout, stderr io.Writer) error {
 	if len(args) > 0 {
 		return usageError{"update: want no arguments, got " + strings.Join(args, " ")}
 	}
-	// Ctrl-C interrupts a download; the install itself is a rename.
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
@@ -83,8 +71,6 @@ func runUpdate(args []string, stdout, stderr io.Writer) error {
 	return nil
 }
 
-// authClient returns a client for the GitHub API, authenticated with
-// $GITHUB_TOKEN, else the token of a logged-in gh CLI, else anonymous.
 func authClient(ctx context.Context) *http.Client {
 	token := os.Getenv("GITHUB_TOKEN")
 	if token == "" {
@@ -98,8 +84,6 @@ func authClient(ctx context.Context) *http.Client {
 	return &http.Client{Transport: bearer{token, http.DefaultTransport}}
 }
 
-// bearer adds the token to every request; the token shows up nowhere else
-// (provider.Redact keeps error messages clean too).
 type bearer struct {
 	token string
 	rt    http.RoundTripper

@@ -55,7 +55,6 @@ func TestRegistry(t *testing.T) {
 				t.Fatalf("Names() = %q, want %q", got, want)
 			}
 		}
-		// The slice must be a copy: mutating it must not change the registry.
 		got[0] = "mutated"
 		if r.Names()[0] != "a" {
 			t.Fatal("Names() exposes the registry's own slice")

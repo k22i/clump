@@ -1,18 +1,5 @@
 package main
 
-// The submit subcommand: post a saved review to the pull request it reviews.
-//
-//	clump submit --pr SPEC --event comment|approve|request-changes
-//	             [--body TEXT | --body-file PATH] [--repo DIR] [--yes]
-//	             [--dry-run]
-//
-// The comments are the ones the TUI and `clump comments` keep, anchored to
-// the pull request's diff by content: line comments post inline on their
-// line, file comments as file-level comments, group comments go into the
-// review body. The whole review is one `gh api` call, run as whatever
-// account the gh CLI is logged into; clump stores no tokens. Nothing below
-// the confirm (or --yes) touches GitHub.
-
 import (
 	"context"
 	"errors"
@@ -44,7 +31,7 @@ func parseSubmit(args []string) (submitOpts, error) {
 	fs.BoolVar(&o.yes, "yes", false, "")
 	fs.BoolVar(&o.dryRun, "dry-run", false, "")
 	fs.Usage = func() {}
-	_ = fs.Parse(args) // positional extras are rejected below
+	_ = fs.Parse(args)
 	if fs.NArg() > 0 {
 		return o, usageError{"submit takes flags only, not \"" + fs.Arg(0) + "\""}
 	}
@@ -66,8 +53,6 @@ func parseSubmit(args []string) (submitOpts, error) {
 	return o, nil
 }
 
-// runSubmit loads the pull request's comments, builds the review and posts
-// it after a confirm (or with --yes / to stdout with --dry-run).
 func runSubmit(args []string, stdin *os.File, stdout, stderr io.Writer) error {
 	o, err := parseSubmit(args)
 	if err != nil {
@@ -131,7 +116,6 @@ func runSubmit(args []string, stdin *os.File, stdout, stderr io.Writer) error {
 	return nil
 }
 
-// readBodyFile reads the review body from a path ("-" is stdin).
 func readBodyFile(path string, stdin *os.File) (string, error) {
 	if path == "-" {
 		if isTerminal(stdin) {
@@ -147,10 +131,6 @@ func readBodyFile(path string, stdin *os.File) (string, error) {
 	return string(b), nil
 }
 
-// placedComments loads the pull request's diff-anchored comments, exactly as
-// `clump comments` lists them: line and file comments on the diff's hunks,
-// group comments on the saved grouping (the override, else the cache); a
-// provider is never called.
 func placedComments(a *app, l *gitdiff.Loaded) []comment.Placed {
 	g, _ := savedGrouping(a, l, a.cfg.Default)
 	var groupIDs []string
@@ -169,7 +149,6 @@ func placedComments(a *app, l *gitdiff.Loaded) []comment.Placed {
 	return comment.Place(comment.Resolve(anchors, stored), l.Diff, g)
 }
 
-// groupTitles names a group by its title in the saved grouping.
 func groupTitles(l *gitdiff.Loaded, a *app) func(id string) string {
 	g, ok := savedGrouping(a, l, a.cfg.Default)
 	if !ok {
@@ -185,8 +164,6 @@ func groupTitles(l *gitdiff.Loaded, a *app) func(id string) string {
 	}
 }
 
-// prLabel names the pull request for prompts: the loaded ref when the diff
-// came from the pull request, else the spec as given.
 func prLabel(ref, spec string) string {
 	if ref != "" && ref != "stdin" {
 		return ref

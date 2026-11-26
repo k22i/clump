@@ -17,7 +17,6 @@ import (
 	"github.com/k22i/clump/internal/update"
 )
 
-// buildArchive returns a tar.gz holding one clump binary at its root.
 func buildArchive(t *testing.T, bin []byte) []byte {
 	t.Helper()
 	var buf bytes.Buffer
@@ -38,9 +37,6 @@ func buildArchive(t *testing.T, bin []byte) []byte {
 	return buf.Bytes()
 }
 
-// fakeRelease serves an API at apiURL/releases/latest describing a release
-// whose archive holds bin, plus checksums.txt, and returns the API server
-// and the release as Latest would report it.
 func fakeRelease(t *testing.T, tag, goos, goarch string, bin []byte) (*httptest.Server, string, update.Release) {
 	t.Helper()
 	mux := http.NewServeMux()
@@ -143,7 +139,6 @@ func TestDownload(t *testing.T) {
 		t.Errorf("binary: got %q", bin)
 	}
 
-	// A tampered checksum must fail the download.
 	bad := update.Release{Tag: rel.Tag, Assets: map[string]string{}}
 	for k, v := range rel.Assets {
 		bad.Assets[k] = v
@@ -161,7 +156,6 @@ func TestDownload(t *testing.T) {
 		t.Error("checksum mismatch: want an error")
 	}
 
-	// A release without this platform's archive must name what it has.
 	if _, err := update.Download(t.Context(), http.DefaultClient, rel, "windows", "386"); err == nil {
 		t.Error("missing asset: want an error")
 	}
@@ -187,8 +181,6 @@ func TestInstall(t *testing.T) {
 		t.Errorf("mode: %v, %v", info.Mode(), err)
 	}
 
-	// No half-written binary or temp file is left behind on failure: the
-	// temp file lands in the same dir, an unwritable dir fails Install.
 	if err := update.Install(filepath.Join(dir, "no", "such", "clump"), []byte("new")); err == nil {
 		t.Error("missing dir: want an error")
 	}

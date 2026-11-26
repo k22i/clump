@@ -1,9 +1,5 @@
 package main
 
-// Throwaway unified-diff parser for the spike. Handles `git show` headers (with or
-// without lazygit's --stat block), renames/copies, binary files, mode changes,
-// new/deleted files and "\ No newline at end of file". Hunk boundaries come from the
-// @@ line counts, so a body line such as "--- foo" is never mistaken for a header.
 
 import (
 	"fmt"
@@ -20,7 +16,7 @@ type Commit struct {
 
 type File struct {
 	OldPath, NewPath string
-	Status           string // A M D R C T(mode only)
+	Status           string
 	Similarity       int
 	OldMode, NewMode string
 	Binary           bool
@@ -37,17 +33,17 @@ func (f *File) Path() string {
 type Hunk struct {
 	ID                 string
 	File               *File
-	Header             string // the full @@ line
+	Header             string
 	OldStart, OldLines int
 	NewStart, NewLines int
-	Lines              []string // body lines including "\ No newline" markers
+	Lines              []string
 	Add, Del           int
 }
 
 type Diff struct {
 	Commits []Commit
 	Files   []*File
-	Hunks   []*Hunk // all hunks in file order; binary/mode-only files get one pseudo-hunk
+	Hunks   []*Hunk
 }
 
 var hunkRe = regexp.MustCompile(`^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@`)
@@ -63,7 +59,6 @@ func atoiDef(s string, d int) int {
 	return n
 }
 
-// unquote handles git's C-style quoted paths ("a/\303\251.txt").
 func unquote(p string) string {
 	if len(p) >= 2 && p[0] == '"' && p[len(p)-1] == '"' {
 		if u, err := strconv.Unquote(p); err == nil {
@@ -81,8 +76,6 @@ func stripPrefix(p string) string {
 	return p
 }
 
-// splitGitLine splits "a/X b/Y" from a "diff --git" line. When X == Y (the common
-// case, and the only ambiguous one with spaces) pick the split giving equal halves.
 func splitGitLine(rest string) (string, string) {
 	if strings.HasPrefix(rest, "\"") {
 		if i := strings.Index(rest[1:], "\" "); i >= 0 {
@@ -115,7 +108,6 @@ func Parse(text string) (*Diff, error) {
 	inMsg := false
 	for i := 0; i < len(lines); i++ {
 		l := lines[i]
-		// inside a hunk body, counts decide what a line is
 		if hk != nil && (remOld > 0 || remNew > 0) {
 			switch {
 			case strings.HasPrefix(l, "+"):
@@ -134,7 +126,7 @@ func Parse(text string) (*Diff, error) {
 			hk.Lines = append(hk.Lines, l)
 			continue
 		}
-		if hk != nil && strings.HasPrefix(l, "\\") { // "\ No newline" after last counted line
+		if hk != nil && strings.HasPrefix(l, "\\") {
 			hk.Lines = append(hk.Lines, l)
 			continue
 		}
@@ -160,7 +152,7 @@ func Parse(text string) (*Diff, error) {
 				commit.Body += m + "\n"
 			}
 		case cur == nil:
-			_ = inMsg // preamble: Author/Date/stat block/"---" etc.
+			_ = inMsg
 		case strings.HasPrefix(l, "@@"):
 			m := hunkRe.FindStringSubmatch(l)
 			if m == nil {
@@ -202,10 +194,8 @@ func Parse(text string) (*Diff, error) {
 				cur.NewPath = stripPrefix(strings.TrimRight(p, "\t"))
 			}
 		default:
-			// index lines, binary patch payload, etc.
 		}
 	}
-	// assign IDs; files without text hunks (binary, pure rename, mode change) get one pseudo-hunk
 	n := 0
 	for _, f := range d.Files {
 		if len(f.Hunks) == 0 {

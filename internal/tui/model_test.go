@@ -20,7 +20,6 @@ import (
 	"github.com/k22i/clump/internal/tui/view"
 )
 
-// harness drives a Model without a terminal.
 type harness struct {
 	t     *testing.T
 	m     *Model
@@ -90,8 +89,6 @@ func newHarness(t *testing.T, store *cache.Store, mut func(*config.Config)) *har
 	return h
 }
 
-// send delivers msg and runs every resulting command to completion,
-// feeding their messages back in (spinner ticks are dropped).
 func (h *harness) send(msg tea.Msg) {
 	h.t.Helper()
 	_, cmd := h.m.Update(msg)
@@ -109,7 +106,7 @@ func (h *harness) run(cmd tea.Cmd) {
 	select {
 	case msg = <-done:
 	case <-time.After(2 * time.Second):
-		return // a timer (spinner tick); not needed in tests
+		return
 	}
 	switch msg := msg.(type) {
 	case nil:
@@ -122,7 +119,6 @@ func (h *harness) run(cmd tea.Cmd) {
 	case tea.QuitMsg:
 		return
 	}
-	// tea.Sequence returns an unexported slice of commands.
 	if v := reflect.ValueOf(msg); v.Kind() == reflect.Slice && v.Type().Elem() == reflect.TypeOf(tea.Cmd(nil)) {
 		for i := 0; i < v.Len(); i++ {
 			h.run(v.Index(i).Interface().(tea.Cmd))
@@ -130,7 +126,7 @@ func (h *harness) run(cmd tea.Cmd) {
 		return
 	}
 	if reflect.TypeOf(msg).PkgPath() != reflect.TypeOf(groupedMsg{}).PkgPath() && !isSysMsg(msg) {
-		return // tea-internal messages (clipboard, raw, exec)
+		return
 	}
 	h.send(msg)
 }
@@ -221,7 +217,6 @@ func TestOpenGroupsThenCaches(t *testing.T) {
 	if s := h.screen(); !strings.Contains(s, "Changes in src") || !strings.Contains(s, "→ fake") || strings.Contains(s, "cached") {
 		t.Fatalf("screen:\n%s", s)
 	}
-	// A second model on the same diff hits the cache: no call, "cached".
 	h2 := newHarness(t, h.store, nil)
 	h2.fake = h.fake
 	h2.load(testPatch)
@@ -238,7 +233,7 @@ func TestRawFileListWhileGrouping(t *testing.T) {
 	h.fake.Delay = time.Hour
 	l, _ := gitdiff.LoadPatch(testPatch)
 	_, cmd := h.m.Update(loadedMsg{l: l})
-	_ = cmd // never run: grouping stays in flight
+	_ = cmd
 	if h.m.doc.state != stGrouping {
 		t.Fatalf("state %v", h.m.doc.state)
 	}
@@ -261,7 +256,6 @@ func TestRawFileListWhileGrouping(t *testing.T) {
 func TestEditMoveToNewGroupAndPersist(t *testing.T) {
 	h := newHarness(t, nil, nil)
 	h.load(testPatch)
-	// Focus the diff pane on group 1 (src), go to its second hunk (h2), mark it.
 	h.keys("enter", "}", "}")
 	if id := h.m.cursorHunk(); id != "h2" {
 		t.Fatalf("cursor hunk %q", id)
@@ -274,7 +268,7 @@ func TestEditMoveToNewGroupAndPersist(t *testing.T) {
 	if h.m.ov != ovTarget {
 		t.Fatal("no target picker")
 	}
-	h.send(keyMsg("k")) // to "+ New group…"
+	h.send(keyMsg("k"))
 	h.keys("enter")
 	if h.m.ov != ovInput {
 		t.Fatal("no title input")
@@ -292,19 +286,16 @@ func TestEditMoveToNewGroupAndPersist(t *testing.T) {
 	if !strings.Contains(h.screen(), "edited") {
 		t.Fatal("no edited marker")
 	}
-	// Reopening the diff shows the edited grouping without a call.
 	calls := h.fake.Calls()
 	h2 := newHarness(t, h.store, nil)
 	h2.load(testPatch)
 	if !h2.m.doc.edited() || !group.Equal(h2.grouping(), g) || h.fake.Calls() != calls || h2.fake.Calls() != 0 {
 		t.Fatalf("override not restored: edited=%v %+v", h2.m.doc.edited(), h2.grouping())
 	}
-	// The undo stack is per session: the reopened diff has nothing to undo.
 	h2.keys("u")
 	if !h2.m.doc.edited() || !strings.Contains(h2.m.flash, "nothing to undo") {
 		t.Fatal("undo crossed sessions")
 	}
-	// In the first session, undo back to the model's grouping removes the override.
 	h.keys("u")
 	if h.m.doc.edited() {
 		t.Fatal("still edited after undo")
@@ -331,7 +322,6 @@ func TestEditKeys(t *testing.T) {
 	if got := h.titles(); len(got) != 3 || got[2] != "Empty one" || h.m.cursor != 2 {
 		t.Fatalf("new group: %v cursor %d", got, h.m.cursor)
 	}
-	// Rename it: title, enter, explanation, enter.
 	h.keys("R")
 	for range "Empty one" {
 		h.keys("backspace")
@@ -343,7 +333,6 @@ func TestEditKeys(t *testing.T) {
 	if g := h.grouping().Groups[2]; g.Title != "Docs" || g.Description != "Why it matters." {
 		t.Fatalf("rename: %+v", g)
 	}
-	// K moves it up; J back down.
 	h.keys("K")
 	if got := h.titles(); got[1] != "Docs" || h.m.cursor != 1 {
 		t.Fatalf("reorder up: %v cursor %d", got, h.m.cursor)
@@ -352,24 +341,21 @@ func TestEditKeys(t *testing.T) {
 	if got := h.titles(); got[2] != "Docs" {
 		t.Fatalf("reorder down: %v", got)
 	}
-	// Merge group 1 (src) into Docs.
 	h.keys("home", "g")
 	if h.m.ov != ovTarget {
 		t.Fatal("no merge picker")
 	}
-	h.keys("down", "enter") // second option: "3. Docs"
+	h.keys("down", "enter")
 	h.check()
 	if got := h.titles(); !reflect.DeepEqual(got, []string{"Changes in (root)", "Docs"}) {
 		t.Fatalf("merge: %v", got)
 	}
-	// Delete Docs: its hunks go to Ungrouped.
 	h.keys("end", "d")
 	h.check()
 	g := h.grouping()
 	if last := g.Groups[len(g.Groups)-1]; last.ID != group.UngroupedID || len(last.Hunks) != 3 {
 		t.Fatalf("delete: %+v", g)
 	}
-	// Undo everything, redo once.
 	for i := 0; i < 6; i++ {
 		h.keys("u")
 		h.check()
@@ -387,7 +373,7 @@ func TestEditKeys(t *testing.T) {
 func TestVisualMarkAndMove(t *testing.T) {
 	h := newHarness(t, nil, nil)
 	h.load(testPatch)
-	h.keys("a") // all view, file order h1..h4
+	h.keys("a")
 	if h.m.mode != modeAll || h.m.focus != focusDiff {
 		t.Fatal("all mode")
 	}
@@ -400,13 +386,11 @@ func TestVisualMarkAndMove(t *testing.T) {
 		t.Fatalf("visual selection %v", h.m.selection())
 	}
 	h.keys("M")
-	// Options: + New, 1. src, 2. (root) — pick (root) with its number.
 	h.keys("2")
 	h.check()
 	if g := h.grouping(); !reflect.DeepEqual(g.Groups[1].Hunks, []string{"h1", "h2", "h3", "h4"}) {
 		t.Fatalf("move: %+v", g)
 	}
-	// The all view labels hunks and marks group boundaries.
 	var bounds int
 	for _, l := range h.m.ensureLines() {
 		if l.Kind == view.KindBoundary {
@@ -427,7 +411,6 @@ func TestSearch(t *testing.T) {
 	if len(h.m.matches) != 1 || !strings.Contains(h.m.ensureLines()[h.m.dcur].Plain, "needle") {
 		t.Fatalf("matches %v dcur %d", h.m.matches, h.m.dcur)
 	}
-	// n wraps to the same match; esc clears the query and n is "new group" again.
 	h.keys("n")
 	if !strings.Contains(h.m.ensureLines()[h.m.dcur].Plain, "needle") {
 		t.Fatal("n lost the match")
@@ -456,7 +439,6 @@ func TestRegroupKeepsSnapshot(t *testing.T) {
 	if err != nil || !ok || len(ov.Grouping.Groups) != 0 || len(ov.Snapshots) != 1 || len(ov.Snapshots[0].Grouping.Groups) != 3 {
 		t.Fatalf("override after regroup: %+v %v %v", ov, ok, err)
 	}
-	// Without edits, r regroups at once (bypassing the cache).
 	h.keys("r")
 	if h.fake.Calls() != 3 {
 		t.Fatalf("calls %d", h.fake.Calls())
@@ -473,7 +455,7 @@ func TestOverCeilingAsks(t *testing.T) {
 	if h.fake.Calls() != 0 || !strings.Contains(h.screen(), "press g to group (~") {
 		t.Fatalf("declined but sent, or no hint:\n%s", h.screen())
 	}
-	h.keys("r") // regroup is the explicit way to send now
+	h.keys("r")
 	if h.m.ov != ovConfirm {
 		t.Fatal("r above the ceiling should ask again")
 	}
@@ -483,7 +465,6 @@ func TestOverCeilingAsks(t *testing.T) {
 	}
 }
 
-// The hint after declining says "press g", so g must send it (not merge).
 func TestOverCeilingDeclinedThenG(t *testing.T) {
 	h := newHarness(t, nil, func(c *config.Config) { c.Ceiling = 10 })
 	h.load(testPatch)
@@ -500,7 +481,6 @@ func TestProviderSwitch(t *testing.T) {
 	if h.m.ov != ovProvider {
 		t.Fatal("no provider menu")
 	}
-	// Choose fake2.
 	for i, it := range h.m.menu.items {
 		if it.name == "fake2" {
 			h.m.menu.cursor = i

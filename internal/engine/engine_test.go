@@ -87,7 +87,7 @@ func TestRunCachesAndLookupHits(t *testing.T) {
 	if err := group.Check(d, out.Result.Grouping); err != nil {
 		t.Fatal(err)
 	}
-	if len(out.Result.Groups) != 3 { // AutoAnswer: one group per top-level dir d0, d1, d2
+	if len(out.Result.Groups) != 3 {
 		t.Fatalf("groups = %d", len(out.Result.Groups))
 	}
 	hit, ok, err := fx.e.Lookup(d, "cheap")
@@ -97,7 +97,6 @@ func TestRunCachesAndLookupHits(t *testing.T) {
 	if fx.fake.Calls() != 1 {
 		t.Fatalf("lookup made a call")
 	}
-	// A different provider or max_groups misses.
 	if _, ok, _ := fx.e.Lookup(d, "strong"); ok {
 		t.Fatal("other provider hit")
 	}
@@ -163,7 +162,6 @@ func TestTier2SummariesCachedPerFile(t *testing.T) {
 	if err := group.Check(d, out.Result.Grouping); err != nil {
 		t.Fatal(err)
 	}
-	// Regrouping bypassing the result cache reuses every summary: one call.
 	j2, _ := fx.e.Prepare(Input{Diff: d}, "cheap")
 	if j2.Est.Calls != 1 {
 		t.Fatalf("estimate after summaries cached: %d calls", j2.Est.Calls)

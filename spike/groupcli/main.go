@@ -1,5 +1,3 @@
-// groupcli is the throwaway spike CLI: take <rev>, <base>...<head> or a patch on
-// stdin, ask one provider to group the hunks, print Markdown, and record stats.
 package main
 
 import (
@@ -77,7 +75,7 @@ func makeProvider(spec string) (Provider, error) {
 		return &commandProvider{name: spec, argv: []string{"opencode", "run", "-m", rest, "--format", "json", "--archived"}, format: "opencode-json"}, nil
 	case "cmd":
 		return &commandProvider{name: spec, argv: strings.Fields(rest), format: "raw"}, nil
-	case "openai": // openai:<base_url>|<model>|<KEY_ENV>
+	case "openai":
 		p := strings.Split(rest, "|")
 		if len(p) != 3 {
 			return nil, fmt.Errorf("openai provider wants base|model|KEY_ENV")

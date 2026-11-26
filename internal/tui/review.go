@@ -1,18 +1,5 @@
 package tui
 
-// Reviewing: reviewed marks, file folding and line numbers.
-//
-// A hunk is reviewed by content (gitdiff.Hunk.ReviewKey), so a mark follows
-// the change across regroups, edits, provider switches, the commit and the
-// branch range that contains it, and is lost as soon as the hunk's text
-// changes. c marks the file under the cursor (diff pane) or the whole group
-// (list) and moves on to the next unreviewed group when the group is done.
-//
-// A file block (one file's hunks under one header) is folded by default when
-// the file is generated or every hunk in the block is reviewed; z flips that
-// for one block, Z for every block in the pane. The flip is remembered per
-// group and file until the block's reviewed state changes.
-
 import (
 	"fmt"
 
@@ -22,14 +9,11 @@ import (
 	"github.com/k22i/clump/internal/tui/view"
 )
 
-// foldKey names a file block: the group it is shown in ("" in the all view)
-// and the file.
 type foldKey struct {
 	group string
 	file  int
 }
 
-// loadReviewed reads the reviewed marks for the current doc's hunks.
 func (m *Model) loadReviewed() {
 	m.reviewed = map[string]bool{}
 	if m.o.Store == nil || m.doc == nil || len(m.doc.rkeys) == 0 {
@@ -47,7 +31,6 @@ func (m *Model) loadReviewed() {
 	m.reviewed = got
 }
 
-// isReviewed reports whether hunk id is marked reviewed.
 func (m *Model) isReviewed(id string) bool {
 	if m.doc == nil {
 		return false
@@ -56,7 +39,6 @@ func (m *Model) isReviewed(id string) bool {
 	return ok && m.reviewed[k]
 }
 
-// allReviewed reports whether ids is non-empty and every hunk is reviewed.
 func (m *Model) allReviewed(ids []string) bool {
 	if len(ids) == 0 {
 		return false
@@ -69,7 +51,6 @@ func (m *Model) allReviewed(ids []string) bool {
 	return true
 }
 
-// countReviewed is how many of ids are reviewed.
 func (m *Model) countReviewed(ids []string) int {
 	n := 0
 	for _, id := range ids {
@@ -80,7 +61,6 @@ func (m *Model) countReviewed(ids []string) int {
 	return n
 }
 
-// setReviewed marks ids reviewed (on) or not and saves the marks.
 func (m *Model) setReviewed(ids []string, on bool) error {
 	keys := make([]string, 0, len(ids))
 	for _, id := range ids {
@@ -102,14 +82,10 @@ func (m *Model) setReviewed(ids []string, on bool) error {
 	return m.o.Store.SetReviewed(keys, on, m.o.Now())
 }
 
-// countsTowardReview reports whether a group is part of the review progress
-// (the Generated files group and empty groups are not).
 func countsTowardReview(g group.Group) bool {
 	return g.ID != group.GeneratedID && len(g.Hunks) > 0
 }
 
-// reviewProgress is how many reviewable groups are fully reviewed, of how
-// many.
 func (m *Model) reviewProgress() (done, total int) {
 	for _, g := range m.groups() {
 		if !countsTowardReview(g) {
@@ -123,7 +99,6 @@ func (m *Model) reviewProgress() (done, total int) {
 	return done, total
 }
 
-// foldGroup is the fold-key group for the pane as shown now.
 func (m *Model) foldGroup() string {
 	if m.mode == modeAll {
 		return ""
@@ -134,7 +109,6 @@ func (m *Model) foldGroup() string {
 	return ""
 }
 
-// fileState returns the header state function for the pane's file blocks.
 func (m *Model) fileState() func(fileIdx int, ids []string) view.FileState {
 	d := m.doc.L.Diff
 	grp := m.foldGroup()
@@ -155,7 +129,6 @@ func (m *Model) fileState() func(fileIdx int, ids []string) view.FileState {
 	}
 }
 
-// numberWidth is the line-number column width, 0 when they are off.
 func (m *Model) numberWidth() int {
 	if !m.lineNumbers || m.doc == nil || m.doc.L == nil {
 		return 0
@@ -166,8 +139,6 @@ func (m *Model) numberWidth() int {
 	return m.doc.numW
 }
 
-// fileLineAt is the index of the file header line that line i belongs to
-// (i itself when it is one), or -1.
 func (m *Model) fileLineAt(i int) int {
 	lines := m.ensureLines()
 	for j := min(i, len(lines)-1); j >= 0; j-- {
@@ -175,18 +146,15 @@ func (m *Model) fileLineAt(i int) int {
 		case view.KindFile:
 			return j
 		case view.KindBoundary, view.KindGroup:
-			// In the all view a boundary sits between a header and its
-			// hunks; keep looking up.
 		case view.KindBlank:
 			if j < i {
-				return -1 // the blank line between two files
+				return -1
 			}
 		}
 	}
 	return -1
 }
 
-// headerLine is the index of the file header with fileIdx, or -1.
 func (m *Model) headerLine(fileIdx int) int {
 	for i, l := range m.ensureLines() {
 		if l.Kind == view.KindFile && l.FileIdx == fileIdx {
@@ -196,7 +164,6 @@ func (m *Model) headerLine(fileIdx int) int {
 	return -1
 }
 
-// toggleLineNumbers is #.
 func (m *Model) toggleLineNumbers() {
 	m.lineNumbers = !m.lineNumbers
 	m.keepCursorLine(func() { m.linesOK = false })
@@ -207,7 +174,6 @@ func (m *Model) toggleLineNumbers() {
 	}
 }
 
-// toggleSplit is s.
 func (m *Model) toggleSplit() {
 	m.split = !m.split
 	m.keepCursorLine(func() { m.linesOK = false })
@@ -218,8 +184,6 @@ func (m *Model) toggleSplit() {
 	}
 }
 
-// keepCursorLine runs change (which invalidates the lines) and puts the
-// diff cursor back on the same file and hunk line as before.
 func (m *Model) keepCursorLine(change func()) {
 	lines := m.ensureLines()
 	var at view.Line
@@ -241,8 +205,6 @@ func (m *Model) keepCursorLine(change func()) {
 	}
 }
 
-// toggleFold is z: in the diff pane, fold or unfold the file under the
-// cursor; in the list, every file of the group.
 func (m *Model) toggleFold() {
 	if m.focus != focusDiff {
 		m.foldAll()
@@ -260,8 +222,6 @@ func (m *Model) toggleFold() {
 	}
 }
 
-// foldAll is Z: fold every file block in the pane, or unfold them all when
-// they are all folded already.
 func (m *Model) foldAll() {
 	lines := m.ensureLines()
 	var files []int
@@ -288,7 +248,6 @@ func (m *Model) foldAll() {
 	}
 }
 
-// toggleReviewed is c.
 func (m *Model) toggleReviewed() {
 	if m.doc == nil || m.doc.L == nil || len(m.doc.L.Diff.Hunks) == 0 {
 		return
@@ -314,7 +273,6 @@ func (m *Model) toggleReviewed() {
 	m.advanceAfterReview(fmt.Sprintf("✓ %s", g.Title))
 }
 
-// reviewFile marks the file block under the diff cursor.
 func (m *Model) reviewFile() {
 	hi := m.fileLineAt(m.dcur)
 	if hi < 0 {
@@ -345,7 +303,6 @@ func (m *Model) reviewFile() {
 			return
 		}
 	}
-	// Next file header after this one.
 	lines := m.ensureLines()
 	j := m.headerLine(l.FileIdx)
 	next := j
@@ -361,9 +318,6 @@ func (m *Model) reviewFile() {
 	m.setFlash("✓ "+path, false)
 }
 
-// clearFolds drops the explicit fold state of every block of the given
-// hunks shown under group grp (and in the all view), so they take the
-// default for their new reviewed state.
 func (m *Model) clearFolds(grp string, ids []string) {
 	d := m.doc.L.Diff
 	for _, id := range ids {
@@ -374,8 +328,6 @@ func (m *Model) clearFolds(grp string, ids []string) {
 	}
 }
 
-// advanceAfterReview moves to the next group that still needs review (after
-// the cursor, else from the top), or says that everything is reviewed.
 func (m *Model) advanceAfterReview(what string) {
 	done, total := m.reviewProgress()
 	gs := m.groups()

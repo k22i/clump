@@ -12,37 +12,18 @@ import (
 	"time"
 )
 
-// Limits and defaults shared by the two HTTP providers.
 const (
-	// maxResponseBytes caps how much of a response body a provider reads.
-	maxResponseBytes = 8 << 20
-	// defaultHTTPTimeoutSec bounds one call when Config.TimeoutSec is <= 0.
-	defaultHTTPTimeoutSec = 180
-	// openAIDefaultMaxOutputTokens is max_tokens when Config.MaxOutputTokens
-	// is <= 0 for the OpenAI-compatible provider.
-	openAIDefaultMaxOutputTokens = 4096
-	// anthropicDefaultMaxOutputTokens is max_tokens when Config.MaxOutputTokens
-	// is <= 0 for the Anthropic provider. Current models think before they
-	// answer and those tokens count against the same budget.
+	maxResponseBytes                = 8 << 20
+	defaultHTTPTimeoutSec           = 180
+	openAIDefaultMaxOutputTokens    = 4096
 	anthropicDefaultMaxOutputTokens = 16000
-	// errorBodyBytes is how many trailing bytes of an error body that does not
-	// parse as the API's error shape are reported.
-	errorBodyBytes = 300
-	// jsonSystemPrompt is the system message both providers send.
-	jsonSystemPrompt = "You are a JSON API. Follow the user message exactly and output only JSON."
-	// anthropicVersion is the Messages API version the Anthropic provider
-	// requests. That version rejects sampling parameters (temperature, top_p,
-	// top_k) and leaves thinking at the model's default.
-	anthropicVersion = "2026-10-21"
-	// defaultAnthropicBaseURL is used when Config.BaseURL is empty.
-	defaultAnthropicBaseURL = "https://api.anthropic.com"
-	// defaultAnthropicKeyEnv is used when Config.APIKeyEnv is empty.
-	defaultAnthropicKeyEnv = "ANTHROPIC_API_KEY"
+	errorBodyBytes                  = 300
+	jsonSystemPrompt                = "You are a JSON API. Follow the user message exactly and output only JSON."
+	anthropicVersion                = "2026-10-21"
+	defaultAnthropicBaseURL         = "https://api.anthropic.com"
+	defaultAnthropicKeyEnv          = "ANTHROPIC_API_KEY"
 )
 
-// newOpenAI builds the OpenAI-compatible provider (TypeOpenAI). It posts to
-// BaseURL + "/chat/completions" with a Bearer key from Config.APIKeyEnv when
-// that is set, so a local server (Ollama) needs no key.
 func newOpenAI(c Config) (Provider, error) {
 	if strings.TrimSpace(c.BaseURL) == "" {
 		return nil, fmt.Errorf("%w: provider %q: base_url is required", ErrConfig, c.Name)
@@ -57,9 +38,6 @@ func newOpenAI(c Config) (Provider, error) {
 	}, nil
 }
 
-// newAnthropic builds the Anthropic Messages provider (TypeAnthropic). It posts
-// to BaseURL (default https://api.anthropic.com) + "/v1/messages" with the key
-// from Config.APIKeyEnv (default ANTHROPIC_API_KEY).
 func newAnthropic(c Config) (Provider, error) {
 	if strings.TrimSpace(c.Model) == "" {
 		return nil, fmt.Errorf("%w: provider %q: model is required", ErrConfig, c.Name)
@@ -81,8 +59,6 @@ func newAnthropic(c Config) (Provider, error) {
 	}, nil
 }
 
-// newHTTPClient is the client both HTTP providers use: one call is bounded by
-// Config.TimeoutSec seconds (180 by default). Cancelling ctx aborts the call.
 func newHTTPClient(c Config) *http.Client {
 	sec := c.TimeoutSec
 	if sec <= 0 {
@@ -91,7 +67,6 @@ func newHTTPClient(c Config) *http.Client {
 	return &http.Client{Timeout: time.Duration(sec) * time.Second}
 }
 
-// maxTokens returns n, or def when n <= 0.
 func maxTokens(n, def int) int {
 	if n <= 0 {
 		return def
@@ -99,10 +74,6 @@ func maxTokens(n, def int) int {
 	return n
 }
 
-// postJSON sends payload to endpoint as a JSON POST, adds header, and returns
-// the status code with at most maxResponseBytes of the body. Errors are
-// name-prefixed and pass through Redact; a cancelled ctx is returned wrapped so
-// that errors.Is(err, context.Canceled) holds.
 func postJSON(ctx context.Context, name string, client *http.Client, endpoint string, header map[string]string, payload []byte) (int, []byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(payload))
 	if err != nil {
@@ -127,8 +98,6 @@ func postJSON(ctx context.Context, name string, client *http.Client, endpoint st
 	return resp.StatusCode, body, nil
 }
 
-// httpCallError turns a transport error into a provider error: the context's
-// error when the caller cancelled or timed out, otherwise the redacted message.
 func httpCallError(ctx context.Context, name string, err error) error {
 	if ctxErr := ctx.Err(); ctxErr != nil {
 		return fmt.Errorf("%s: %w", name, ctxErr)
@@ -136,36 +105,27 @@ func httpCallError(ctx context.Context, name string, err error) error {
 	return fmt.Errorf("%s: %s", name, Redact(err.Error()))
 }
 
-// errorBody reports an error body that does not parse as the API's error shape:
-// its last errorBodyBytes bytes, trimmed.
 func errorBody(body []byte) string {
 	return strings.TrimSpace(tail(string(body), errorBodyBytes))
 }
 
-// openAIProvider speaks the OpenAI-compatible /chat/completions API used by
-// DeepSeek, OpenRouter, Ollama and LiteLLM. It is safe for concurrent use.
 type openAIProvider struct {
 	cfg      Config
-	endpoint string // BaseURL + "/chat/completions"
+	endpoint string
 	client   *http.Client
 }
 
-// Name returns the configured provider name.
 func (p *openAIProvider) Name() string { return p.cfg.Name }
 
-// openAIMessage is one entry of the chat request's messages array.
 type openAIMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
 }
 
-// openAIResponseFormat asks the server for a JSON object. It is a pointer so
-// the retry for servers that reject the field can leave it out entirely.
 type openAIResponseFormat struct {
 	Type string `json:"type"`
 }
 
-// openAIChatRequest is the /chat/completions request body.
 type openAIChatRequest struct {
 	Model          string                `json:"model"`
 	Temperature    float64               `json:"temperature"`
@@ -174,7 +134,6 @@ type openAIChatRequest struct {
 	ResponseFormat *openAIResponseFormat `json:"response_format,omitempty"`
 }
 
-// openAIChatResponse is the part of a /chat/completions response we read.
 type openAIChatResponse struct {
 	Choices []struct {
 		Message struct {
@@ -188,7 +147,6 @@ type openAIChatResponse struct {
 	} `json:"usage"`
 }
 
-// openAIErrorResponse is the API's error shape.
 type openAIErrorResponse struct {
 	Error *struct {
 		Message string          `json:"message"`
@@ -197,11 +155,8 @@ type openAIErrorResponse struct {
 	} `json:"error"`
 }
 
-// Complete sends prompt and returns the first choice's content.
 func (p *openAIProvider) Complete(ctx context.Context, prompt string) (string, Usage, error) {
 	name := p.cfg.Name
-	// The key is read at call time: a config naming an unset env var still
-	// loads, and a key exported later still works.
 	var key string
 	if p.cfg.APIKeyEnv != "" {
 		key = os.Getenv(p.cfg.APIKeyEnv)
@@ -223,8 +178,6 @@ func (p *openAIProvider) Complete(ctx context.Context, prompt string) (string, U
 		return "", Usage{}, err
 	}
 	if status == http.StatusBadRequest && bytes.Contains(body, []byte("response_format")) {
-		// Some OpenAI-compatible servers reject response_format; retry the same
-		// request once without it and report that attempt.
 		payload, err = p.payload(prompt, false)
 		if err != nil {
 			return "", Usage{}, err
@@ -254,8 +207,6 @@ func (p *openAIProvider) Complete(ctx context.Context, prompt string) (string, U
 	return r.Choices[0].Message.Content, u, nil
 }
 
-// payload marshals the chat request. withResponseFormat false builds the retry
-// for servers that reject the field.
 func (p *openAIProvider) payload(prompt string, withResponseFormat bool) ([]byte, error) {
 	req := openAIChatRequest{
 		Model:       p.cfg.Model,
@@ -276,8 +227,6 @@ func (p *openAIProvider) payload(prompt string, withResponseFormat bool) ([]byte
 	return b, nil
 }
 
-// openAIErrorMessage is the message of an OpenAI error body, or the trimmed
-// tail of a body that does not parse as one.
 func openAIErrorMessage(body []byte) string {
 	var r openAIErrorResponse
 	if err := json.Unmarshal(body, &r); err == nil && r.Error != nil {
@@ -288,27 +237,20 @@ func openAIErrorMessage(body []byte) string {
 	return errorBody(body)
 }
 
-// anthropicProvider speaks the Anthropic Messages API. It is safe for
-// concurrent use.
 type anthropicProvider struct {
 	cfg      Config
-	keyEnv   string // env var holding the key; never empty
-	endpoint string // BaseURL + "/v1/messages"
+	keyEnv   string
+	endpoint string
 	client   *http.Client
 }
 
-// Name returns the configured provider name.
 func (p *anthropicProvider) Name() string { return p.cfg.Name }
 
-// anthropicMessage is one entry of the messages array.
 type anthropicMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
 }
 
-// anthropicRequest is the /v1/messages request body. It carries no sampling
-// parameters and no thinking field: the API version rejects the former and the
-// latter stays at the model's default.
 type anthropicRequest struct {
 	Model     string             `json:"model"`
 	MaxTokens int                `json:"max_tokens"`
@@ -316,7 +258,6 @@ type anthropicRequest struct {
 	Messages  []anthropicMessage `json:"messages"`
 }
 
-// anthropicResponse is the part of a /v1/messages response we read.
 type anthropicResponse struct {
 	Content []struct {
 		Type string `json:"type"`
@@ -334,7 +275,6 @@ type anthropicResponse struct {
 	} `json:"usage"`
 }
 
-// anthropicErrorResponse is the API's error shape.
 type anthropicErrorResponse struct {
 	Type  string `json:"type"`
 	Error *struct {
@@ -343,10 +283,8 @@ type anthropicErrorResponse struct {
 	} `json:"error"`
 }
 
-// Complete sends prompt and returns the concatenated text blocks.
 func (p *anthropicProvider) Complete(ctx context.Context, prompt string) (string, Usage, error) {
 	name := p.cfg.Name
-	// The key is read at call time and never put in a URL, a log or an error.
 	key := os.Getenv(p.keyEnv)
 	if key == "" {
 		return "", Usage{}, fmt.Errorf("%s: environment variable %s is not set", name, p.keyEnv)
@@ -390,7 +328,7 @@ func (p *anthropicProvider) Complete(ctx context.Context, prompt string) (string
 	sawText := false
 	for _, block := range r.Content {
 		if block.Type != "text" {
-			continue // thinking and other block types are not the answer
+			continue
 		}
 		sawText = true
 		text.WriteString(block.Text)
@@ -411,9 +349,6 @@ func (p *anthropicProvider) Complete(ctx context.Context, prompt string) (string
 	return text.String(), u, nil
 }
 
-// anthropicErrorMessage is the message of an Anthropic error body
-// ("<error.type>: <error.message>"), or the trimmed tail of a body that does not
-// parse as one.
 func anthropicErrorMessage(body []byte) string {
 	var r anthropicErrorResponse
 	if err := json.Unmarshal(body, &r); err == nil && r.Error != nil {

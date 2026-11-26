@@ -12,8 +12,6 @@ import (
 	"testing"
 )
 
-// TestPushCommand pins the renderer command, including the POSIX quoting of
-// the command it wraps.
 func TestPushCommand(t *testing.T) {
 	tests := []struct {
 		name string
@@ -34,7 +32,6 @@ func TestPushCommand(t *testing.T) {
 	}
 }
 
-// TestSnippet pins the exact YAML.
 func TestSnippet(t *testing.T) {
 	tests := []struct {
 		name string
@@ -75,7 +72,6 @@ func TestSnippet(t *testing.T) {
 	}
 }
 
-// TestConfigPath pins the config file lookup order.
 func TestConfigPath(t *testing.T) {
 	t.Run("LG_CONFIG_FILE first entry", func(t *testing.T) {
 		t.Setenv("LG_CONFIG_FILE", "/etc/lazygit/a.yml,/etc/lazygit/b.yml")
@@ -175,8 +171,6 @@ func TestConfigPath(t *testing.T) {
 	})
 }
 
-// TestInstallShellQuoting parses the installed command the way a shell would
-// and checks `push` gets the wrapped renderer as one argument.
 func TestInstallShellQuoting(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.yml")
@@ -205,8 +199,6 @@ func TestInstallShellQuoting(t *testing.T) {
 		t.Fatalf("command value in %q is not a YAML double-quoted scalar", line)
 	}
 	raw := line[start : end+1]
-	// Undo the YAML double-quoted escapes (`\\` to `\`, `\"` to `"`) first, so
-	// the POSIX split runs on the command lazygit would really run.
 	words := shellWords(t, unescapeYAML(raw))
 	if len(words) != 4 {
 		t.Fatalf("command %q parsed into %d words %q; want 4", raw, len(words), words)
@@ -216,16 +208,15 @@ func TestInstallShellQuoting(t *testing.T) {
 	}
 }
 
-// TestInstall covers DESIGN.md §12's editing rules against golden files.
 func TestInstall(t *testing.T) {
 	snip := Snippet("")
 	tests := []struct {
 		name   string
-		in     string // golden input, "" for a missing file
-		want   string // golden output, "" to expect the input back
+		in     string
+		want   string
 		write  bool
 		answer string
-		prompt bool // whether the y/N confirmation is expected
+		prompt bool
 		out    string
 		mode   fs.FileMode
 		backup bool
@@ -450,8 +441,6 @@ func TestInstall(t *testing.T) {
 			}
 
 			if !tt.write || tt.want == "" {
-				// Nothing is written, or the config is already right: the
-				// file must be untouched, or still missing.
 				after, err := os.ReadFile(path)
 				if tt.in == "" {
 					if !os.IsNotExist(err) {
@@ -468,8 +457,6 @@ func TestInstall(t *testing.T) {
 				}
 			}
 
-			// Every command value clump writes, in the printed change and in
-			// the file, must be a valid YAML double-quoted scalar.
 			if strings.Contains(out.String(), "command:") {
 				checkCommandEscapes(t, "printed change", out.String())
 			}
@@ -518,7 +505,6 @@ func TestInstall(t *testing.T) {
 	}
 }
 
-// failReader fails the test if Install reads the confirmation from it.
 type failReader struct {
 	t *testing.T
 }
@@ -529,7 +515,6 @@ func (r failReader) Read([]byte) (int, error) {
 	return 0, io.EOF
 }
 
-// golden reads a file under testdata.
 func golden(t *testing.T, name string) string {
 	t.Helper()
 	b, err := os.ReadFile(filepath.Join("testdata", name))
@@ -539,7 +524,6 @@ func golden(t *testing.T, name string) string {
 	return string(b)
 }
 
-// readFile reads path as a string.
 func readFile(t *testing.T, path string) string {
 	t.Helper()
 	b, err := os.ReadFile(path)
@@ -549,7 +533,6 @@ func readFile(t *testing.T, path string) string {
 	return string(b)
 }
 
-// commandLineOf returns the config's first "command:" line, trimmed.
 func commandLineOf(t *testing.T, config string) string {
 	t.Helper()
 	for _, l := range strings.Split(config, "\n") {
@@ -561,8 +544,6 @@ func commandLineOf(t *testing.T, config string) string {
 	return ""
 }
 
-// shellWords splits s into words the way a POSIX shell would, for single and
-// double quoted arguments without backslash escapes inside them.
 func shellWords(t *testing.T, s string) []string {
 	t.Helper()
 	var words []string
@@ -599,7 +580,6 @@ func shellWords(t *testing.T, s string) []string {
 	return words
 }
 
-// equalStrings reports whether two string slices are equal.
 func equalStrings(a, b []string) bool {
 	if len(a) != len(b) {
 		return false
@@ -612,8 +592,6 @@ func equalStrings(a, b []string) bool {
 	return true
 }
 
-// unescapeYAML undoes the escapes of a YAML double-quoted scalar: `\\` becomes
-// `\` and `\"` becomes `"`.
 func unescapeYAML(quoted string) string {
 	inner := quoted[1 : len(quoted)-1]
 	var b strings.Builder
@@ -631,9 +609,6 @@ func unescapeYAML(quoted string) string {
 	return b.String()
 }
 
-// checkCommandEscapes fails when a double-quoted command value in text has a
-// backslash that is not part of `\\` or `\"`, which would make the YAML
-// unparseable (or mean something other than intended).
 func checkCommandEscapes(t *testing.T, where, text string) {
 	t.Helper()
 	checked := 0
@@ -648,7 +623,7 @@ func checkCommandEscapes(t *testing.T, where, text string) {
 		}
 		raw, _ := splitScalar(strings.TrimSpace(line[idx+len("command:"):]))
 		if !strings.HasPrefix(raw, `"`) {
-			continue // an untouched bare scalar is not ours to validate
+			continue
 		}
 		if len(raw) < 2 || !strings.HasSuffix(raw, `"`) {
 			t.Fatalf("%s: command value %q is not a complete double-quoted scalar", where, raw)

@@ -14,10 +14,6 @@ import (
 	"time"
 )
 
-// PushCommand returns the renderer command lazygit should run:
-// "clump push", or "clump push --then '<then>'" with then single-quoted for
-// a POSIX shell: each single quote inside then becomes the four bytes
-// quote, backslash, quote, quote.
 func PushCommand(then string) string {
 	if then == "" {
 		return "clump push"
@@ -25,14 +21,6 @@ func PushCommand(then string) string {
 	return "clump push --then '" + strings.ReplaceAll(then, "'", `'\''`) + "'"
 }
 
-// Snippet returns the YAML to add to lazygit's config.yml:
-//
-//	git:
-//	  diffRenderers:
-//	    - command: <PushCommand(then)>
-//	      name: clump
-//
-// The command value is YAML double-quoted.
 func Snippet(then string) string {
 	return "git:\n" +
 		"  diffRenderers:\n" +
@@ -40,10 +28,6 @@ func Snippet(then string) string {
 		"      name: clump\n"
 }
 
-// ConfigPath returns lazygit's config file: $LG_CONFIG_FILE (first entry if
-// comma-separated), else $XDG_CONFIG_HOME/lazygit/config.yml, else
-// ~/Library/Application Support/lazygit/config.yml on darwin when that file
-// exists, else ~/.config/lazygit/config.yml.
 func ConfigPath() (string, error) {
 	if lg := os.Getenv("LG_CONFIG_FILE"); lg != "" {
 		if first := strings.Split(lg, ",")[0]; first != "" {
@@ -66,21 +50,14 @@ func ConfigPath() (string, error) {
 	return filepath.Join(home, ".config", "lazygit", "config.yml"), nil
 }
 
-// InstallOpts configures Install.
 type InstallOpts struct {
-	// Path is the lazygit config file.
-	Path string
-	// Then is the renderer to keep when the config has none (config.Then).
-	Then string
-	// Write applies the change; otherwise Install only prints it.
+	Path  string
+	Then  string
 	Write bool
-	// In and Out are used for the y/N confirmation and messages.
-	In  io.Reader
-	Out io.Writer
+	In    io.Reader
+	Out   io.Writer
 }
 
-// Install prints, or with Write and a "y" answer applies, the lazygit
-// config change. See DESIGN.md "lazygit install" for the editing rules.
 func Install(o InstallOpts) error {
 	out := o.Out
 	if out == nil {
@@ -149,22 +126,18 @@ func Install(o InstallOpts) error {
 	return err
 }
 
-// edit is the outcome of planEdit.
 type edit struct {
-	content string // the config file's new content
-	out     string // what to print
-	changed bool   // whether content differs from the file's current content
+	content string
+	out     string
+	changed bool
 }
 
-// Top-level "git:" key, a "diffRenderers:" key, and a "paging:" key, all in
-// block style. Anything with an inline value fails these and is refused.
 var (
 	gitKeyRE    = regexp.MustCompile(`^git:\s*(#.*)?$`)
 	renderersRE = regexp.MustCompile(`^\s*diffRenderers:\s*(#.*)?$`)
 	pagingRE    = regexp.MustCompile(`^\s*paging:\s*(#.*)?$`)
 )
 
-// planEdit applies DESIGN.md §12's line-based editing rules.
 func planEdit(path, content, then string) edit {
 	snippet := Snippet(then)
 	if content == "" {
@@ -199,8 +172,6 @@ func planEdit(path, content, then string) edit {
 		}
 	}
 
-	// The git block: the lines after "git:" up to the next line that starts
-	// with a non-space, non-"#" character.
 	end := len(lines)
 	for j := gi + 1; j < len(lines); j++ {
 		l := lines[j]
@@ -251,8 +222,6 @@ func planEdit(path, content, then string) edit {
 		}
 	}
 
-	// Block-style diffRenderers: the next non-empty line is a deeper-indented
-	// list item.
 	driInd := indentOf(block[dri])
 	start := -1
 	for k := dri + 1; k < len(block); k++ {
@@ -281,7 +250,6 @@ func planEdit(path, content, then string) edit {
 		}
 	}
 
-	// The first list item: its own line plus its deeper-indented fields.
 	itemInd := indentOf(block[start])
 	itemEnd := start + 1
 	for k := start + 1; k < len(block); k++ {
@@ -337,8 +305,6 @@ func planEdit(path, content, then string) edit {
 	}
 }
 
-// rendererItem is one diffRenderers list item: a stdinFilter running
-// PushCommand(then), and its name, at the given indent.
 func rendererItem(ind, then string) []string {
 	return []string{
 		ind + "- command: " + yamlQuote(PushCommand(then)),
@@ -346,14 +312,11 @@ func rendererItem(ind, then string) []string {
 	}
 }
 
-// rendererLines is the "diffRenderers:" child of git: at the given indent:
-// the key and the clump item.
 func rendererLines(ind, then string) []string {
 	item := rendererItem(ind+"  ", then)
 	return []string{ind + "diffRenderers:", item[0], item[1]}
 }
 
-// insertLines returns lines with ins inserted before index at.
 func insertLines(lines []string, at int, ins []string) string {
 	out := make([]string, 0, len(lines)+len(ins))
 	out = append(out, lines[:at]...)
@@ -362,7 +325,6 @@ func insertLines(lines []string, at int, ins []string) string {
 	return strings.Join(out, "\n")
 }
 
-// refuse is the "cannot edit automatically" outcome.
 func refuse(path, content, reason, snippet string) edit {
 	return edit{
 		content: content,
@@ -370,7 +332,6 @@ func refuse(path, content, reason, snippet string) edit {
 	}
 }
 
-// readConfig reads the config file; a missing file is empty content.
 func readConfig(path string) (content string, exists bool, err error) {
 	b, err := os.ReadFile(path)
 	switch {
@@ -383,7 +344,6 @@ func readConfig(path string) (content string, exists bool, err error) {
 	}
 }
 
-// readLine reads one line from r without its newline.
 func readLine(r io.Reader) (string, error) {
 	line, err := bufio.NewReader(r).ReadString('\n')
 	line = strings.TrimSuffix(line, "\n")
@@ -391,7 +351,6 @@ func readLine(r io.Reader) (string, error) {
 	return line, err
 }
 
-// isYes reports whether answer is an explicit yes.
 func isYes(answer string) bool {
 	switch strings.ToLower(strings.TrimSpace(answer)) {
 	case "y", "yes":
@@ -400,7 +359,6 @@ func isYes(answer string) bool {
 	return false
 }
 
-// copyFile copies src to dst with the given permissions.
 func copyFile(src, dst string, perm fs.FileMode) error {
 	b, err := os.ReadFile(src)
 	if err != nil {
@@ -412,7 +370,6 @@ func copyFile(src, dst string, perm fs.FileMode) error {
 	return os.Chmod(dst, perm)
 }
 
-// yamlQuote double-quotes s for YAML, escaping backslashes and quotes.
 func yamlQuote(s string) string {
 	var b strings.Builder
 	b.WriteByte('"')
@@ -430,7 +387,6 @@ func yamlQuote(s string) string {
 	return b.String()
 }
 
-// indentOf returns the number of leading spaces and tabs of l.
 func indentOf(l string) int {
 	n := 0
 	for n < len(l) && (l[n] == ' ' || l[n] == '\t') {
@@ -439,13 +395,10 @@ func indentOf(l string) int {
 	return n
 }
 
-// leadingWS returns the leading spaces and tabs of l.
 func leadingWS(l string) string {
 	return l[:indentOf(l)]
 }
 
-// hasAnchorOrAlias reports whether l uses a YAML anchor or alias outside a
-// comment.
 func hasAnchorOrAlias(l string) bool {
 	code := l
 	for i := 1; i < len(code); i++ {
@@ -471,13 +424,10 @@ func hasAnchorOrAlias(l string) bool {
 	return false
 }
 
-// isNameByte reports whether c can start a YAML anchor name.
 func isNameByte(c byte) bool {
 	return c == '_' || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9'
 }
 
-// hasLegacyPager reports whether the git block sets the legacy
-// git.paging.pager.
 func hasLegacyPager(block []string) bool {
 	for idx, l := range block {
 		if !pagingRE.MatchString(l) {
@@ -500,14 +450,11 @@ func hasLegacyPager(block []string) bool {
 	return false
 }
 
-// scalarValue reads a YAML scalar from the text after a "key:".
 func scalarValue(s string) string {
 	v, _ := splitScalar(strings.TrimSpace(s))
 	return unquote(v)
 }
 
-// splitScalar splits a raw YAML scalar (quotes included) from what follows
-// it, e.g. a trailing comment.
 func splitScalar(s string) (value, rest string) {
 	if s == "" {
 		return "", ""
@@ -546,7 +493,6 @@ func splitScalar(s string) (value, rest string) {
 	}
 }
 
-// unquote removes one pair of matching quotes from a YAML scalar.
 func unquote(s string) string {
 	if len(s) >= 2 && s[0] == '"' && s[len(s)-1] == '"' {
 		inner := s[1 : len(s)-1]
@@ -570,8 +516,6 @@ func unquote(s string) string {
 	return s
 }
 
-// splitCommand splits a "command:" line into the text before the value, the
-// raw value and the text after it.
 func splitCommand(l string) (prefix, value, rest string, ok bool) {
 	idx := strings.Index(l, "command:")
 	if idx < 0 {

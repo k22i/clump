@@ -9,21 +9,10 @@ import (
 	"github.com/k22i/clump/internal/gitdiff"
 )
 
-// RenderFileHeader renders the line above a file's hunks:
-//
-//	── src/a.go (M +3 −1) ─────────
-//
-// padded with "─" to width (never shorter than the text itself; cut with
-// "…" when the text is wider than width). add and del are the totals of the
-// hunks shown under it.
 func RenderFileHeader(f *gitdiff.File, fileIdx, add, del int, th Theme, width int) Line {
 	return RenderFileHeaderState(f, fileIdx, add, del, nil, FileState{}, th, width)
 }
 
-// RenderFileHeaderState is RenderFileHeader for a file block in a given
-// state; hunks are the IDs listed under the header (Line.BlockHunks):
-//
-//	── ✓ src/a.go (M +3 −1) · 2 hunks folded · generated (pattern go.sum) ──
 func RenderFileHeaderState(f *gitdiff.File, fileIdx, add, del int, hunks []string, st FileState, th Theme, width int) Line {
 	var b strings.Builder
 	b.WriteString("── ")
@@ -55,8 +44,6 @@ func RenderFileHeaderState(f *gitdiff.File, fileIdx, add, del int, hunks []strin
 		BlockHunks: hunks, Folded: st.Folded}
 }
 
-// Truncate cuts plain (unstyled) text to at most width cells, ending in "…"
-// when it had to cut. width <= 0 means no limit.
 func Truncate(s string, width int) string {
 	if width <= 0 || lipgloss.Width(s) <= width {
 		return s
@@ -75,7 +62,6 @@ func Truncate(s string, width int) string {
 	return b.String()
 }
 
-// style renders s with st unless the theme is plain.
 func (t Theme) style(st lipgloss.Style, s string) string {
 	if t.Plain {
 		return s
@@ -83,6 +69,4 @@ func (t Theme) style(st lipgloss.Style, s string) string {
 	return st.Render(s)
 }
 
-// Style is the exported form of style for render helpers in this package's
-// tests and callers: it renders s with st unless the theme is plain.
 func (t Theme) Style(st lipgloss.Style, s string) string { return t.style(st, s) }

@@ -11,9 +11,6 @@ import (
 	"github.com/k22i/clump/internal/tui"
 )
 
-// detectDark reports whether to use the dark theme: CLUMP_THEME, else the
-// terminal's answer to CSI ? 996 n (100 ms, before the TUI takes the
-// terminal), else dark.
 func detectDark() bool {
 	if t, ok := rex.ThemeFromEnv(os.Getenv); ok {
 		return t != rex.ThemeLight
@@ -26,7 +23,6 @@ func detectDark() bool {
 	return rex.DetectTheme(tty, os.Getenv, 100*time.Millisecond) != rex.ThemeLight
 }
 
-// statusFunc reports program status (OSC 7501) to Rex; nil outside Rex.
 func statusFunc() tui.StatusFunc {
 	var pending string
 	r := rex.NewReporter(os.Getenv, func(seq string) { pending = seq })
@@ -48,7 +44,7 @@ func statusFunc() tui.StatusFunc {
 			st.State, st.Msg = rex.StateIdle, ""
 		}
 		pending = ""
-		r.Report(st) // called from Update only, so pending needs no lock
+		r.Report(st)
 		if pending == "" {
 			return nil
 		}

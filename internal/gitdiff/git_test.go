@@ -12,14 +12,8 @@ import (
 	"unicode/utf8"
 )
 
-// fxRepo is the scratch repository built once in TestMain by
-// scripts/mkfixture.sh. Its commits have fixed authors and dates, so their
-// diffs are identical to the golden files under testdata/git.
 var fxRepo string
 
-// TestMain builds the fixture repository. The loaders shell out to git, so a
-// missing git is a hard failure: there is nothing meaningful to test without
-// it.
 func TestMain(m *testing.M) {
 	if _, err := exec.LookPath("git"); err != nil {
 		fmt.Fprintln(os.Stderr, "git loader tests: git is not on PATH; the loaders shell out to git")
@@ -42,8 +36,6 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-// gitArgs returns the argv every direct git call in these tests uses: the same
-// config overrides the loaders pin, so their output is comparable.
 func gitArgs(repo string, args ...string) []string {
 	full := make([]string, 0, len(args)+len(GitArgs)+2)
 	full = append(full, "-C", repo)
@@ -51,8 +43,6 @@ func gitArgs(repo string, args ...string) []string {
 	return append(full, args...)
 }
 
-// gitRaw runs git directly (not through the loader's runner) and returns its
-// stdout untouched.
 func gitRaw(t *testing.T, repo string, args ...string) string {
 	t.Helper()
 	out, err := exec.Command("git", gitArgs(repo, args...)...).Output()
@@ -62,13 +52,11 @@ func gitRaw(t *testing.T, repo string, args ...string) string {
 	return string(out)
 }
 
-// gitOut runs git directly and returns its trimmed stdout.
 func gitOut(t *testing.T, repo string, args ...string) string {
 	t.Helper()
 	return strings.TrimSpace(gitRaw(t, repo, args...))
 }
 
-// gitRun runs a git command whose result the test does not read.
 func gitRun(t *testing.T, repo string, args ...string) {
 	t.Helper()
 	if out, err := exec.Command("git", gitArgs(repo, args...)...).CombinedOutput(); err != nil {
@@ -76,8 +64,6 @@ func gitRun(t *testing.T, repo string, args ...string) {
 	}
 }
 
-// copyFixture copies the fixture repository, so a test can check out branches
-// and add refs without disturbing the tests that expect main.
 func copyFixture(t *testing.T) string {
 	t.Helper()
 	dest := filepath.Join(t.TempDir(), "fx")
@@ -87,7 +73,6 @@ func copyFixture(t *testing.T) string {
 	return dest
 }
 
-// commitSHA finds the fixture commit whose message contains subject.
 func commitSHA(t *testing.T, subject string) string {
 	t.Helper()
 	out := gitOut(t, fxRepo, "log", "--format=%H", "-F", "--grep="+subject, "main")
@@ -98,12 +83,11 @@ func commitSHA(t *testing.T, subject string) string {
 	return sha
 }
 
-// fixtureIndex reads testdata/git/INDEX.tsv as name -> subject.
 func fixtureIndex(t *testing.T) map[string]string {
 	t.Helper()
 	lines := strings.Split(strings.TrimSpace(readFixture(t, "git/INDEX.tsv")), "\n")
 	m := make(map[string]string, len(lines))
-	for _, line := range lines[1:] { // skip the header
+	for _, line := range lines[1:] {
 		f := strings.Split(line, "\t")
 		if len(f) != 3 {
 			t.Fatalf("bad INDEX.tsv line %q", line)
@@ -389,7 +373,6 @@ func TestLoadTwoDot(t *testing.T) {
 	var got []string
 	for _, line := range strings.Split(l.Context, "\n") {
 		if s, ok := strings.CutPrefix(line, "- "); ok {
-			// Drop the abbreviated sha git puts before the subject.
 			if _, rest, found := strings.Cut(s, " "); found {
 				got = append(got, rest)
 			}
@@ -476,7 +459,7 @@ func TestLoadPatch(t *testing.T) {
 }
 
 func TestContextCap(t *testing.T) {
-	long := strings.Repeat("é", 3500) // 7000 bytes, 2 bytes per rune
+	long := strings.Repeat("é", 3500)
 	got := capContext(long)
 	if len(got) > MaxContextBytes+len(truncMarker) {
 		t.Errorf("len(capContext(7000 bytes)) = %d, want at most %d", len(got), MaxContextBytes+len(truncMarker))

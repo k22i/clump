@@ -7,29 +7,17 @@ import (
 	"sync"
 )
 
-// maxAliasHops bounds an alias → alias chain. Longer chains are rejected when
-// the registry is built, so a cycle cannot loop forever at call time.
 const maxAliasHops = 4
 
-// Registry holds the configured providers and the aliases (cheap, strong,
-// default) that point at them.
 type Registry struct {
 	configs map[string]Config
 	order   []string
 	aliases map[string]string
 
-	// mu guards built, so a provider is constructed at most once even when
-	// several goroutines Get it at the same time.
 	mu    sync.Mutex
 	built map[string]Provider
 }
 
-// NewRegistry builds a registry. configs keep their order for Names.
-// aliases maps an alias ("cheap", "strong", "default") to a provider name or
-// to another alias; chains are followed up to 4 hops. It errors on a
-// duplicate or empty config name, an alias that shadows a config name, an
-// alias pointing at nothing, or an alias cycle; errors name the alias or
-// provider at fault, e.g. `alias "cheap": unknown provider "haiku"`.
 func NewRegistry(configs []Config, aliases map[string]string) (*Registry, error) {
 	r := &Registry{
 		configs: make(map[string]Config, len(configs)),
@@ -56,8 +44,6 @@ func NewRegistry(configs []Config, aliases map[string]string) (*Registry, error)
 		}
 		r.aliases[name] = target
 	}
-	// Validate every alias now, in sorted order, so the same bad config always
-	// reports the same alias. It does not build any provider.
 	for _, name := range r.aliasNames() {
 		if _, err := r.followAlias(name); err != nil {
 			return nil, err
@@ -66,7 +52,6 @@ func NewRegistry(configs []Config, aliases map[string]string) (*Registry, error)
 	return r, nil
 }
 
-// aliasNames returns the registered alias names, sorted.
 func (r *Registry) aliasNames() []string {
 	names := make([]string, 0, len(r.aliases))
 	for name := range r.aliases {
@@ -76,8 +61,6 @@ func (r *Registry) aliasNames() []string {
 	return names
 }
 
-// followAlias resolves the alias name to a provider name, following alias →
-// alias hops up to maxAliasHops.
 func (r *Registry) followAlias(name string) (string, error) {
 	cur := name
 	for hop := 0; hop <= maxAliasHops; hop++ {
@@ -93,7 +76,6 @@ func (r *Registry) followAlias(name string) (string, error) {
 	return "", fmt.Errorf("alias %q: cycle or chain longer than %d", name, maxAliasHops)
 }
 
-// Resolve maps a provider name or alias to a provider name.
 func (r *Registry) Resolve(nameOrAlias string) (string, error) {
 	if _, ok := r.configs[nameOrAlias]; ok {
 		return nameOrAlias, nil
@@ -105,7 +87,6 @@ func (r *Registry) Resolve(nameOrAlias string) (string, error) {
 		nameOrAlias, strings.Join(r.known(), ", "))
 }
 
-// known lists every provider and alias name, sorted.
 func (r *Registry) known() []string {
 	names := make([]string, 0, len(r.configs)+len(r.aliases))
 	names = append(names, r.order...)
@@ -114,8 +95,6 @@ func (r *Registry) known() []string {
 	return names
 }
 
-// Get resolves nameOrAlias and returns the provider (built once, then
-// reused) and its config.
 func (r *Registry) Get(nameOrAlias string) (Provider, Config, error) {
 	name, err := r.Resolve(nameOrAlias)
 	if err != nil {
@@ -136,12 +115,10 @@ func (r *Registry) Get(nameOrAlias string) (Provider, Config, error) {
 	return p, cfg, nil
 }
 
-// Names returns the provider names (not aliases) in config order.
 func (r *Registry) Names() []string {
 	return append([]string(nil), r.order...)
 }
 
-// Aliases returns the aliases that resolve to the provider name, sorted.
 func (r *Registry) Aliases(name string) []string {
 	var out []string
 	for _, alias := range r.aliasNames() {
@@ -152,8 +129,6 @@ func (r *Registry) Aliases(name string) []string {
 	return out
 }
 
-// Set replaces the built provider for a name (tests inject a *Fake). The
-// name must already exist.
 func (r *Registry) Set(name string, p Provider) error {
 	if _, ok := r.configs[name]; !ok {
 		return fmt.Errorf("unknown provider %q", name)

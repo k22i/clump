@@ -17,7 +17,6 @@ import (
 	"github.com/k22i/clump/internal/lazygit"
 )
 
-// syncBuf is a goroutine-safe log sink.
 type syncBuf struct {
 	mu sync.Mutex
 	b  bytes.Buffer
@@ -51,7 +50,6 @@ func push(argv, diff string) pushMsg {
 	return pushMsg{ipc.Msg{V: 1, SentNS: sentNS, RepoRoot: "/repo", GitArgv: strings.Fields(argv), Diff: diff}}
 }
 
-// patchN is a small distinct diff per n.
 func patchN(n int) string {
 	return "diff --git a/src/f.go b/src/f.go\n--- a/src/f.go\n+++ b/src/f.go\n@@ -1 +1 @@\n-old\n+new " + strings.Repeat("x", n) + "\n" +
 		"diff --git a/README.md b/README.md\n--- a/README.md\n+++ b/README.md\n@@ -1 +1 @@\n-a\n+b" + strings.Repeat("y", n) + "\n"
@@ -71,7 +69,6 @@ func TestWatchFollowsAndCaches(t *testing.T) {
 	if !strings.Contains(h.screen(), "→ fake") || !strings.Contains(h.screen(), "auto on") {
 		t.Fatalf("header:\n%s", h.screen())
 	}
-	// lazygit re-sends the same diff: dedupe, no call.
 	h.send(push(showArgv("aaaa111"), patchN(1)))
 	if h.fake.Calls() != 1 || !strings.Contains(logb.String(), "dedupe") {
 		t.Fatalf("re-send made a call\n%s", logb)
@@ -80,7 +77,6 @@ func TestWatchFollowsAndCaches(t *testing.T) {
 	if h.fake.Calls() != 2 || h.m.doc.L.Ref != "commit:bbbb222" {
 		t.Fatal("second commit not followed")
 	}
-	// Back to the first: cached, instant, no call.
 	h.send(push(showArgv("aaaa111"), patchN(1)))
 	if h.fake.Calls() != 2 || !h.m.doc.cached || !strings.Contains(h.screen(), "cached") {
 		t.Fatalf("revisit not cached\n%s", logb)
@@ -106,26 +102,23 @@ func TestWatchDropsOutOfOrder(t *testing.T) {
 func TestWatchDebounceCollapsesBursts(t *testing.T) {
 	h, logb := newWatchHarness(t, nil, true)
 	var ticks []tea.Cmd
-	for i := 0; i < 10; i++ { // held j: ten pushes inside one debounce window
+	for i := 0; i < 10; i++ {
 		_, cmd := h.m.Update(push(showArgv("c"+strings.Repeat("0", i)), patchN(10+i)))
 		ticks = append(ticks, cmd)
 	}
 	for _, c := range ticks {
-		h.run(c) // every tick fires; only the last one's seq is current
+		h.run(c)
 	}
 	if h.fake.Calls() != 1 || h.m.doc.L.Ref != "commit:c000000000" {
 		t.Fatalf("calls %d ref %v\n%s", h.fake.Calls(), h.m.doc.L.Ref, logb)
 	}
 }
 
-// step delivers msg and returns its command without running it.
 func (h *harness) step(msg tea.Msg) tea.Cmd {
 	_, cmd := h.m.Update(msg)
 	return cmd
 }
 
-// collect runs cmd and returns the clump messages it produces (ticks are
-// run too, since watch's debounce is a tick).
 func (h *harness) collect(cmd tea.Cmd) []tea.Msg {
 	if cmd == nil {
 		return nil
@@ -151,7 +144,6 @@ func (h *harness) collect(cmd tea.Cmd) []tea.Msg {
 	return []tea.Msg{msg}
 }
 
-// until steps messages until one of type T appears, returning it.
 func untilGrouped(t *testing.T, h *harness, cmd tea.Cmd) (grouped *groupedMsg, rest []tea.Msg) {
 	t.Helper()
 	queue := h.collect(cmd)
@@ -168,12 +160,10 @@ func untilGrouped(t *testing.T, h *harness, cmd tea.Cmd) (grouped *groupedMsg, r
 
 func TestWatchQueueLatestWinsAndStaleIsCached(t *testing.T) {
 	h, logb := newWatchHarness(t, nil, true)
-	// Push A; stop at A's grouping result (the call has run).
 	gA, _ := untilGrouped(t, h, h.step(push(showArgv("aaaa111"), patchN(1))))
 	if gA == nil {
 		t.Fatal("A never grouped")
 	}
-	// Before A's result is delivered, the selection moves to B, then C.
 	if g, _ := untilGrouped(t, h, h.step(push(showArgv("bbbb222"), patchN(2)))); g != nil {
 		t.Fatal("B started while A was in flight")
 	}
@@ -183,7 +173,6 @@ func TestWatchQueueLatestWinsAndStaleIsCached(t *testing.T) {
 	if h.m.watch.queued == nil || h.m.watch.queued.DiffHash != h.m.doc.Hash || h.m.doc.L.Ref != "commit:cccc333" {
 		t.Fatal("C should be the one queued call (latest wins)")
 	}
-	// A finishes: stale (not shown), cached; C starts.
 	gC, _ := untilGrouped(t, h, h.step(*gA))
 	if gC == nil {
 		t.Fatal("queued C did not start after A")
@@ -195,7 +184,6 @@ func TestWatchQueueLatestWinsAndStaleIsCached(t *testing.T) {
 	if !strings.Contains(logb.String(), "call stale") || strings.Contains(logb.String(), "call start hash="+h.m.doc.Hash[:12]+" provider=fake est") && strings.Count(logb.String(), "call start") != 2 {
 		t.Fatalf("log:\n%s", logb)
 	}
-	// B was never sent; A's stale result is in the cache.
 	dA, _ := gitdiff.Parse(patchN(1))
 	if _, ok, _ := h.eng.Lookup(dA, "cheap"); !ok {
 		t.Fatal("stale A result not cached")
@@ -217,12 +205,10 @@ func TestWatchDimsAndCursorOnly(t *testing.T) {
 	if !h.m.watch.dimmed || h.fake.Calls() != 1 {
 		t.Fatal("worktree followed by default")
 	}
-	// Back on the commit: undimmed, deduped.
 	h.send(push(showArgv("aaaa111"), patchN(1)))
 	if h.m.watch.dimmed || h.fake.Calls() != 1 {
 		t.Fatal("not undimmed")
 	}
-	// File inside the commit: cursor moves to README's group, no regroup.
 	h.m.cursor = 0
 	h.send(push("git diff aaaa111^ aaaa111 -- README.md", "diff --git a/README.md b/README.md\n"))
 	if h.m.cursor != 1 || h.fake.Calls() != 1 {
@@ -253,7 +239,7 @@ func TestWatchAutoOffAndGroupNow(t *testing.T) {
 	if h.fake.Calls() != 1 {
 		t.Fatal("auto off sent the second diff")
 	}
-	h.keys("A") // auto on groups the shown diff
+	h.keys("A")
 	if h.fake.Calls() != 2 || !h.m.watch.auto {
 		t.Fatal("A did not turn auto on and group")
 	}

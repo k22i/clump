@@ -19,7 +19,6 @@ import (
 	"github.com/k22i/clump/internal/provider"
 )
 
-// sampleResult is a small valid grouping for round-trip tests.
 func sampleResult() group.Result {
 	return group.Result{
 		Grouping: group.Grouping{Groups: []group.Group{{ID: "g1", Title: "T", Hunks: []string{"h1"}}}},
@@ -27,7 +26,6 @@ func sampleResult() group.Result {
 	}
 }
 
-// sampleEntry is a complete result entry keyed by key.
 func sampleEntry(key string) Entry {
 	return Entry{
 		Key:           key,
@@ -42,13 +40,11 @@ func sampleEntry(key string) Entry {
 	}
 }
 
-// hex64 is a valid 64-character lower-case hex key/hash for tests.
 func hex64(seed string) string {
 	sum := sha256.Sum256([]byte(seed))
 	return hex.EncodeToString(sum[:])
 }
 
-// openStore returns a Store in dir with a counting FS.
 func openStore(t *testing.T, dir string, o Options) (*Store, *countingFS) {
 	t.Helper()
 	cfs := newCountingFS()
@@ -61,13 +57,11 @@ func openStore(t *testing.T, dir string, o Options) (*Store, *countingFS) {
 	return s, cfs
 }
 
-// fsCall is one recorded call on a countingFS.
 type fsCall struct {
 	Op   string
 	Path string
 }
 
-// countingFS wraps OSFS and records every call it receives.
 type countingFS struct {
 	inner FS
 	mu    sync.Mutex
@@ -82,14 +76,12 @@ func (c *countingFS) record(op, path string) {
 	c.mu.Unlock()
 }
 
-// reset empties the call log.
 func (c *countingFS) reset() {
 	c.mu.Lock()
 	c.calls = nil
 	c.mu.Unlock()
 }
 
-// snapshot returns a copy of the call log.
 func (c *countingFS) snapshot() []fsCall {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -234,7 +226,7 @@ func TestResultRoundTrip(t *testing.T) {
 	if err := s.PutResult(want); err != nil {
 		t.Fatalf("PutResult: %v", err)
 	}
-	want.Version = FormatVersion // PutResult stamps the version
+	want.Version = FormatVersion
 
 	got, ok, err := s.GetResult(want.Key)
 	if err != nil {
@@ -246,7 +238,7 @@ func TestResultRoundTrip(t *testing.T) {
 	if got.Version != FormatVersion {
 		t.Errorf("Version = %d, want %d", got.Version, FormatVersion)
 	}
-	got.CreatedAt = want.CreatedAt // time.Time keeps a monotonic reading the JSON lacks
+	got.CreatedAt = want.CreatedAt
 	if !reflect.DeepEqual(*got, want) {
 		t.Errorf("entry mismatch:\n got %+v\nwant %+v", *got, want)
 	}
@@ -521,7 +513,7 @@ func TestSummaryRoundTrip(t *testing.T) {
 	if err := s.PutSummary(want); err != nil {
 		t.Fatalf("PutSummary: %v", err)
 	}
-	want.Version = FormatVersion // PutSummary stamps the version
+	want.Version = FormatVersion
 	got, ok, err := s.GetSummary(want.Key)
 	if err != nil {
 		t.Fatalf("GetSummary: %v", err)
@@ -570,7 +562,7 @@ func TestOverrideRoundTrip(t *testing.T) {
 	if err := s.SaveOverride(want); err != nil {
 		t.Fatalf("SaveOverride: %v", err)
 	}
-	want.Version = FormatVersion // SaveOverride stamps the version
+	want.Version = FormatVersion
 	got, ok, err := s.LoadOverride(hash)
 	if err != nil {
 		t.Fatalf("LoadOverride: %v", err)
@@ -729,7 +721,6 @@ func TestCalibration(t *testing.T) {
 		t.Fatalf("second Calibrate = %v, want %v", got, want)
 	}
 
-	// Denominator 50 is below the threshold: ignored.
 	got, err = s.Calibrate("p", 1000, 700, 650)
 	if err != nil {
 		t.Fatalf("Calibrate with small denominator: %v", err)
@@ -738,7 +729,6 @@ func TestCalibration(t *testing.T) {
 		t.Errorf("ignored observation changed the value to %v, want %v", got, want)
 	}
 
-	// obs 20 is outside [0.5, 10]: ignored.
 	got, err = s.Calibrate("p", 20000, 1650, 650)
 	if err != nil {
 		t.Fatalf("Calibrate with large observation: %v", err)
@@ -747,12 +737,10 @@ func TestCalibration(t *testing.T) {
 		t.Errorf("out-of-range observation changed the value to %v, want %v", got, want)
 	}
 
-	// Unobserved provider with an ignored observation returns 0.
 	if got, err := s.Calibrate("q", 1000, 700, 650); err != nil || got != 0 {
 		t.Errorf("Calibrate on a new provider with a bad observation = (%v, %v), want (0, nil)", got, err)
 	}
 
-	// Providers are independent.
 	if _, err := s.Calibrate("r", 4000, 1650, 650); err != nil {
 		t.Fatalf("Calibrate r: %v", err)
 	}
@@ -828,8 +816,6 @@ func TestConcurrentPutGet(t *testing.T) {
 		wg.Add(1)
 		go func(i int, key string) {
 			defer wg.Done()
-			// A miss before the Put lands is fine; the entry must still be
-			// retrievable afterwards.
 			if _, _, err := s.GetResult(key); err != nil {
 				errs[n+i] = err
 			}
@@ -855,7 +841,6 @@ func TestConcurrentPutGet(t *testing.T) {
 	}
 }
 
-// closeTo reports whether a and b are within a float epsilon of each other.
 func closeTo(a, b float64) bool {
 	const eps = 1e-9
 	d := a - b

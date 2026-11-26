@@ -11,7 +11,7 @@ import (
 
 func TestGeneratedFilesAreNotSent(t *testing.T) {
 	fx := newFixture(t, func(c *config.Config) { c.Generated.Patterns = []string{"d1/"} })
-	d := testDiff(t, 3, 1, 2) // d0/f0.go d1/f1.go d2/f2.go
+	d := testDiff(t, 3, 1, 2)
 	plainKey, _, _, err := fx.e.ResultKey(d, "cheap")
 	if err != nil {
 		t.Fatal(err)

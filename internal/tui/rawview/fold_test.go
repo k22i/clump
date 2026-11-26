@@ -24,8 +24,6 @@ func TestRenderAllFolded(t *testing.T) {
 		return view.FileState{Folded: fi == 0}
 	})
 	got := viewtest.JoinPlain(lines)
-	// The folded first file hides its hunk; the group boundary moves to the
-	// first shown hunk.
 	if strings.Count(got, "┄┄ 1. Both") != 1 || strings.Index(got, "┄┄ 1. Both") < strings.Index(got, "── b ") {
 		t.Fatalf("got\n%s", got)
 	}

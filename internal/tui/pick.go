@@ -12,7 +12,6 @@ import (
 	"github.com/k22i/clump/internal/tui/view"
 )
 
-// pickItem is one choice in the --pick picker.
 type pickItem struct {
 	label  string
 	detail string
@@ -32,8 +31,6 @@ type pickLoadedMsg struct {
 	err   error
 }
 
-// openPicker loads the choices: this branch vs its default base, then the
-// recent commits.
 func (m *Model) openPicker() tea.Cmd {
 	m.ov = ovPick
 	m.pick = pickState{loading: true, filter: lineInput{prompt: "filter: "}}
@@ -65,7 +62,6 @@ func (m *Model) onPickLoaded(msg pickLoadedMsg) {
 	m.pick.loading, m.pick.items, m.pick.err = false, msg.items, msg.err
 }
 
-// filtered returns the items matching the filter.
 func (p *pickState) filtered() []pickItem {
 	q := strings.ToLower(strings.TrimSpace(p.filter.text()))
 	if q == "" {

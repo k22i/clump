@@ -10,7 +10,6 @@ import (
 	"testing"
 )
 
-// readFixture reads one file under testdata.
 func readFixture(t *testing.T, rel string) string {
 	t.Helper()
 	b, err := os.ReadFile(filepath.Join("testdata", filepath.FromSlash(rel)))
@@ -20,7 +19,6 @@ func readFixture(t *testing.T, rel string) string {
 	return string(b)
 }
 
-// parseFixture parses one fixture and fails the test on error.
 func parseFixture(t *testing.T, rel string) *Diff {
 	t.Helper()
 	d, err := Parse(readFixture(t, rel))
@@ -30,14 +28,12 @@ func parseFixture(t *testing.T, rel string) *Diff {
 	return d
 }
 
-// hunkWant is one expected hunk: its header text and added/deleted counts.
 type hunkWant struct {
 	header string
 	add    int
 	del    int
 }
 
-// fileWant is one expected file of a fixture.
 type fileWant struct {
 	oldPath    string
 	newPath    string
@@ -47,29 +43,25 @@ type fileWant struct {
 	oldMode    string
 	newMode    string
 	similarity int
-	index      string // asserted only when non-empty
+	index      string
 	hunks      []hunkWant
 }
 
-// fixtureWant is the expectation for one fixture.
 type fixtureWant struct {
-	commit  string // first 7 chars of Commits[0].Hash, "" when there is no commit
+	commit  string
 	subject string
 	merge   bool
 	files   []fileWant
 	extra   func(t *testing.T, d *Diff)
 }
 
-// errorFixture lists a fixture Parse must reject.
 type errorFixture struct {
 	file     string
-	want     string // substring of the error, or "" when only errors.Is matters
+	want     string
 	combined bool
 }
 
 func TestParseFixtures(t *testing.T) {
-	// The three files of lazygit/commit-6bdf738.txt, reused by the fixtures
-	// that show the same commit.
 	binaryModeCommitFiles := []fileWant{
 		{oldPath: "", newPath: "logo.bin", path: "logo.bin", status: Added, binary: true, newMode: "100644",
 			index: "0000000..8317895", hunks: []hunkWant{{"(binary new file)", 0, 0}}},
@@ -78,7 +70,6 @@ func TestParseFixtures(t *testing.T) {
 		{oldPath: "src/main.go", newPath: "src/main.go", path: "src/main.go", status: ModeOnly,
 			oldMode: "100644", newMode: "100755", hunks: []hunkWant{{"(mode change 100644 -> 100755)", 0, 0}}},
 	}
-	// The three files of git/binary-mode.show.txt.
 	binaryModeShowFiles := []fileWant{
 		{oldPath: "", newPath: "logo.bin", path: "logo.bin", status: Added, binary: true, newMode: "100644",
 			index: "0000000..029ace0", hunks: []hunkWant{{"(binary new file)", 0, 0}}},
@@ -87,26 +78,22 @@ func TestParseFixtures(t *testing.T) {
 		{oldPath: "src/main.go", newPath: "src/main.go", path: "src/main.go", status: ModeOnly,
 			oldMode: "100644", newMode: "100755", hunks: []hunkWant{{"(mode change 100644 -> 100755)", 0, 0}}},
 	}
-	// The two files of git/mixed.show.txt.
 	mixedFiles := []fileWant{
 		{oldPath: "README.md", newPath: "README.md", path: "README.md", status: Modified,
 			hunks: []hunkWant{{"@@ -1,3 +1,3 @@", 1, 1}}},
 		{oldPath: "src/main.go", newPath: "src/main.go", path: "src/main.go", status: Modified,
 			hunks: []hunkWant{{"@@ -3,5 +3,7 @@ package main", 3, 1}}},
 	}
-	// The one renamed file of git/rename.show.txt.
 	renameFiles := []fileWant{
 		{oldPath: "docs/old.txt", newPath: "docs/new.txt", path: "docs/new.txt", status: Renamed,
 			similarity: 57, hunks: []hunkWant{{"@@ -1 +1,2 @@", 1, 0}}},
 	}
-	// The two files of git/unicode-spaces.show.txt.
 	unicodeFiles := []fileWant{
 		{oldPath: "", newPath: "café.txt", path: "café.txt", status: Added, newMode: "100644",
 			hunks: []hunkWant{{"@@ -0,0 +1 @@", 1, 0}}},
 		{oldPath: "", newPath: "dir a/f b.txt", path: "dir a/f b.txt", status: Added, newMode: "100644",
 			hunks: []hunkWant{{"@@ -0,0 +1 @@", 1, 0}}},
 	}
-	// The one deleted file of git/delete.show.txt.
 	deleteFiles := []fileWant{
 		{oldPath: "nonl.txt", newPath: "", path: "nonl.txt", status: Deleted, oldMode: "100644",
 			hunks: []hunkWant{{"@@ -1 +0,0 @@", 0, 1}}},
@@ -349,7 +336,7 @@ func TestParseFixtures(t *testing.T) {
 			if len(d.Files) != len(want.files) {
 				t.Fatalf("files: got %d (%s), want %d", len(d.Files), fileNames(d.Files), len(want.files))
 			}
-			hunkNum := 0 // IDs are "h1".."hN" in file order across the whole diff
+			hunkNum := 0
 			for i, w := range want.files {
 				f := d.Files[i]
 				if f.Path() != w.path {
@@ -407,7 +394,6 @@ func TestParseFixtures(t *testing.T) {
 	}
 }
 
-// shortHash is the first 7 characters of a sha.
 func shortHash(s string) string {
 	if len(s) < 7 {
 		return s
@@ -415,7 +401,6 @@ func shortHash(s string) string {
 	return s[:7]
 }
 
-// fileNames lists a diff's file paths for failure messages.
 func fileNames(files []*File) string {
 	names := make([]string, len(files))
 	for i, f := range files {
@@ -452,11 +437,7 @@ func TestParseErrors(t *testing.T) {
 	}
 }
 
-// TestFixturesHunkCounts checks every fixture for internal consistency: the
-// hunks are numbered and linked to their file, and every hunk's body matches
-// the counts in its "@@" header.
 func TestFixturesHunkCounts(t *testing.T) {
-	// The three files Parse must reject; every other fixture is a good diff.
 	bad := map[string]bool{
 		"bad-body.diff":   true,
 		"bad-header.diff": true,
@@ -533,7 +514,6 @@ func TestFixturesHunkCounts(t *testing.T) {
 	}
 }
 
-// containsHunk reports whether hs contains h.
 func containsHunk(hs []*Hunk, h *Hunk) bool {
 	for _, x := range hs {
 		if x == h {
@@ -666,9 +646,6 @@ func TestPseudoHeader(t *testing.T) {
 	}
 }
 
-// TestParseDegenerateGitLines covers "diff --git" lines too short or too odd
-// for the splitting rules: they must not panic, and both paths fall back to
-// the whole remainder, prefix-stripped.
 func TestParseDegenerateGitLines(t *testing.T) {
 	cases := []struct{ in, oldPath, newPath string }{
 		{"diff --git a", "a", "a"},
@@ -698,7 +675,6 @@ func TestParseDegenerateGitLines(t *testing.T) {
 	}
 }
 
-// TestParseHunkEndsEarly checks the error for input that stops mid-hunk.
 func TestParseHunkEndsEarly(t *testing.T) {
 	const in = "diff --git a/x b/x\n--- a/x\n+++ b/x\n@@ -1,2 +1,2 @@\n a\n"
 	_, err := Parse(in)
@@ -710,8 +686,6 @@ func TestParseHunkEndsEarly(t *testing.T) {
 	}
 }
 
-// TestParseNonDiff checks that input with no "diff --git" line parses to a
-// diff with no files and no hunks, keeping any commit header it finds.
 func TestParseNonDiff(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -739,8 +713,6 @@ func TestParseNonDiff(t *testing.T) {
 	}
 }
 
-// TestParseNeverPanics feeds Parse random bytes and mutated fixtures and only
-// requires that it returns. The seed is fixed so a failure is reproducible.
 func TestParseNeverPanics(t *testing.T) {
 	corpus := make([]string, 0, 40)
 	for _, dir := range []string{"edge", "git", "lazygit"} {
@@ -764,13 +736,11 @@ func TestParseNeverPanics(t *testing.T) {
 					t.Fatalf("Parse panicked on input %q: %v", in, p)
 				}
 			}()
-			_, _ = Parse(in) // any error is acceptable here; only a panic is a bug
+			_, _ = Parse(in)
 		}()
 	}
 }
 
-// randomInput makes one random patch-shaped string: random bytes, random
-// diff-ish lines, or a mutation of a fixture.
 func randomInput(r *rand.Rand, corpus []string) string {
 	switch r.IntN(3) {
 	case 0:

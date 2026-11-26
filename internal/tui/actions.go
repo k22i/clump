@@ -16,7 +16,6 @@ import (
 	"github.com/k22i/clump/internal/tui/view"
 )
 
-// groups returns the groups currently shown.
 func (m *Model) groups() []group.Group {
 	if m.doc == nil || m.doc.hist == nil {
 		return nil
@@ -65,8 +64,6 @@ func (m *Model) toggleAll() {
 	}
 }
 
-// scrollToGroup puts the diff cursor on the first hunk of the selected group
-// in the all view.
 func (m *Model) scrollToGroup() {
 	g, ok := m.currentGroup()
 	if !ok || len(g.Hunks) == 0 {
@@ -76,14 +73,12 @@ func (m *Model) scrollToGroup() {
 	for i, l := range lines {
 		if l.HunkID == g.Hunks[0] && l.Kind == view.KindHunk {
 			m.setDcur(i)
-			m.scroll = max(0, i-2) // keep the file header and boundary visible
+			m.scroll = max(0, i-2)
 			return
 		}
 	}
 }
 
-// setDcur moves the diff cursor to i, scrolling the window to keep it in
-// sight.
 func (m *Model) setDcur(i int) {
 	lines := m.ensureLines()
 	if len(lines) == 0 {
@@ -101,8 +96,6 @@ func (m *Model) setDcur(i int) {
 	m.syncGroupCursor()
 }
 
-// syncGroupCursor keeps the group cursor on the group under the diff cursor
-// in the all view.
 func (m *Model) syncGroupCursor() {
 	if m.mode != modeAll {
 		return
@@ -114,12 +107,10 @@ func (m *Model) syncGroupCursor() {
 	}
 }
 
-// hunkAt returns the hunk ID at or after line i (the nearest following hunk
-// line), "" if none.
 func (m *Model) hunkAt(i int) string {
 	lines := m.ensureLines()
 	if i >= 0 && i < len(lines) && len(lines[i].BlockHunks) > 0 {
-		return lines[i].BlockHunks[0] // a file header: its first hunk
+		return lines[i].BlockHunks[0]
 	}
 	for j := i; j >= 0 && j < len(lines); j++ {
 		if lines[j].HunkID != "" {
@@ -134,8 +125,6 @@ func (m *Model) hunkAt(i int) string {
 	return ""
 }
 
-// cursorHunk is the hunk the user is pointing at: under the diff cursor, or
-// the first hunk of the selected group.
 func (m *Model) cursorHunk() string {
 	if m.focus == focusDiff {
 		return m.hunkAt(m.dcur)
@@ -145,8 +134,6 @@ func (m *Model) cursorHunk() string {
 	}
 	return ""
 }
-
-// ---- marks and visual mode -------------------------------------------
 
 func (m *Model) requireGrouped() bool {
 	if m.doc == nil || !m.doc.grouped() {
@@ -172,7 +159,7 @@ func (m *Model) toggleMark() {
 	default:
 		lines := m.ensureLines()
 		if m.dcur >= 0 && m.dcur < len(lines) && lines[m.dcur].Kind == view.KindFile {
-			ids = lines[m.dcur].BlockHunks // x on a file header marks the file
+			ids = lines[m.dcur].BlockHunks
 		} else if id := m.cursorHunk(); id != "" {
 			ids = []string{id}
 		}
@@ -208,8 +195,6 @@ func (m *Model) toggleVisual() {
 	m.setFlash("visual: move to extend, x to mark, M to move, esc to stop", false)
 }
 
-// visualRange is every hunk between the visual anchor and the cursor, in
-// display order.
 func (m *Model) visualRange() []string {
 	cur := m.cursorHunk()
 	var order []string
@@ -241,8 +226,6 @@ func (m *Model) visualRange() []string {
 	return append([]string(nil), order[a:b+1]...)
 }
 
-// selection is what M acts on: the marks, else the visual range, else the
-// hunk under the cursor.
 func (m *Model) selection() []string {
 	if len(m.marks) > 0 {
 		var ids []string
@@ -262,9 +245,6 @@ func (m *Model) selection() []string {
 	return nil
 }
 
-// ---- edits --------------------------------------------------------------
-
-// edit applies op through the history, saves the override and reports.
 func (m *Model) edit(what string, op func(group.Grouping) (group.Grouping, error)) tea.Cmd {
 	if !m.requireGrouped() {
 		return nil
@@ -284,7 +264,7 @@ func (m *Model) edit(what string, op func(group.Grouping) (group.Grouping, error
 
 func (m *Model) afterEdit(what string) {
 	m.linesOK = false
-	m.setCursor(m.cursor) // clamp
+	m.setCursor(m.cursor)
 	if err := m.saveOverride(); err != nil {
 		m.setFlash(what+" (not saved: "+err.Error()+")", true)
 		return
@@ -292,9 +272,6 @@ func (m *Model) afterEdit(what string) {
 	m.setFlash(what+" — u to undo", false)
 }
 
-// saveOverride writes the effective grouping as the override for this diff,
-// or removes the override when the grouping equals the base again and no
-// snapshots are kept.
 func (m *Model) saveOverride() error {
 	if m.o.Store == nil {
 		return nil
@@ -487,8 +464,6 @@ func (m *Model) finishInput() tea.Cmd {
 	return nil
 }
 
-// ---- regroup, provider, copy, editor -------------------------------------
-
 func (m *Model) regroup() tea.Cmd {
 	if m.doc == nil || m.doc.state == stLoading {
 		return nil
@@ -504,7 +479,6 @@ func (m *Model) regroup() tea.Cmd {
 	return m.requestGroup(true, true)
 }
 
-// doRegroup runs after the regroup confirmation.
 func (m *Model) doRegroup(keep bool) tea.Cmd {
 	d := m.doc
 	if keep {
@@ -561,7 +535,6 @@ func (m *Model) switchProvider(name string) tea.Cmd {
 	return m.requestGroup(m.autoGroup(), false)
 }
 
-// autoGroup is whether opening a diff may call the provider by itself.
 func (m *Model) autoGroup() bool {
 	if m.watch != nil {
 		return m.watch.auto
@@ -600,7 +573,6 @@ func (m *Model) openEditor() tea.Cmd {
 	return sys.EditCmd(argv, m.o.Repo)
 }
 
-// groupNow sends the prepared job (watch: g; above the ceiling: y).
 func (m *Model) groupNow() tea.Cmd {
 	d := m.doc
 	if d == nil || d.state != stNeedsConfirm {
@@ -612,7 +584,6 @@ func (m *Model) groupNow() tea.Cmd {
 	return m.startJob(d.job, false)
 }
 
-// onSideMsg handles results from sys commands.
 func (m *Model) onSideMsg(msg tea.Msg) (tea.Cmd, bool) {
 	switch msg := msg.(type) {
 	case sys.CopiedMsg:

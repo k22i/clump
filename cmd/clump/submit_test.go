@@ -9,9 +9,6 @@ import (
 	"testing"
 )
 
-// submitStubGh answers the gh calls of submit: "pr diff" and "pr view" from
-// the gitdiff fixtures, and "api" by recording its stdin and printing a
-// posted-review response.
 func submitStubGh(t *testing.T) (dir, logPath, apiStdin string) {
 	t.Helper()
 	dir = t.TempDir()
@@ -54,8 +51,6 @@ esac
 	return dir, logPath, apiStdin
 }
 
-// submitSandbox isolates config and cache and adds one line comment on the
-// fixture pull request's second file.
 func submitSandbox(t *testing.T) {
 	t.Helper()
 	t.Setenv("CLUMP_CONFIG", filepath.Join(t.TempDir(), "missing-config.toml"))

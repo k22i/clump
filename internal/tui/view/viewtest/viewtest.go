@@ -1,5 +1,3 @@
-// Package viewtest has the golden-file and fixture helpers shared by the
-// TUI render packages' tests. Import it from _test.go files only.
 package viewtest
 
 import (
@@ -16,8 +14,6 @@ import (
 
 var update = flag.Bool("update", false, "rewrite testdata/*.golden files")
 
-// Golden compares got with testdata/<name>.golden in the calling package's
-// directory; with -update it rewrites the file instead.
 func Golden(t *testing.T, name, got string) {
 	t.Helper()
 	path := filepath.Join("testdata", name+".golden")
@@ -39,8 +35,6 @@ func Golden(t *testing.T, name, got string) {
 	}
 }
 
-// FixtureDiff parses a file from internal/gitdiff/testdata, e.g.
-// FixtureDiff(t, "lazygit/commit-67a7d22.txt").
 func FixtureDiff(t *testing.T, rel string) *gitdiff.Diff {
 	t.Helper()
 	_, here, _, _ := runtime.Caller(0)
@@ -56,7 +50,6 @@ func FixtureDiff(t *testing.T, rel string) *gitdiff.Diff {
 	return d
 }
 
-// JoinPlain joins the Plain text of lines, each followed by "\n".
 func JoinPlain(lines []view.Line) string {
 	var b strings.Builder
 	for _, l := range lines {

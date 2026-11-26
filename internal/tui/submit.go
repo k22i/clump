@@ -1,12 +1,5 @@
 package tui
 
-// Posting a review: P on a diff opened with --pr turns the diff's stored
-// comments into one GitHub pull request review — line comments inline on
-// their line, file comments on the file, group comments in the body — and
-// posts it with the event picked here (comment, approve or request changes;
-// internal/forge). Everything goes through the gh CLI, like --pr itself:
-// no tokens are stored, the review posts as the account gh is logged into.
-
 import (
 	"strings"
 
@@ -15,21 +8,18 @@ import (
 	"github.com/k22i/clump/internal/forge"
 )
 
-// submitState is the event picker: one of the three REST review events.
 type submitState struct {
 	items  []menuItem
 	cursor int
 	title  string
 }
 
-// submitMsg reports a finished forge.Submit.
 type submitMsg struct {
 	event string
 	url   string
 	err   error
 }
 
-// openSubmit is P: show the event picker over the pull request's comments.
 func (m *Model) openSubmit() tea.Cmd {
 	if m.o.PR == "" {
 		m.setFlash("P posts a review: open a pull request first (clump --pr SPEC)", true)
@@ -56,7 +46,6 @@ func (m *Model) openSubmit() tea.Cmd {
 	return nil
 }
 
-// keySubmit drives the event picker.
 func (m *Model) keySubmit(key string) tea.Cmd {
 	s := &m.submit
 	switch key {
@@ -76,7 +65,6 @@ func (m *Model) keySubmit(key string) tea.Cmd {
 	return nil
 }
 
-// postReview submits one event over the diff's placed comments.
 func (m *Model) postReview(name string) tea.Cmd {
 	event, err := forge.ParseEvent(name)
 	if err != nil {
@@ -101,7 +89,6 @@ func (m *Model) postReview(name string) tea.Cmd {
 	})
 }
 
-// onSubmitMsg reports the forge result in the flash.
 func (m *Model) onSubmitMsg(msg submitMsg) tea.Cmd {
 	if msg.err != nil {
 		m.setFlash("review not submitted: "+msg.err.Error(), true)
@@ -116,7 +103,6 @@ func (m *Model) onSubmitMsg(msg submitMsg) tea.Cmd {
 	return m.status("done", where)
 }
 
-// groupTitle names a group of the on-screen grouping for the review body.
 func (m *Model) groupTitle() func(id string) string {
 	g := m.groups()
 	return func(id string) string {

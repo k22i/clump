@@ -9,8 +9,6 @@ import (
 	"github.com/k22i/clump/internal/gitdiff"
 )
 
-// buildTestDiff makes files f0..f(n-1) under dir<i%3>/, each with hunksPer
-// hunks of bodyLines added lines.
 func buildTestDiff(files, hunksPer, bodyLines int) *gitdiff.Diff {
 	d := &gitdiff.Diff{}
 	n := 0
@@ -134,7 +132,7 @@ func TestBuildTier2WhenCapTooSmall(t *testing.T) {
 	zero := BuildOpts{CollapseMin: -1, BytesPerToken: 2}.buildNorm()
 	h0, _, _ := buildHunks(Build(d, BuildOpts{CollapseMin: -1}).Units, 0)
 	catTokens := zero.buildEst(zero.buildRenderGroup("000000000000", buildCatalog(Build(d, BuildOpts{CollapseMin: -1}).Units), h0))
-	budget := catTokens + 300 // fits headers but only a line or two of body per hunk
+	budget := catTokens + 300
 	p := Build(d, BuildOpts{CollapseMin: -1, Budget: budget, BytesPerToken: 2})
 	if p.Tier != 2 || p.Prompt != "" || len(p.Summaries) < 2 || p.Calls() != len(p.Summaries)+1 {
 		t.Fatalf("tier %d summaries %d", p.Tier, len(p.Summaries))

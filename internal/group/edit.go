@@ -7,8 +7,6 @@ import (
 	"strings"
 )
 
-// Errors returned by the edit operations. Each op returns its input
-// unchanged together with one of these (possibly wrapped with detail).
 var (
 	ErrNoGroup     = errors.New("no such group")
 	ErrNoHunk      = errors.New("no such hunk")
@@ -18,13 +16,6 @@ var (
 	ErrUngroupedOp = errors.New("not allowed on the Ungrouped group")
 )
 
-// Edit operations are pure: they never modify their input (including the
-// Hunks slices it shares) and return either a new Grouping that is
-// Check-clean whenever the input was, or the input unchanged and an error.
-// See DESIGN.md "Edit model" for the exact rules.
-
-// newUngrouped returns the Ungrouped group with no hunks. Move and Delete
-// append it at the end of the list when they need it and it is absent.
 func newUngrouped() Group {
 	return Group{
 		ID:          UngroupedID,
@@ -33,8 +24,6 @@ func newUngrouped() Group {
 	}
 }
 
-// Move moves hunkIDs to the group toID, removing them from wherever they
-// are. toID may be UngroupedID, which is created at the end if absent.
 func Move(g Grouping, hunkIDs []string, toID string) (Grouping, error) {
 	if len(hunkIDs) == 0 {
 		return g, ErrNoHunks
@@ -54,10 +43,6 @@ func Move(g Grouping, hunkIDs []string, toID string) (Grouping, error) {
 	return moveHunks(out, hunkIDs, toID), nil
 }
 
-// moveHunks removes the hunks in ids from every group of out (which must be a
-// deep copy the caller does not share) and appends them to the group with ID
-// dstID, re-sorting it. Groups left empty stay, except UngroupedID, which is
-// removed. Duplicates in ids are ignored. dstID must exist in out.
 func moveHunks(out Grouping, ids []string, dstID string) Grouping {
 	moving := make(map[string]bool, len(ids))
 	add := make([]string, 0, len(ids))
@@ -89,8 +74,6 @@ func moveHunks(out Grouping, ids []string, dstID string) Grouping {
 	return out
 }
 
-// MoveToNew moves hunkIDs into a new group with the given title, appended at
-// the end, and returns the new group's ID.
 func MoveToNew(g Grouping, hunkIDs []string, title string) (Grouping, string, error) {
 	trimmed := strings.TrimSpace(title)
 	if trimmed == "" {
@@ -110,7 +93,6 @@ func MoveToNew(g Grouping, hunkIDs []string, title string) (Grouping, string, er
 	return moveHunks(out, hunkIDs, id), id, nil
 }
 
-// NewGroup appends an empty group with the given title and returns its ID.
 func NewGroup(g Grouping, title string) (Grouping, string, error) {
 	trimmed := strings.TrimSpace(title)
 	if trimmed == "" {
@@ -122,7 +104,6 @@ func NewGroup(g Grouping, title string) (Grouping, string, error) {
 	return out, id, nil
 }
 
-// Rename sets a group's title and description.
 func Rename(g Grouping, id, title, description string) (Grouping, error) {
 	i := g.Find(id)
 	if i < 0 {
@@ -141,7 +122,6 @@ func Rename(g Grouping, id, title, description string) (Grouping, error) {
 	return out, nil
 }
 
-// Delete removes a group; its hunks go to Ungrouped.
 func Delete(g Grouping, id string) (Grouping, error) {
 	i := g.Find(id)
 	if i < 0 {
@@ -162,8 +142,6 @@ func Delete(g Grouping, id string) (Grouping, error) {
 	return moveHunks(out, moved, UngroupedID), nil
 }
 
-// Reorder moves a group delta positions (negative is up), clamped to the
-// list bounds.
 func Reorder(g Grouping, id string, delta int) (Grouping, error) {
 	i := g.Find(id)
 	if i < 0 {
@@ -188,7 +166,6 @@ func Reorder(g Grouping, id string, delta int) (Grouping, error) {
 	return out, nil
 }
 
-// Merge moves every hunk of srcID into dstID and removes srcID.
 func Merge(g Grouping, srcID, dstID string) (Grouping, error) {
 	si := g.Find(srcID)
 	if si < 0 {
@@ -206,8 +183,6 @@ func Merge(g Grouping, srcID, dstID string) (Grouping, error) {
 	return moveHunks(out, moved, dstID), nil
 }
 
-// NextGroupID returns "g<N+1>" where N is the largest number among IDs of the
-// form "g<digits>" in g (0 if none).
 func NextGroupID(g Grouping) string {
 	max := 0
 	for _, gr := range g.Groups {
@@ -218,8 +193,6 @@ func NextGroupID(g Grouping) string {
 	return "g" + strconv.Itoa(max+1)
 }
 
-// groupNumber returns N for a group ID "gN" (digits, no leading zero), and
-// whether id has that form. "g", "gx", "g01" and UngroupedID do not match.
 func groupNumber(id string) (int, bool) {
 	if len(id) < 2 || id[0] != 'g' {
 		return 0, false

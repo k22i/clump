@@ -67,7 +67,6 @@ func TestMarkdownComments(t *testing.T) {
 	if !strings.Contains(md, "1. `logo.bin:3` (new side) — suspicious rename") {
 		t.Fatalf("line comment:\n%s", md)
 	}
-	// no comments, no section
 	if strings.Contains(Markdown(doc(t)), "Review comments") {
 		t.Fatal("empty comments should not render a section")
 	}

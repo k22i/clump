@@ -17,8 +17,6 @@ import (
 	"testing"
 )
 
-// fakeRelease points this package's update source at a fake GitHub: its
-// latest release is tag, and this platform's archive holds bin.
 func fakeRelease(t *testing.T, tag string, bin []byte) {
 	t.Helper()
 	asset := "clump_" + runtime.GOOS + "_" + runtime.GOARCH + ".tar.gz"
@@ -41,8 +39,6 @@ func fakeRelease(t *testing.T, tag string, bin []byte) {
 	archive := buf.Bytes()
 	sum := sha256.Sum256(archive)
 
-	// The fake repo name is fixed: handlers are registered before
-	// updateRepo names it.
 	const fakeRepo = "k22i/clump-fake"
 	mux := http.NewServeMux()
 	mux.HandleFunc("/repos/"+fakeRepo+"/releases/latest", func(w http.ResponseWriter, r *http.Request) {
@@ -70,12 +66,11 @@ func fakeRelease(t *testing.T, tag string, bin []byte) {
 	t.Cleanup(srv.Close)
 
 	prevAPI, prevRepo, prevExe, prevVersion := updateAPI, updateRepo, selfExe, version
-	t.Setenv("GITHUB_TOKEN", "") // keep the API call anonymous
+	t.Setenv("GITHUB_TOKEN", "")
 	updateAPI, updateRepo = srv.URL, fakeRepo
 	t.Cleanup(func() { updateAPI, updateRepo, selfExe, version = prevAPI, prevRepo, prevExe, prevVersion })
 }
 
-// selfExePath returns a clump stand-in for the update to replace.
 func selfExePath(t *testing.T) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "clump")
@@ -89,7 +84,6 @@ func TestRunUpdate(t *testing.T) {
 	exe := selfExePath(t)
 	selfExe = func() (string, error) { return exe, nil }
 
-	// A newer release replaces the binary, checksummed.
 	version = "v0.1.0"
 	fakeRelease(t, "v0.2.0", []byte("new clump"))
 	var out, errOut strings.Builder
@@ -107,7 +101,6 @@ func TestRunUpdate(t *testing.T) {
 		t.Errorf("output: got %q", out.String())
 	}
 
-	// The latest release leaves an up-to-date binary alone.
 	selfExe = func() (string, error) { return exe, nil }
 	version = "v0.2.0"
 	out.Reset()
@@ -125,7 +118,6 @@ func TestRunUpdate(t *testing.T) {
 		t.Errorf("output: got %q", out.String())
 	}
 
-	// A dev build installs the latest release over itself.
 	selfExe = func() (string, error) { return exe, nil }
 	version = "dev"
 	out.Reset()
@@ -139,13 +131,11 @@ func TestRunUpdate(t *testing.T) {
 		t.Errorf("dev: output: got %q", out.String())
 	}
 
-	// Arguments are a usage error.
 	if err := runUpdate([]string{"--now"}, &out, io.Discard); err == nil {
 		t.Error("args: want a usage error")
 	}
 }
 
-// TestRunUpdateUnavailable keeps the messages short when GitHub is dark.
 func TestRunUpdateUnavailable(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)

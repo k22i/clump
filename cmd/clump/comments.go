@@ -1,19 +1,5 @@
 package main
 
-// The comments subcommand: the agent-facing review-comment interface.
-//
-//	clump comments [REV | A..B | A...B | --branch | --pr SPEC] [--json]
-//	clump comments add --file PATH [--line N --side old|new] \
-//	                   [--rev REV | --branch | --pr SPEC] TEXT
-//	clump comments add --group ID [--rev …] TEXT
-//	clump comments delete --id ID
-//
-// The target is what the one-shot review takes: a rev, a range, --branch,
-// --pr, or a patch on stdin (for the list). add and delete name their
-// target in flags (`--rev`) so the free text is unambiguous. No provider is
-// ever called: comments come from the store, and group comments are listed
-// with the saved grouping (the override, else the cached result).
-
 import (
 	"context"
 	"encoding/json"
@@ -35,7 +21,7 @@ type commentsOpts struct {
 	repo, pr, rev, file, side, groupID, id string
 	branch, jsonOut                        bool
 	line                                   int
-	args                                   []string // free positionals
+	args                                   []string
 }
 
 func parseCommentsFlags(args []string) (commentsOpts, error) {
@@ -61,7 +47,7 @@ func parseCommentsFlags(args []string) (commentsOpts, error) {
 		if len(args) == 0 {
 			break
 		}
-		o.args = append(o.args, args...) // positionals never return to the flagset
+		o.args = append(o.args, args...)
 		break
 	}
 	if o.side != comment.SideOld && o.side != comment.SideNew {
@@ -82,7 +68,6 @@ func parseCommentsFlags(args []string) (commentsOpts, error) {
 	return o, nil
 }
 
-// target is the equivalent one-shot target for loadInput.
 func (o commentsOpts) target(stdin *os.File) (oneShotOpts, error) {
 	t := oneShotOpts{repo: o.repo, pr: o.pr, branch: o.branch, jsonOut: o.jsonOut}
 	switch {
@@ -91,13 +76,11 @@ func (o commentsOpts) target(stdin *os.File) (oneShotOpts, error) {
 	case len(o.args) > 0:
 		t.args = []string{o.args[0]}
 	default:
-		// stdin falls through when stdout is not the terminal
 		_ = stdin
 	}
 	return t, nil
 }
 
-// runComments is the `clump comments` entry: args[0] may be list|add|delete.
 func runComments(args []string, stdin *os.File, stdout, stderr io.Writer) error {
 	sub := "list"
 	if len(args) > 0 {
@@ -134,7 +117,6 @@ func runComments(args []string, stdin *os.File, stdout, stderr io.Writer) error 
 	}
 }
 
-// commentDiff loads the target's diff.
 func commentDiff(ctx context.Context, o commentsOpts, stdin *os.File) (*gitdiff.Loaded, error) {
 	t, err := o.target(stdin)
 	if err != nil {
@@ -150,9 +132,6 @@ func commentDiff(ctx context.Context, o commentsOpts, stdin *os.File) (*gitdiff.
 	return l, nil
 }
 
-// savedGrouping is the grouping the comments list places group comments
-// under: the user's saved edits, else the cached result. It never calls a
-// provider; ok is false when there is none.
 func savedGrouping(a *app, l *gitdiff.Loaded, providerName string) (group.Grouping, bool) {
 	ov, ok, err := a.store.LoadOverride(l.Diff.Hash())
 	if err != nil || ok {
@@ -165,7 +144,6 @@ func savedGrouping(a *app, l *gitdiff.Loaded, providerName string) (group.Groupi
 	return out.Result.Grouping, true
 }
 
-// addComment resolves the anchor and stores the comment.
 func addComment(o commentsOpts, text string, stdin *os.File, stdout io.Writer) error {
 	if text == "" {
 		return usageError{"comments add wants a comment text"}
@@ -224,7 +202,6 @@ func addComment(o commentsOpts, text string, stdin *os.File, stdout io.Writer) e
 	return nil
 }
 
-// deleteComment removes a comment by id; its anchor is found in the store.
 func deleteComment(o commentsOpts, id string, stdout io.Writer) error {
 	a, err := loadApp(false)
 	if err != nil {
@@ -249,7 +226,6 @@ func deleteComment(o commentsOpts, id string, stdout io.Writer) error {
 	return fmt.Errorf("no comment %s", id)
 }
 
-// listComments prints a diff's comments, numbered, or as JSON.
 func listComments(o commentsOpts, stdin *os.File, stdout io.Writer) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
@@ -311,7 +287,6 @@ func listComments(o commentsOpts, stdin *os.File, stdout io.Writer) error {
 	return nil
 }
 
-// commentTargetLabel names where a comment sits, like the report does.
 func commentTargetLabel(c comment.Placed) string {
 	var at string
 	switch c.Kind {

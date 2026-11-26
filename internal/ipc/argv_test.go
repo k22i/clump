@@ -14,8 +14,6 @@ import (
 	"testing"
 )
 
-// procargs2 builds a kern.procargs2 buffer: argc, then the given raw parts
-// (which carry their own NULs).
 func procargs2(argc int32, parts ...string) []byte {
 	b := binary.LittleEndian.AppendUint32(nil, uint32(argc))
 	for _, p := range parts {
@@ -142,8 +140,6 @@ func TestSplitCmdline(t *testing.T) {
 	}
 }
 
-// TestHelperParentArgv is not a test: it is the child process body used by
-// TestParentArgvOfChild. It prints its own parent's argv as JSON and exits.
 func TestHelperParentArgv(t *testing.T) {
 	if os.Getenv("IPC_HELPER") != "1" {
 		t.Log("helper process only: run through TestParentArgvOfChild")
@@ -158,8 +154,6 @@ func TestHelperParentArgv(t *testing.T) {
 	os.Exit(0)
 }
 
-// TestParentArgvOfChild re-execs the test binary and checks that the child
-// reads this process's argv: the real end-to-end check of ParentArgv.
 func TestParentArgvOfChild(t *testing.T) {
 	cmd := exec.Command(os.Args[0], "-test.run=TestHelperParentArgv")
 	cmd.Env = append(os.Environ(), "IPC_HELPER=1")

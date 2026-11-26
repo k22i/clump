@@ -13,12 +13,8 @@ import (
 	"time"
 )
 
-// dofileLineSuffix names the actions DofileLine advertises in a comment, so a
-// reader of Rex's init.lua can find them.
 const dofileLineSuffix = " -- clump: actions clump_pick, clump_watch, clump_watch_close"
 
-// ConfigPath is Rex's init file: $XDG_CONFIG_HOME/rex/init.lua, else
-// ~/.config/rex/init.lua.
 func ConfigPath() (string, error) {
 	if xdg := os.Getenv("XDG_CONFIG_HOME"); xdg != "" && filepath.IsAbs(xdg) {
 		return filepath.Join(xdg, "rex", "init.lua"), nil
@@ -30,8 +26,6 @@ func ConfigPath() (string, error) {
 	return filepath.Join(home, ".config", "rex", "init.lua"), nil
 }
 
-// ModulePath is where `clump rex install` writes clump's Lua module:
-// $XDG_DATA_HOME/clump/rex/init.lua, else ~/.local/share/clump/rex/init.lua.
 func ModulePath() (string, error) {
 	if xdg := os.Getenv("XDG_DATA_HOME"); xdg != "" && filepath.IsAbs(xdg) {
 		return filepath.Join(xdg, "clump", "rex", "init.lua"), nil
@@ -43,11 +37,6 @@ func ModulePath() (string, error) {
 	return filepath.Join(home, ".local", "share", "clump", "rex", "init.lua"), nil
 }
 
-// DofileLine is the line to add to Rex's init.lua:
-//
-//	dofile("<modulePath>") -- clump: actions clump_pick, clump_watch, clump_watch_close
-//
-// modulePath is written as a Lua double-quoted string (\ and " escaped).
 func DofileLine(modulePath string) string {
 	var b strings.Builder
 	b.WriteString(`dofile("`)
@@ -66,23 +55,15 @@ func DofileLine(modulePath string) string {
 	return b.String()
 }
 
-// InstallOpts configures Install.
 type InstallOpts struct {
-	ConfigPath string // Rex init.lua
-	ModulePath string // where the module goes
-	Module     []byte // the module's contents (embedded rex/init.lua)
-	Write      bool   // append the dofile line after confirmation
+	ConfigPath string
+	ModulePath string
+	Module     []byte
+	Write      bool
 	In         io.Reader
 	Out        io.Writer
 }
 
-// Install always writes Module to ModulePath (clump's own file, mode 0644,
-// parent dirs 0755), then prints DofileLine. With Write it also asks
-// "Append it to <ConfigPath>? [y/N] " and on "y"/"yes" copies
-// ConfigPath to ConfigPath + ".clump-backup-<YYYYMMDD-HHMMSS>" (if it exists)
-// and appends the line (with a leading newline if the file does not end in
-// one). If ConfigPath already contains the module path it says so and
-// changes nothing.
 func Install(o InstallOpts) error {
 	out := o.Out
 	if out == nil {
@@ -167,11 +148,6 @@ func Install(o InstallOpts) error {
 	return err
 }
 
-// installWriteModule writes module to path with mode 0644, creating parent
-// directories with 0755, and says what it did. It writes a temporary file in
-// the same directory and renames it, so a crash never leaves a half-written
-// module. When the file already holds the same bytes it writes nothing and
-// leaves its modification time alone.
 func installWriteModule(out io.Writer, path string, module []byte) error {
 	old, err := os.ReadFile(path)
 	switch {
@@ -191,8 +167,6 @@ func installWriteModule(out io.Writer, path string, module []byte) error {
 		return err
 	}
 	tmp := f.Name()
-	// After a successful rename tmp no longer exists, so this removes the
-	// temporary file on every earlier failure path and nothing otherwise.
 	defer os.Remove(tmp)
 	if _, err := f.Write(module); err != nil {
 		f.Close()
@@ -212,7 +186,6 @@ func installWriteModule(out io.Writer, path string, module []byte) error {
 	return err
 }
 
-// installReadFile reads path; a missing file is empty content, not an error.
 func installReadFile(path string) (content string, exists bool, err error) {
 	b, err := os.ReadFile(path)
 	switch {
@@ -225,7 +198,6 @@ func installReadFile(path string) (content string, exists bool, err error) {
 	}
 }
 
-// installReadLine reads one line from r without its newline.
 func installReadLine(r io.Reader) (string, error) {
 	line, err := bufio.NewReader(r).ReadString('\n')
 	line = strings.TrimSuffix(line, "\n")
@@ -233,7 +205,6 @@ func installReadLine(r io.Reader) (string, error) {
 	return line, err
 }
 
-// installIsYes reports whether answer is an explicit yes.
 func installIsYes(answer string) bool {
 	switch strings.ToLower(strings.TrimSpace(answer)) {
 	case "y", "yes":
@@ -242,7 +213,6 @@ func installIsYes(answer string) bool {
 	return false
 }
 
-// installCopyFile copies src to dst with the given permissions.
 func installCopyFile(src, dst string, perm fs.FileMode) error {
 	b, err := os.ReadFile(src)
 	if err != nil {

@@ -7,7 +7,6 @@ import (
 	"testing"
 )
 
-// mustParse parses text, failing the test on error.
 func mustParse(t *testing.T, text string) *Diff {
 	t.Helper()
 	d, err := Parse(text)
@@ -17,8 +16,6 @@ func mustParse(t *testing.T, text string) *Diff {
 	return d
 }
 
-// sha256HexOf is the lower-case hex SHA-256 of s, computed independently of
-// the implementation under test.
 func sha256HexOf(s string) string {
 	sum := sha256.Sum256([]byte(s))
 	return hex.EncodeToString(sum[:])
@@ -88,7 +85,6 @@ func TestHashIgnoresOneBodyLine(t *testing.T) {
 	if first.Hash() == second.Hash() {
 		t.Fatalf("one changed body line did not change the hash: %s", first.Hash())
 	}
-	// The same input twice must of course agree.
 	again := mustParse(t, strings.Replace(tmpl, "%s", "one", 1))
 	if first.Hash() != again.Hash() {
 		t.Fatalf("same input, different hash: %s vs %s", first.Hash(), again.Hash())
@@ -118,7 +114,6 @@ func TestFileHash(t *testing.T) {
 	if len(d.Files) != 2 {
 		t.Fatalf("files = %d, want 2", len(d.Files))
 	}
-	// The second file's section, written out by hand.
 	const second = "diff --git a/b.txt b/b.txt\nstatus M 0\nmode  \n@@ -1 +1 @@\n-x\n+y\n"
 	const first = "diff --git a/a.txt b/a.txt\nstatus M 0\nmode  \n@@ -1,2 +1,2 @@\n keep\n-old\n+new\n"
 	if got, want := d.Canonical(), first+second; got != want {

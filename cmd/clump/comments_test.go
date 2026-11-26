@@ -10,8 +10,6 @@ import (
 	"testing"
 )
 
-// gitRepo makes a one-commit repository: a.txt with three lines (one per
-// line here), then a second commit changing line 2.
 func gitRepo(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
@@ -41,7 +39,6 @@ func gitRepo(t *testing.T) string {
 	}
 	g("add", ".")
 	g("commit", "-q", "-m", "second")
-	// Redirect config and cache into the test sandbox.
 	t.Setenv("CLUMP_CONFIG", filepath.Join(dir, "missing-config.toml"))
 	t.Setenv("XDG_CACHE_HOME", filepath.Join(dir, "cache"))
 	return dir
@@ -70,7 +67,6 @@ func TestCommentsAddListDelete(t *testing.T) {
 	if !strings.Contains(list, "1. `a.txt:2` (new side) — name this change") {
 		t.Fatalf("list:\n%s", list)
 	}
-	// extract the id from --json
 	var buf bytes.Buffer
 	if err := runComments([]string{"add", "--repo", dir, "--rev", "HEAD", "--file", "a.txt", "--json",
 		"json comment"}, os.Stdin, &buf, &buf); err != nil {
@@ -98,7 +94,6 @@ func TestCommentsAddListDelete(t *testing.T) {
 	if _, err := commentRun(t, "delete", "--id", added.Comment.ID); err != nil {
 		t.Fatal(err)
 	}
-	// one comment left
 	list3, err := commentRun(t, "--repo", dir, "--rev", "HEAD")
 	if err != nil {
 		t.Fatal(err)
@@ -106,7 +101,6 @@ func TestCommentsAddListDelete(t *testing.T) {
 	if !strings.Contains(list3, "1. `a.txt:2` (new side) — name this change") {
 		t.Fatalf("after delete:\n%s", list3)
 	}
-	// a second HEAD run with old side is a hunk line too
 	if _, err := commentRun(t, "add", "--repo", dir, "--rev", "HEAD", "--file", "a.txt", "--line", "2",
 		"--side", "old", "two was fine"); err != nil {
 		t.Fatal(err)
@@ -139,10 +133,6 @@ func TestCommentsWholeFileAndErrors(t *testing.T) {
 		!strings.Contains(err.Error(), "no saved grouping") {
 		t.Fatalf("group without grouping: %v", err)
 	}
-	// Empty diff: --branch with nothing left to compare fails cleanly when
-	// the diff is empty; here just check a rev with an empty diff errors.
-	// A file that is entirely new (its first commit) is still a comment
-	// target; its line 1 exists on the new side.
 	if _, err := commentRun(t, "add", "--repo", dir, "--rev", "HEAD~1", "--file", "a.txt", "--line", "1",
 		"first line"); err != nil {
 		t.Fatal(err)

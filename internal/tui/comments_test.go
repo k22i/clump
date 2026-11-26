@@ -10,7 +10,6 @@ import (
 
 func reportMarkdown(h *harness) string { return report.Markdown(h.m.reportDoc()) }
 
-// lineOf finds the first line of the given kind and returns its index.
 func lineOf(h *harness, kind view.LineKind) int {
 	for i, l := range h.m.ensureLines() {
 		if l.Kind == kind {
@@ -23,7 +22,7 @@ func lineOf(h *harness, kind view.LineKind) int {
 func TestCommentOnLine(t *testing.T) {
 	h := newHarness(t, nil, nil)
 	h.load(testPatch)
-	h.keys("enter") // focus the diff pane
+	h.keys("enter")
 	if i := lineOf(h, view.KindAdd); i < 0 {
 		t.Fatal("no + line on screen")
 	} else {
@@ -43,7 +42,6 @@ func TestCommentOnLine(t *testing.T) {
 	if lines[idx].Kind != view.KindComment || lines[idx].Gutter == 0 {
 		t.Fatalf("comment row: %+v", lines[idx])
 	}
-	// The comment lands under the line it is about.
 	var at int
 	for i, l := range lines {
 		if l.Kind == view.KindComment {
@@ -54,7 +52,6 @@ func TestCommentOnLine(t *testing.T) {
 	if at < 2 || lines[at-1].Kind == view.KindFile {
 		t.Fatalf("comment not under its line: %d %v", at, lines[at-1].Kind)
 	}
-	// Comments are content-anchored: a second session sees them.
 	h2 := newHarness(t, h.store, nil)
 	h2.load(testPatch)
 	h2.keys("enter")
@@ -62,7 +59,6 @@ func TestCommentOnLine(t *testing.T) {
 		t.Fatal("comment not persisted")
 	}
 
-	// D under the comment row deletes exactly that comment.
 	h.m.setDcur(idx)
 	h.keys("D")
 	if !strings.Contains(h.m.flash, "comment deleted") {
@@ -80,14 +76,13 @@ func TestCommentOnFileHeader(t *testing.T) {
 	h := newHarness(t, nil, nil)
 	h.load(testPatch)
 	h.keys("enter")
-	h.m.setDcur(h.m.headerLine(0)) // src/a.go
+	h.m.setDcur(h.m.headerLine(0))
 	h.keys("C")
 	if !strings.HasPrefix(h.m.input.title.prompt, "Comment on src/a.go") {
 		t.Fatalf("prompt %q", h.m.input.title.prompt)
 	}
 	h.typeText("needs tests")
 	h.keys("enter")
-	// The header is reviewed? No, but the comment shows even folded.
 	lines := h.m.ensureLines()
 	found := false
 	for i, l := range lines {
@@ -117,12 +112,10 @@ func TestCommentOnGroupFromList(t *testing.T) {
 	}
 	h.typeText("this whole logical change should be split")
 	h.keys("enter")
-	// The comment weaves into the group block in grouped mode.
 	s := h.screen()
 	if !strings.Contains(s, "✎ this whole logical change should be split") {
 		t.Fatalf("group comment not on screen:\n%s", s)
 	}
-	// And into the report, placed under its group.
 	doc := h.m.reportDoc()
 	if len(doc.Comments) != 1 {
 		t.Fatalf("report comments: %+v", doc.Comments)
@@ -153,9 +146,8 @@ func TestCommentPersistenceAcrossRegroup(t *testing.T) {
 	if lineOf(h, view.KindComment) < 0 {
 		t.Fatal("comment not shown")
 	}
-	// A regroup changes the group IDs but the line comment survives.
-	h.keys("esc") // back to the list
-	h.keys("r")   // regroup, bypassing the cache
+	h.keys("esc")
+	h.keys("r")
 	if lineOf(h, view.KindComment) < 0 && h.m.focus == focusList {
 		h.keys("enter")
 	}

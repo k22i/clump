@@ -22,7 +22,6 @@ var (
 	binErr  error
 )
 
-// clumpBin builds the real binary once per test run.
 func clumpBin(t *testing.T) string {
 	t.Helper()
 	binOnce.Do(func() {
@@ -54,8 +53,6 @@ func fixture(t *testing.T) []byte {
 	return b
 }
 
-// shortRepo makes a repo-looking dir with a short path (macOS sockets are
-// limited to 104 bytes) and points XDG_RUNTIME_DIR at a short dir too.
 func shortRepo(t *testing.T) (repo string, env []string) {
 	t.Helper()
 	base, err := os.MkdirTemp("", "cp")
@@ -91,7 +88,6 @@ func TestPushPassesThroughWithoutListener(t *testing.T) {
 	if err != nil || !bytes.Equal(out, in) || len(errOut) != 0 {
 		t.Fatalf("err=%v stderr=%q identical=%v", err, errOut, bytes.Equal(out, in))
 	}
-	// Outside any repo too.
 	out, errOut, err = runPushBin(t, os.TempDir(), env, in)
 	if err != nil || !bytes.Equal(out, in) || len(errOut) != 0 {
 		t.Fatalf("outside a repo: err=%v stderr=%q", err, errOut)
@@ -150,7 +146,6 @@ func TestPushReachesWatch(t *testing.T) {
 		if strings.Contains(m.Diff, "\x1b[") {
 			t.Fatal("SGR not stripped")
 		}
-		// The parent of push is this test process.
 		if len(m.GitArgv) == 0 || filepath.Base(m.GitArgv[0]) != filepath.Base(os.Args[0]) {
 			t.Fatalf("parent argv = %q", m.GitArgv)
 		}
@@ -159,7 +154,6 @@ func TestPushReachesWatch(t *testing.T) {
 	}
 }
 
-// median of n runs of argv with stdin, in milliseconds.
 func medianRun(t *testing.T, dir string, env []string, in []byte, n int, argv ...string) float64 {
 	t.Helper()
 	var ts []float64
@@ -176,14 +170,11 @@ func medianRun(t *testing.T, dir string, env []string, in []byte, n int, argv ..
 	return ts[len(ts)/2]
 }
 
-// TestPushLatency measures push against cat with no listener running. The
-// budget (5 ms p50 over cat) is asserted when CLUMP_PUSH_LATENCY=1, because
-// `go test ./...` runs packages in parallel and timings are then noisy.
 func TestPushLatency(t *testing.T) {
 	repo, env := shortRepo(t)
 	in := fixture(t)
 	bin := clumpBin(t)
-	medianRun(t, repo, env, in, 5, bin, "push") // warm the page cache
+	medianRun(t, repo, env, in, 5, bin, "push")
 	cat := medianRun(t, repo, env, in, 40, "cat")
 	push := medianRun(t, repo, env, in, 40, bin, "push")
 	t.Logf("p50: cat %.2f ms, push %.2f ms, overhead %.2f ms", cat, push, push-cat)

@@ -7,15 +7,12 @@ import (
 	"testing"
 )
 
-// Shas of the fixture commits the captured lazygit argv lines use.
 const (
 	sha6bdf738 = "6bdf738591d3bd3c8e57a24b7d885f492633294b"
 	shaBdd913d = "bdd913d801bb5c57d40f5e14ea07d1d184b46eef"
 	sha67a7d22 = "67a7d22b7de1f3d77a15f8eb743d7e2199ce055b"
 )
 
-// indexArgv reads the argv lines captured from lazygit 0.66 and keyed by the
-// sample they produced.
 func indexArgv(t *testing.T) []struct {
 	name string
 	argv []string
@@ -45,7 +42,6 @@ func indexArgv(t *testing.T) []struct {
 	return rows
 }
 
-// TestClassifyIndex classifies every argv line captured from lazygit.
 func TestClassifyIndex(t *testing.T) {
 	want := map[string]Selection{
 		"worktree-unstaged-dir.txt":     {Kind: KindWorktree, Paths: []string{"src"}},
@@ -63,7 +59,6 @@ func TestClassifyIndex(t *testing.T) {
 	if len(rows) < 2 {
 		t.Fatalf("INDEX.tsv has %d rows; want the captured rows plus the trailer", len(rows))
 	}
-	// The last row is a note in the argv column, not an argv line.
 	rows = rows[:len(rows)-1]
 	if len(rows) != len(want) {
 		t.Fatalf("INDEX.tsv has %d argv rows; want %d", len(rows), len(want))
@@ -82,7 +77,6 @@ func TestClassifyIndex(t *testing.T) {
 	}
 }
 
-// TestClassifySynthetic covers argv shapes lazygit has not produced yet.
 func TestClassifySynthetic(t *testing.T) {
 	tests := []struct {
 		name string
@@ -190,8 +184,6 @@ func TestClassifySynthetic(t *testing.T) {
 	}
 }
 
-// TestClassifyFallback covers an unreadable parent argv: only the commit
-// header of the diff text identifies anything.
 func TestClassifyFallback(t *testing.T) {
 	tests := []struct {
 		name string
@@ -241,7 +233,6 @@ func TestClassifyFallback(t *testing.T) {
 	}
 }
 
-// TestRefForms pins every Ref form.
 func TestRefForms(t *testing.T) {
 	tests := []struct {
 		name string
@@ -279,7 +270,6 @@ func TestRefForms(t *testing.T) {
 	})
 }
 
-// TestDecide pins the selection-to-action table.
 func TestDecide(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -311,7 +301,6 @@ func TestDecide(t *testing.T) {
 	}
 }
 
-// normalize drops zero-valued fields so selections compare field by field.
 func normalize(s Selection) Selection {
 	s.Ref = ""
 	if len(s.Paths) == 0 {
@@ -320,7 +309,6 @@ func normalize(s Selection) Selection {
 	return s
 }
 
-// selEqual compares selections field by field.
 func selEqual(a, b Selection) bool {
 	if a.Kind != b.Kind || a.Commit != b.Commit || a.From != b.From || a.To != b.To ||
 		a.Stash != b.Stash || a.Cached != b.Cached || len(a.Paths) != len(b.Paths) {

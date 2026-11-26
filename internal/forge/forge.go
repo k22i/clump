@@ -1,14 +1,3 @@
-// Package forge posts a review to a git hosting service. clump's comments
-// attach to a diff by content (internal/comment); a forge turns them into a
-// hosted review: line and file comments become inline review comments, group
-// comments — a clump concept no forge has — become the review body, and the
-// whole review is posted in one request.
-//
-// GitHub is the forge: everything goes through the gh CLI, so clump stores
-// no tokens and writes as whatever account gh is logged into, exactly like
-// --pr reads. The REST call is `gh api --input -` against
-// repos/{owner}/{repo}/pulls/N/reviews with event COMMENT, APPROVE or
-// REQUEST_CHANGES (a pending review needs GraphQL and is out of scope).
 package forge
 
 import (
@@ -22,18 +11,14 @@ import (
 	"github.com/k22i/clump/internal/gitdiff"
 )
 
-// Event is a GitHub pull request review event.
 type Event string
 
-// The review events. Leave and Draft do not exist here: Draft needs a
-// pending review (GraphQL), and the REST call alone cannot make one.
 const (
 	EventComment       Event = "COMMENT"
 	EventApprove       Event = "APPROVE"
 	EventRequestChange Event = "REQUEST_CHANGES"
 )
 
-// ParseEvent parses an --event / picker value.
 func ParseEvent(s string) (Event, error) {
 	switch strings.ToLower(strings.TrimSpace(s)) {
 	case "comment":
@@ -47,7 +32,6 @@ func ParseEvent(s string) (Event, error) {
 	}
 }
 
-// String is the lowercase name the CLI and TUI show.
 func (e Event) String() string {
 	switch e {
 	case EventApprove:
@@ -59,27 +43,20 @@ func (e Event) String() string {
 	}
 }
 
-// Inline is one inline review comment as the GitHub API takes it: a file
-// (subject_type file), or a file and a side and a line (subject_type line).
-// Line comments draw on the diff at path:side:line; file comments attach to
-// the file header.
 type Inline struct {
 	Path        string `json:"path"`
-	SubjectType string `json:"subject_type,omitempty"` // "" (line) or "file"
-	Side        string `json:"side,omitempty"`         // LEFT or RIGHT
+	SubjectType string `json:"subject_type,omitempty"`
+	Side        string `json:"side,omitempty"`
 	Line        int    `json:"line,omitempty"`
 	Body        string `json:"body"`
 }
 
-// Kind counts the comments of the review by what they attach to.
 type Counts struct {
 	Line, File, Group int
 }
 
-// Total is every comment, inline and in the body.
 func (c Counts) Total() int { return c.Line + c.File + c.Group }
 
-// Review is the review to post: an event, a body and inline comments.
 type Review struct {
 	Event    Event
 	Body     string
@@ -87,11 +64,6 @@ type Review struct {
 	Counts   Counts
 }
 
-// Build turns the diff's placed comments into a review. Line comments become
-// inline comments on their side and line (LEFT is the old path of a rename,
-// as the PR base shows it), file comments become file-level comments, and
-// group comments — a clump-only concept — gather into the body after base.
-// groupTitle may be nil; then group IDs stand in for titles.
 func Build(event Event, base string, placed []comment.Placed, d *gitdiff.Diff, groupTitle func(id string) string) Review {
 	r := Review{Event: event, Body: strings.TrimSpace(base)}
 	path, old := filePaths(d)
@@ -136,9 +108,6 @@ func Build(event Event, base string, placed []comment.Placed, d *gitdiff.Diff, g
 	return r
 }
 
-// filePaths indexes the diff's files by their display and current paths (both
-// name a file in the PR diff UI) and by their old path (the location of the
-// base blob for comments on the LEFT side).
 func filePaths(d *gitdiff.Diff) (path, old map[string]string) {
 	path, old = map[string]string{}, map[string]string{}
 	if d == nil {
@@ -158,7 +127,6 @@ func filePaths(d *gitdiff.Diff) (path, old map[string]string) {
 	return path, old
 }
 
-// Payload is the JSON body of the API call.
 func (r Review) Payload() ([]byte, error) {
 	return json.Marshal(reviewJSON{
 		Event:    string(r.Event),
@@ -173,15 +141,11 @@ type reviewJSON struct {
 	Comments []Inline `json:"comments,omitempty"`
 }
 
-// Result reports the posted review.
 type Result struct {
-	URL    string // the review's html_url, "" when the API gave none
-	Number int    // the review id
+	URL    string
+	Number int
 }
 
-// Submit posts r as one review of the pull request named by spec (the same
-// --pr forms LoadPR reads), through the gh CLI in repo ("" is the current
-// directory). The whole review — every inline comment — is one request.
 func Submit(ctx context.Context, repo, spec string, r Review) (Result, error) {
 	p, err := gitdiff.ParsePRSpec(spec)
 	if err != nil {
@@ -204,14 +168,11 @@ func Submit(ctx context.Context, repo, spec string, r Review) (Result, error) {
 		ID      int    `json:"id"`
 	}
 	if err := json.Unmarshal([]byte(out), &res); err != nil {
-		// The review is posted; only the report of it failed to parse.
 		return Result{}, fmt.Errorf("review posted but not reported: %w", err)
 	}
 	return Result{URL: res.HTMLURL, Number: res.ID}, nil
 }
 
-// Summary is one human line about what the review contains, for confirm
-// prompts and reports.
 func (r Review) Summary() string {
 	var parts []string
 	if r.Counts.Line > 0 {

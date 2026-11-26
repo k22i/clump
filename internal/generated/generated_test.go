@@ -66,7 +66,6 @@ func parse(t *testing.T, patch string) *gitdiff.Diff {
 	return d
 }
 
-// added is a one-hunk patch adding path with the given lines.
 func added(path string, lines ...string) string {
 	var b strings.Builder
 	b.WriteString("diff --git a/" + path + " b/" + path + "\nnew file mode 100644\n--- /dev/null\n+++ b/" + path + "\n")
@@ -77,7 +76,6 @@ func added(path string, lines ...string) string {
 	return b.String()
 }
 
-// modified is a one-hunk patch changing line start of path.
 func modified(path string, start int, ctx string) string {
 	s := strconv.Itoa(start)
 	return "diff --git a/" + path + " b/" + path + "\n--- a/" + path + "\n+++ b/" + path + "\n" +
@@ -118,10 +116,10 @@ func TestMark(t *testing.T) {
 		"src/q.ts":                  "marker @generated",
 		"migrations/0003_users.sql": "marker statement-breakpoint (drizzle)",
 		"api/Client.cs":             "marker auto-generated",
-		"src/strings.go":            "", // a string literal, not a comment
-		"src/late.go":               "", // the marker is not near the top
+		"src/strings.go":            "",
+		"src/late.go":               "",
 		"Cargo.lock":                "pattern Cargo.lock",
-		"src/keep/go.sum":           "", // review wins over the built-in pattern
+		"src/keep/go.sum":           "",
 		"src/extra/out.txt":         "pattern src/extra/",
 	}
 	got := reasons(d)
@@ -134,19 +132,16 @@ func TestMark(t *testing.T) {
 		t.Errorf("Signature = %q", sig)
 	}
 
-	// builtin = false keeps only the user's patterns and the markers.
 	det2, _ := New(Options{Detect: true, Patterns: []string{"src/extra/"}})
 	det2.Mark(context.Background(), d, "")
 	if g := reasons(d); g["go.sum"] != "" || g["src/extra/out.txt"] == "" || g["src/q.ts"] == "" {
 		t.Errorf("builtin=false: %v", g)
 	}
-	// detect = false clears every mark.
 	det3, _ := New(Options{Detect: false, Builtin: true})
 	det3.Mark(context.Background(), d, "")
 	if Signature(d) != "" {
 		t.Errorf("detect=false: %v", reasons(d))
 	}
-	// A nil detector also clears.
 	var nilDet *Detector
 	d.Files[0].Generated = "x"
 	nilDet.Mark(context.Background(), d, "")
@@ -170,8 +165,8 @@ func TestMarkDrizzleSnapshots(t *testing.T) {
 	want := map[string]string{
 		"packages/db/src/migrations/20261124155802_light_pride/snapshot.json": "pattern **/migrations/*/snapshot.json",
 		"db/out/0001_snapshot_copy.json":                                      "marker snapshot (drizzle)",
-		"src/config.json":                                                     "", // "dialect" alone is not a snapshot
-		"packages/db/src/migrations/20261124155802_light_pride/migration.sql": "", // the SQL itself is reviewed
+		"src/config.json":                                                     "",
+		"packages/db/src/migrations/20261124155802_light_pride/migration.sql": "",
 	}
 	got := reasons(d)
 	for p, w := range want {
@@ -216,7 +211,7 @@ func TestMarkGitattributes(t *testing.T) {
 	det.Mark(context.Background(), d, repo)
 	want := map[string]string{
 		"api/gen/client.ts": "linguist-generated",
-		"package-lock.json": "", // -linguist-generated overrides the built-in pattern
+		"package-lock.json": "",
 		"third/lib.c":       "linguist-vendored",
 		"src/a.ts":          "",
 	}

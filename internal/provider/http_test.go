@@ -15,7 +15,6 @@ import (
 	"time"
 )
 
-// capturedRequest is one request a test server received.
 type capturedRequest struct {
 	method string
 	path   string
@@ -23,7 +22,6 @@ type capturedRequest struct {
 	raw    []byte
 }
 
-// jsonBody decodes the captured request body as a JSON object.
 func (c capturedRequest) jsonBody(t *testing.T) map[string]any {
 	t.Helper()
 	var m map[string]any
@@ -33,17 +31,13 @@ func (c capturedRequest) jsonBody(t *testing.T) map[string]any {
 	return m
 }
 
-// recorder records the requests a test server received. Handlers run in their
-// own goroutines, so the mutex is not optional.
 type recorder struct {
 	mu   sync.Mutex
 	reqs []capturedRequest
 }
 
-// newRecorder returns an empty recorder.
 func newRecorder() *recorder { return &recorder{} }
 
-// add records r. A body read failure fails the test.
 func (rec *recorder) add(t *testing.T, r *http.Request) {
 	t.Helper()
 	raw, err := io.ReadAll(r.Body)
@@ -61,22 +55,18 @@ func (rec *recorder) add(t *testing.T, r *http.Request) {
 	})
 }
 
-// all returns the recorded requests in arrival order.
 func (rec *recorder) all() []capturedRequest {
 	rec.mu.Lock()
 	defer rec.mu.Unlock()
 	return append([]capturedRequest(nil), rec.reqs...)
 }
 
-// count returns the number of recorded requests.
 func (rec *recorder) count() int {
 	rec.mu.Lock()
 	defer rec.mu.Unlock()
 	return len(rec.reqs)
 }
 
-// only returns the single recorded request, failing when there is not exactly
-// one.
 func (rec *recorder) only(t *testing.T) capturedRequest {
 	t.Helper()
 	reqs := rec.all()
@@ -86,16 +76,12 @@ func (rec *recorder) only(t *testing.T) capturedRequest {
 	return reqs[0]
 }
 
-// writeJSON writes body as a JSON response with status.
 func writeJSON(w http.ResponseWriter, status int, body string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	// A write error means the client went away; there is nobody left to report
-	// it to, and the test asserts on what the handler recorded.
 	_, _ = io.WriteString(w, body)
 }
 
-// objectList returns body[key] as a list of JSON objects.
 func objectList(t *testing.T, body map[string]any, key string) []map[string]any {
 	t.Helper()
 	raw, ok := body[key].([]any)
@@ -113,7 +99,6 @@ func objectList(t *testing.T, body map[string]any, key string) []map[string]any 
 	return out
 }
 
-// numberField returns body[key] as a float64.
 func numberField(t *testing.T, body map[string]any, key string) float64 {
 	t.Helper()
 	f, ok := body[key].(float64)
@@ -123,7 +108,6 @@ func numberField(t *testing.T, body map[string]any, key string) float64 {
 	return f
 }
 
-// stringField returns body[key] as a string.
 func stringField(t *testing.T, body map[string]any, key string) string {
 	t.Helper()
 	s, ok := body[key].(string)
@@ -133,7 +117,6 @@ func stringField(t *testing.T, body map[string]any, key string) string {
 	return s
 }
 
-// sortedKeys returns the keys of body in sorted order.
 func sortedKeys(body map[string]any) []string {
 	keys := make([]string, 0, len(body))
 	for k := range body {
@@ -143,11 +126,9 @@ func sortedKeys(body map[string]any) []string {
 	return keys
 }
 
-// openAISuccessBody is a minimal successful /chat/completions response.
 const openAISuccessBody = `{"choices":[{"message":{"content":"{\"groups\":[]}"},"finish_reason":"stop"}],` +
 	`"usage":{"prompt_tokens":120,"completion_tokens":20}}`
 
-// anthropicSuccessBody answers with a thinking block and two text blocks.
 const anthropicSuccessBody = `{"content":[{"type":"thinking","thinking":"let me think","signature":"sig"},` +
 	`{"type":"text","text":"{\"gro"},{"type":"text","text":"ups\":[]}"}],` +
 	`"stop_reason":"end_turn","stop_details":null,` +
@@ -167,7 +148,7 @@ func TestOpenAIRequestAndResponse(t *testing.T) {
 	cfg := Config{
 		Name:      "fake",
 		Type:      TypeOpenAI,
-		BaseURL:   srv.URL + "/v1/", // trailing slash must not double up
+		BaseURL:   srv.URL + "/v1/",
 		Model:     "deepseek-chat",
 		APIKeyEnv: "CLUMP_TEST_OPENAI_KEY",
 	}
@@ -342,7 +323,6 @@ func TestOpenAIHTTPErrorParsesMessage(t *testing.T) {
 }
 
 func TestOpenAIHTTPErrorRawBody(t *testing.T) {
-	// A 1000-byte body that is not JSON: the error reports its last 300 bytes.
 	raw := strings.Repeat("a", 700) + "  " + strings.Repeat("T", 298) + "  "
 	if len(raw) != 1002 {
 		t.Fatalf("test body is %d bytes, want 1002", len(raw))
@@ -368,7 +348,6 @@ func TestOpenAIRedactsKey(t *testing.T) {
 	t.Setenv("CLUMP_TEST_LEAK_KEY", key)
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// A badly behaved server echoing the credential back.
 		writeJSON(w, http.StatusUnauthorized,
 			`{"error":{"message":"invalid key `+r.Header.Get("Authorization")+`"}}`)
 	}))
@@ -419,8 +398,6 @@ func TestOpenAINoChoicesAndBadJSON(t *testing.T) {
 
 func TestOpenAICancel(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Drain the body so the server starts its background read, then block
-		// until the client goes away.
 		_, _ = io.Copy(io.Discard, r.Body)
 		<-r.Context().Done()
 	}))
@@ -609,7 +586,6 @@ func TestAnthropicDefaultBaseURL(t *testing.T) {
 		t.Fatalf("keyEnv = %q, want %q", ap.keyEnv, want)
 	}
 
-	// A configured base URL wins, and a trailing slash does not double up.
 	p = mustNew(t, Config{Name: "fake2", Type: TypeAnthropic, BaseURL: "https://proxy.example/anthropic/", Model: "m"})
 	ap, ok = p.(*anthropicProvider)
 	if !ok {

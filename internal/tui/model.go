@@ -1,8 +1,3 @@
-// Package tui is clump's Bubble Tea interface: the group list, the diff
-// pane, the raw "all" view, editing with undo, and watch mode's follow
-// behaviour. Pure render helpers live in the sub-packages (view, diffview,
-// rawview, listview, helpview, sys); this package owns the state, the
-// message flow and the keymap. See DESIGN.md §9.
 package tui
 
 import (
@@ -23,35 +18,22 @@ import (
 	"github.com/k22i/clump/internal/tui/view"
 )
 
-// Options configures the TUI.
 type Options struct {
-	Engine *engine.Engine
-	Store  *cache.Store
-	Cfg    *config.Config
-	// Repo is the repository root ("" for a patch outside a repo).
-	Repo string
-	// Provider is the provider (name or alias) to group with.
+	Engine   *engine.Engine
+	Store    *cache.Store
+	Cfg      *config.Config
+	Repo     string
 	Provider string
 	Theme    view.Theme
-	// Load loads the one-shot diff. Nil in pick mode (the picker loads).
-	Load func(ctx context.Context) (*gitdiff.Loaded, error)
-	// Pick opens the in-TUI picker first (clump --pick).
-	Pick bool
-	// PR, when set, is the --pr spec the diff came from: P posts the
-	// comments there as a GitHub review (internal/forge).
-	PR string
-	// Yes sends above the ceiling without asking.
-	Yes bool
-	// Watch, when set, makes this a watch pane (see watch.go).
-	Watch *WatchOptions
-	// Status receives program-status reports (nil for none).
-	Status StatusFunc
-	// Now is time.Now unless a test replaces it.
-	Now func() time.Time
+	Load     func(ctx context.Context) (*gitdiff.Loaded, error)
+	Pick     bool
+	PR       string
+	Yes      bool
+	Watch    *WatchOptions
+	Status   StatusFunc
+	Now      func() time.Time
 }
 
-// StatusFunc reports the program's state to the terminal (Rex OSC 7501).
-// kind is "working", "blocked", "done", "error" or "idle"; msg is one line.
 type StatusFunc func(kind, msg string) tea.Cmd
 
 type focus int
@@ -68,22 +50,20 @@ const (
 	modeAll
 )
 
-// overlay is a modal on top of the main view.
 type overlay int
 
 const (
-	ovNone     overlay = iota
-	ovHelp             // ? keys
-	ovSearch           // typing a search query
-	ovConfirm          // y/n (or d/s/esc for regroup) question
-	ovTarget           // pick a target group (M move, g merge)
-	ovInput            // title / description input (n, R, M→new)
-	ovProvider         // m provider switcher
-	ovPick             // the --pick commit/branch picker
-	ovSubmit           // P post the review as a pull request review
+	ovNone overlay = iota
+	ovHelp
+	ovSearch
+	ovConfirm
+	ovTarget
+	ovInput
+	ovProvider
+	ovPick
+	ovSubmit
 )
 
-// Model is the root Bubble Tea model.
 type Model struct {
 	o   Options
 	ctx context.Context
@@ -92,48 +72,42 @@ type Model struct {
 	width, height int
 
 	doc      *Doc
-	provider string // current provider (name or alias as given)
-	gen      int    // increments with every grouping request (stale results are dropped)
+	provider string
+	gen      int
 	cancel   context.CancelFunc
 
 	focus  focus
 	mode   viewMode
-	cursor int // selected group index
+	cursor int
 
-	// diff pane
 	lines   []view.Line
-	linesOK bool // lines match the current doc/cursor/mode/width
-	linesW  int  // the content width lines was built for
-	scroll  int  // first visible line
-	dcur    int  // cursor line in the diff pane
+	linesOK bool
+	linesW  int
+	scroll  int
+	dcur    int
 
 	marks    map[string]bool
-	reviewed map[string]bool // by gitdiff.Hunk.ReviewKey
+	reviewed map[string]bool
 	fold     map[foldKey]bool
 
-	// Review comments (internal/comment): comments by anchor key, the keys
-	// already fetched (a new group's key is fetched on first use) and, when
-	// the pane is built, which line holds which comment (for D).
-	comments   map[string][]comment.Comment
-	loadedKeys map[string]bool
-	commentAt  map[int]commentRef
-	// lineNumbers draws old/new line numbers (config line_numbers, #).
+	comments    map[string][]comment.Comment
+	loadedKeys  map[string]bool
+	commentAt   map[int]commentRef
 	lineNumbers bool
-	// split draws hunks old-left / new-right (config side_by_side, s).
-	split     bool
-	visual    bool
-	visualAt  string // hunk ID where visual mode started
-	query     string
-	matches   []int
-	ov        overlay
-	confirm   confirmState
-	target    targetState
-	input     inputState
-	menu      menuState
-	pick      pickState
-	submit    submitState
-	searchBox lineInput
-	spin      spinner.Model
+	split       bool
+	visual      bool
+	visualAt    string
+	query       string
+	matches     []int
+	ov          overlay
+	confirm     confirmState
+	target      targetState
+	input       inputState
+	menu        menuState
+	pick        pickState
+	submit      submitState
+	searchBox   lineInput
+	spin        spinner.Model
 
 	flash    string
 	flashErr bool
@@ -141,7 +115,6 @@ type Model struct {
 	watch *watchState
 }
 
-// New builds the model.
 func New(ctx context.Context, o Options) *Model {
 	if o.Now == nil {
 		o.Now = time.Now
@@ -159,7 +132,6 @@ func New(ctx context.Context, o Options) *Model {
 	return m
 }
 
-// Run runs the TUI until the user quits.
 func Run(ctx context.Context, o Options) error {
 	m := New(ctx, o)
 	opts := []tea.ProgramOption{tea.WithContext(ctx)}
@@ -180,7 +152,6 @@ func Run(ctx context.Context, o Options) error {
 	return err
 }
 
-// Init starts loading.
 func (m *Model) Init() tea.Cmd {
 	cmds := []tea.Cmd{m.spin.Tick}
 	switch {
@@ -193,8 +164,6 @@ func (m *Model) Init() tea.Cmd {
 	}
 	return tea.Batch(cmds...)
 }
-
-// ---- messages ---------------------------------------------------------
 
 type loadedMsg struct {
 	l   *gitdiff.Loaded
@@ -218,8 +187,6 @@ func (m *Model) loadCmd(load func(context.Context) (*gitdiff.Loaded, error)) tea
 	}
 }
 
-// open shows a freshly loaded diff: override, else cache, else (maybe) a
-// provider call. auto=false never calls the provider (watch with auto off).
 func (m *Model) open(l *gitdiff.Loaded, auto bool) tea.Cmd {
 	if m.o.Engine != nil {
 		m.o.Engine.MarkGenerated(m.ctx, l.Diff, m.o.Repo)
@@ -252,7 +219,6 @@ func (m *Model) open(l *gitdiff.Loaded, auto bool) tea.Cmd {
 
 func (m *Model) noCacheRead() bool { return false }
 
-// loadOverride shows the user's edits for this diff, if any.
 func (m *Model) loadOverride() bool {
 	if m.o.Store == nil {
 		return false
@@ -273,7 +239,6 @@ func (m *Model) loadOverride() bool {
 		m.doc.notices = append(m.doc.notices, "ignored saved edits that no longer match: "+err.Error())
 		return false
 	}
-	// The base is the model result the edits started from, when cached.
 	base := ov.Grouping
 	provider := "edited"
 	if ov.BaseCacheKey != "" {
@@ -287,9 +252,6 @@ func (m *Model) loadOverride() bool {
 	return true
 }
 
-// requestGroup prepares a grouping job and starts it, unless it is above the
-// ceiling (then it waits for confirmation) or auto is false. force bypasses
-// the result cache (r).
 func (m *Model) requestGroup(auto, force bool) tea.Cmd {
 	d := m.doc
 	j, err := m.o.Engine.Prepare(engineInput(d), m.provider)
@@ -316,8 +278,6 @@ func engineInput(d *Doc) engine.Input {
 	return engine.Input{Diff: d.L.Diff, Context: d.L.Context}
 }
 
-// startJob runs j in the background. Only one job runs per model in one-shot
-// mode; watch mode queues (see watch.go).
 func (m *Model) startJob(j *engine.Job, force bool) tea.Cmd {
 	if m.watch != nil {
 		return m.watch.request(m, j)
@@ -331,7 +291,7 @@ func (m *Model) startJob(j *engine.Job, force bool) tea.Cmd {
 	gen, hash := m.gen, m.doc.Hash
 	m.doc.state, m.doc.started = stGrouping, m.o.Now()
 	eng := m.o.Engine
-	_ = force // the job never reads the result cache; Prepare already decided
+	_ = force
 	return tea.Batch(m.status("working", fmt.Sprintf("grouping with %s (%s)", j.Provider, j.Est)), func() tea.Msg {
 		out, err := eng.Run(ctx, j, nil)
 		return groupedMsg{hash: hash, gen: gen, out: out, err: err}
@@ -343,12 +303,11 @@ func (m *Model) onGrouped(msg groupedMsg) tea.Cmd {
 		return m.watch.onGrouped(m, msg)
 	}
 	if m.doc == nil || msg.hash != m.doc.Hash || msg.gen != m.gen {
-		return nil // stale: the result is cached already
+		return nil
 	}
 	return m.applyGrouped(msg)
 }
 
-// applyGrouped installs a finished grouping into the current doc.
 func (m *Model) applyGrouped(msg groupedMsg) tea.Cmd {
 	d := m.doc
 	if msg.err != nil {
@@ -361,12 +320,11 @@ func (m *Model) applyGrouped(msg groupedMsg) tea.Cmd {
 	}
 	d.setBase(msg.out.Result.Grouping, msg.out.Key, msg.out.Provider, false, msg.out.Result.Fallback, msg.out.Result.Notices)
 	m.cursor, m.linesOK = 0, false
-	m.fold = map[foldKey]bool{} // group IDs mean other groups now
+	m.fold = map[foldKey]bool{}
 	m.loadComments()
 	return m.status("done", plural(len(msg.out.Result.Groups), "group"))
 }
 
-// status emits a program-status report, if configured.
 func (m *Model) status(kind, msg string) tea.Cmd {
 	if m.o.Status == nil {
 		return nil
@@ -378,7 +336,6 @@ func (m *Model) setFlash(s string, isErr bool) {
 	m.flash, m.flashErr = s, isErr
 }
 
-// Update handles messages.
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -419,12 +376,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// View renders the screen.
 func (m *Model) View() tea.View {
 	v := tea.NewView(m.render())
 	v.AltScreen = true
 	v.WindowTitle = m.windowTitle()
-	// Click and wheel events drive the panes (see mouse.go).
 	v.MouseMode = tea.MouseModeCellMotion
 	return v
 }

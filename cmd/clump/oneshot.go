@@ -22,7 +22,6 @@ import (
 func configDefaultTOML() string   { return config.DefaultTOML }
 func configPath() (string, error) { return config.Path() }
 
-// isTerminal reports whether f is a character device (a TTY).
 func isTerminal(f *os.File) bool {
 	fi, err := f.Stat()
 	return err == nil && fi.Mode()&os.ModeCharDevice != 0
@@ -30,7 +29,6 @@ func isTerminal(f *os.File) bool {
 
 func fileIsTerminal(w io.Writer) bool { f, ok := w.(*os.File); return ok && isTerminal(f) }
 
-// oneShotOpts are the one-shot flags.
 type oneShotOpts struct {
 	repo, providerName, pr         string
 	branch, jsonOut, plain, dryRun bool
@@ -52,7 +50,6 @@ func parseOneShot(args []string) (oneShotOpts, error) {
 	fs.BoolVar(&o.noCache, "no-cache", false, "")
 	fs.BoolVar(&o.yes, "yes", false, "")
 	fs.BoolVar(&o.pick, "pick", false, "")
-	// Allow flags after positional arguments.
 	for len(args) > 0 {
 		if err := fs.Parse(args); err != nil {
 			return o, usageError{err.Error()}
@@ -89,7 +86,6 @@ func parseOneShot(args []string) (oneShotOpts, error) {
 	return o, nil
 }
 
-// app is the loaded config, registry, cache and engine.
 type app struct {
 	cfg   *config.Config
 	store *cache.Store
@@ -116,8 +112,6 @@ func loadApp(noCache bool) (*app, error) {
 	return &app{cfg: cfg, store: store, eng: engine.New(cfg, reg, store)}, nil
 }
 
-// resolveRepo returns the repo root for --repo or the cwd ("" when not in a
-// repo and the input is stdin).
 func resolveRepo(ctx context.Context, dir string) (string, error) {
 	if dir == "" {
 		wd, err := os.Getwd()
@@ -129,11 +123,8 @@ func resolveRepo(ctx context.Context, dir string) (string, error) {
 	return gitdiff.RepoRoot(ctx, dir)
 }
 
-// loadInput loads the diff the arguments name.
 func loadInput(ctx context.Context, o oneShotOpts, stdin *os.File) (*gitdiff.Loaded, string, error) {
 	if o.pr != "" {
-		// Best-effort root: OWNER/REPO#N and URL specs name their repository,
-		// so --pr also works outside a clone.
 		repo, _ := resolveRepo(ctx, o.repo)
 		l, err := gitdiff.LoadPR(ctx, repo, o.pr)
 		return l, repo, err
@@ -144,7 +135,7 @@ func loadInput(ctx context.Context, o oneShotOpts, stdin *os.File) (*gitdiff.Loa
 			return nil, "", err
 		}
 		l, err := gitdiff.LoadPatch(string(b))
-		repo, _ := resolveRepo(ctx, o.repo) // stdin needs no repo; used only for e/edit paths
+		repo, _ := resolveRepo(ctx, o.repo)
 		return l, repo, err
 	}
 	repo, err := resolveRepo(ctx, o.repo)
@@ -229,8 +220,6 @@ func runOneShot(args []string, stdin *os.File, stdout, stderr io.Writer) error {
 	return err
 }
 
-// groupForOutput returns the effective grouping: the user's override, else
-// the cached result, else a fresh provider call (asking above the ceiling).
 func groupForOutput(ctx context.Context, a *app, l *gitdiff.Loaded, in engine.Input, providerName string, o oneShotOpts, stderr io.Writer) (report.Doc, error) {
 	d := l.Diff
 	doc := report.Doc{Title: l.Title, Ref: l.Ref, Diff: d, DiffHash: d.Hash()}
@@ -275,7 +264,6 @@ func groupForOutput(ctx context.Context, a *app, l *gitdiff.Loaded, in engine.In
 	return doc, nil
 }
 
-// confirm asks on the controlling terminal; false when there is none.
 func confirm(question string) bool {
 	tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
 	if err != nil {

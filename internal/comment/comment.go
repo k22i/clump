@@ -1,16 +1,3 @@
-// Package comment is clump's review-comment model: what a comment can
-// attach to (an anchor), how an anchor is keyed for storage, and how
-// stored comments are resolved back to human-readable targets for the
-// report outputs and the comments CLI.
-//
-// Anchors follow the reviewed-mark philosophy: they are keyed by content.
-// A line comment is keyed by its hunk's ReviewKey, side and line number, so
-// it follows the change across regrouping, edits, provider switches and the
-// commit-versus-range view, and disappears when the hunk's text changes. A
-// file comment is keyed by the file's path and the content of its whole set
-// of hunks. A group comment is keyed by the diff and the group's ID, so it
-// stays while that grouping (cached or the user's saved edits) is the one
-// on screen; a regroup that renumbers groups drops it from view.
 package comment
 
 import (
@@ -25,17 +12,14 @@ import (
 	"github.com/k22i/clump/internal/group"
 )
 
-// Kind says what a comment is attached to.
 type Kind uint8
 
-// Comment kinds.
 const (
-	KindLine  Kind = iota // one diff line (a side and a line number)
-	KindFile              // a file's whole change in this diff
-	KindGroup             // a group of the diff's grouping
+	KindLine Kind = iota
+	KindFile
+	KindGroup
 )
 
-// String renders the kind for display and JSON.
 func (k Kind) String() string {
 	switch k {
 	case KindLine:
@@ -47,10 +31,8 @@ func (k Kind) String() string {
 	}
 }
 
-// MarshalText implements encoding.TextMarshaler.
 func (k Kind) MarshalText() ([]byte, error) { return []byte(k.String()), nil }
 
-// UnmarshalText implements encoding.TextUnmarshaler.
 func (k *Kind) UnmarshalText(b []byte) error {
 	switch string(b) {
 	case "line":
@@ -65,22 +47,17 @@ func (k *Kind) UnmarshalText(b []byte) error {
 	return nil
 }
 
-// Sides a line comment can sit on.
 const (
 	SideOld = "old"
 	SideNew = "new"
 )
 
-// Comment is one stored review comment.
 type Comment struct {
-	ID   string    `json:"id"`   // short hash identifying it within its anchor
-	Text string    `json:"text"` // the note itself, one line
-	At   time.Time `json:"at"`   // when it was written
+	ID   string    `json:"id"`
+	Text string    `json:"text"`
+	At   time.Time `json:"at"`
 }
 
-// Anchor is one place a comment can attach to, carrying the coordinates a
-// display needs: HunkID/Path/Side/Line for line anchors, Path for file
-// anchors, GroupID for group anchors.
 type Anchor struct {
 	Kind    Kind
 	Key     string
@@ -91,23 +68,14 @@ type Anchor struct {
 	GroupID string
 }
 
-// LineKey is the storage key of a comment on line (side SideNew or SideOld)
-// of the hunk with the given ReviewKey.
 func LineKey(reviewKey, side string, line int) string {
 	return hashFields("line", reviewKey, side, strconv.Itoa(line))
 }
 
-// FileKey is the storage key of a comment on the file path's whole change:
-// its path plus its hunks' ReviewKeys in file order, so it survives
-// regrouping and resets when the file's changes do.
 func FileKey(path string, reviewKeys []string) string {
 	return hashFields("file", path, strings.Join(reviewKeys, "\x00"))
 }
 
-// GroupKey is the storage key of a comment on group groupID of the diff
-// with the given diff hash. Overrides and cached groupings reuse the same
-// IDs, so such a comment comes back with its group; a regroup that
-// renumbers groups leaves it stored but out of view.
 func GroupKey(diffHash, groupID string) string {
 	return hashFields("group", diffHash, groupID)
 }
@@ -123,9 +91,6 @@ func hashFields(fields ...string) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-// Anchors lists every anchor of a diff: each body line of each hunk in diff
-// order, then each file, then each group ID given (in that order). Group
-// anchors exist only while a grouping names the group.
 func Anchors(d *gitdiff.Diff, diffHash string, groupIDs []string) []Anchor {
 	if d == nil {
 		return nil
@@ -148,7 +113,6 @@ func Anchors(d *gitdiff.Diff, diffHash string, groupIDs []string) []Anchor {
 	return out
 }
 
-// lineAnchors walks h's body and names its commentable lines.
 func lineAnchors(h *gitdiff.Hunk) []Anchor {
 	if h.Pseudo || len(h.Lines) == 0 {
 		return nil
@@ -193,14 +157,11 @@ func lineAnchors(h *gitdiff.Hunk) []Anchor {
 	return out
 }
 
-// Resolved is an anchor with the comments stored on it.
 type Resolved struct {
 	Anchor
 	Comments []Comment
 }
 
-// Resolve zips anchors with the comments loaded for their keys; anchors
-// without comments are dropped. Stable in anchor order.
 func Resolve(anchors []Anchor, comments map[string][]Comment) []Resolved {
 	var out []Resolved
 	for _, a := range anchors {
@@ -211,8 +172,6 @@ func Resolve(anchors []Anchor, comments map[string][]Comment) []Resolved {
 	return out
 }
 
-// Placed is a display-ready comment: where it shows (group, path, side,
-// line) and what it says.
 type Placed struct {
 	Kind    Kind      `json:"kind"`
 	GroupID string    `json:"group,omitempty"`
@@ -225,11 +184,6 @@ type Placed struct {
 	Anchor  string    `json:"anchor"`
 }
 
-// Place maps resolved comments onto the groups of g for the given diff. A
-// line comment goes to the group holding its hunk, a file comment to the
-// group of the file's earliest hunk (a file block can straddle groups), a
-// group comment to its own group. A target that is in no group keeps
-// GroupID "".
 func Place(res []Resolved, d *gitdiff.Diff, g group.Grouping) []Placed {
 	hunkGroup := make(map[string]string, len(g.Groups))
 	for _, grp := range g.Groups {
@@ -262,10 +216,6 @@ func Place(res []Resolved, d *gitdiff.Diff, g group.Grouping) []Placed {
 	return out
 }
 
-// FindAnchor resolves a comment target in d for the comments CLI: path
-// alone is a file comment; path with side and a line number is a comment on
-// that line. The file may be named by either of its paths or its display
-// form ("old -> new").
 func FindAnchor(d *gitdiff.Diff, path, side string, line int) (*Anchor, error) {
 	if d == nil {
 		return nil, fmt.Errorf("no diff to comment on")
@@ -296,10 +246,6 @@ func FindAnchor(d *gitdiff.Diff, path, side string, line int) (*Anchor, error) {
 	return nil, fmt.Errorf("file %q is not in the diff", path)
 }
 
-// hunkLineAnchor returns the line anchor when line names one of h's body
-// lines on side. Only removed lines anchor on the old side; a context line
-// anchors on the new side (its old side when the diff has none, as in a
-// deleted file), exactly as in the anchors the TUI reads.
 func hunkLineAnchor(h *gitdiff.Hunk, side string, line int) *Anchor {
 	if h.Pseudo || len(h.Lines) == 0 {
 		return nil
@@ -330,7 +276,7 @@ func hunkLineAnchor(h *gitdiff.Hunk, side string, line int) *Anchor {
 			oldNo++
 			newNo++
 		default:
-			continue // "\ No newline…"
+			continue
 		}
 		if !found && s == side && n == line {
 			found = true
@@ -341,9 +287,6 @@ func hunkLineAnchor(h *gitdiff.Hunk, side string, line int) *Anchor {
 	return nil
 }
 
-// LineTarget picks a line anchor's side and number for a rendered diff line:
-// a removed line is anchored by its old number, every other line by its new
-// number (its old number when there is none, as in a deleted file).
 func LineTarget(isDel bool, oldLine, newLine int) (side string, n int) {
 	if isDel || newLine == 0 {
 		return SideOld, oldLine

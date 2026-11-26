@@ -14,8 +14,6 @@ import (
 	"github.com/k22i/clump/internal/rex"
 )
 
-// runDoctor prints what clump sees: config, providers, cache, socket,
-// Rex and theme. It sends nothing to any provider.
 func runDoctor(stdout io.Writer) error {
 	p, _ := config.Path()
 	cfg, err := config.Load(p)

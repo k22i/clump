@@ -14,7 +14,6 @@ import (
 	"github.com/k22i/clump/internal/tui"
 )
 
-// runWatch is the pane that follows lazygit.
 func runWatch(args []string, stderr io.Writer) error {
 	fs := flag.NewFlagSet("watch", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
@@ -37,7 +36,6 @@ func runWatch(args []string, stderr io.Writer) error {
 	if err != nil {
 		return err
 	}
-	// push finds the root by walking up to .git; use the same spelling.
 	root := ipc.FindRepoRoot(repo)
 	if root == "" {
 		root = repo

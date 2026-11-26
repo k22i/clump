@@ -126,8 +126,6 @@ func TestFakeDefaultUsage(t *testing.T) {
 	}
 }
 
-// promptTemplate reads an embedded prompt template from internal/group and
-// fills its placeholders by hand, the way the group package would.
 func promptTemplate(t *testing.T, name string, fills map[string]string) string {
 	t.Helper()
 	path := filepath.Join("..", "group", name)

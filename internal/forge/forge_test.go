@@ -12,8 +12,6 @@ import (
 	"github.com/k22i/clump/internal/gitdiff"
 )
 
-// forgePatch has one modified file, one rename and one deleted file, to map
-// comments from every kind of file onto the PR's paths.
 const forgePatch = `diff --git a/src/app.go b/src/app.go
 --- a/src/app.go
 +++ b/src/app.go
@@ -83,19 +81,12 @@ func TestEventString(t *testing.T) {
 func TestBuild(t *testing.T) {
 	d := parsePatch(t)
 	placed := []comment.Placed{
-		// An added line: RIGHT, the file's current path.
 		{Kind: comment.KindLine, Path: "src/app.go", Side: comment.SideNew, Line: 4, Text: "Wrap it."},
-		// A removed line: LEFT, the file's old path.
 		{Kind: comment.KindLine, Path: "src/app.go", Side: comment.SideOld, Line: 3, Text: "Why is it gone?"},
-		// Removed in a renamed file: LEFT is the old name.
 		{Kind: comment.KindLine, Path: "old_name.txt -> new_name.txt", Side: comment.SideOld, Line: 2, Text: "Check the rename."},
-		// Added in a renamed file: RIGHT is the new name.
 		{Kind: comment.KindLine, Path: "old_name.txt -> new_name.txt", Side: comment.SideNew, Line: 2, Text: "Renamed how?"},
-		// A line of a deleted file: LEFT, and the path stays the old one.
 		{Kind: comment.KindLine, Path: "gone.txt", Side: comment.SideOld, Line: 1, Text: "Was it used?"},
-		// A file comment: subject_type file.
 		{Kind: comment.KindFile, Path: "src/app.go", Text: "This file needs tests."},
-		// A group comment: into the body.
 		{Kind: comment.KindGroup, GroupID: "1", Text: "Ship it."},
 	}
 	r := Build(EventRequestChange, "Please have a look.", placed, d, func(id string) string {
@@ -208,8 +199,6 @@ func TestSummary(t *testing.T) {
 	}
 }
 
-// stubGh puts a gh on PATH that records its arguments and stdin to
-// $CLUMP_GH_LOG for "api" calls, and prints $CLUMP_GH_JSON.
 func stubGh(t *testing.T) (logPath string) {
 	t.Helper()
 	dir := t.TempDir()

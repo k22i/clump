@@ -16,9 +16,9 @@ import (
 type Usage struct {
 	InputTokens  int     `json:"input_tokens"`
 	OutputTokens int     `json:"output_tokens"`
-	CacheTokens  int     `json:"cache_tokens,omitempty"` // cache read+write reported by the provider
+	CacheTokens  int     `json:"cache_tokens,omitempty"`
 	CostUSD      float64 `json:"cost_usd"`
-	CostSource   string  `json:"cost_source"` // "reported" or "estimated" or "free"
+	CostSource   string  `json:"cost_source"`
 }
 
 type Provider interface {
@@ -26,14 +26,11 @@ type Provider interface {
 	Complete(ctx context.Context, prompt string) (text string, u Usage, err error)
 }
 
-// commandProvider runs an argv template with the prompt on stdin. `format` picks how
-// to read stdout: "raw", "claude-json" (claude -p --output-format json), or
-// "opencode-json" (opencode run --format json, a JSONL event stream).
 type commandProvider struct {
 	name   string
 	argv   []string
 	format string
-	inPer, outPer float64 // $/MTok for estimates when the tool doesn't report cost
+	inPer, outPer float64
 }
 
 func (c *commandProvider) Name() string { return c.name }
@@ -41,7 +38,7 @@ func (c *commandProvider) Name() string { return c.name }
 func (c *commandProvider) Complete(ctx context.Context, prompt string) (string, Usage, error) {
 	cmd := exec.CommandContext(ctx, c.argv[0], c.argv[1:]...)
 	cmd.Stdin = strings.NewReader(prompt)
-	cmd.Dir = os.TempDir() // never let an agent CLI pick up repo context (CLAUDE.md, AGENTS.md)
+	cmd.Dir = os.TempDir()
 	var out, errb bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &errb
 	if err := cmd.Run(); err != nil {
@@ -114,8 +111,6 @@ func (c *commandProvider) Complete(ctx context.Context, prompt string) (string, 
 	}
 }
 
-// openAIProvider speaks the OpenAI-compatible /chat/completions API (DeepSeek,
-// OpenRouter, Ollama, LiteLLM...). The key is read from the env var named in config.
 type openAIProvider struct {
 	name, baseURL, model, keyEnv string
 	inPer, outPer                float64
@@ -182,7 +177,6 @@ func tail(s string, n int) string {
 	return s
 }
 
-// redact masks anything that looks like a bearer token or API key in error text.
 func redact(s string) string {
 	for _, k := range []string{"ANTHROPIC_API_KEY", "OPENAI_API_KEY", "DEEPSEEK_API_KEY", "OPENROUTER_API_KEY"} {
 		if v := os.Getenv(k); len(v) > 8 {

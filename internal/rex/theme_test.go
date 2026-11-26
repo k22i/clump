@@ -68,8 +68,6 @@ func TestParseThemeReply(t *testing.T) {
 
 	t.Run("split across two reads", func(t *testing.T) {
 		full := []byte(dark + da1)
-		// ParseThemeReply re-scans the whole buffer as it grows, so the prefix
-		// reports nothing yet and the complete buffer reports both.
 		for i := 0; i < len(full)-1; i++ {
 			if got, done := ParseThemeReply(full[:i]); done {
 				t.Fatalf("ParseThemeReply(%q) = (%q, true) for a prefix, want done = false", full[:i], got)
@@ -133,8 +131,6 @@ func TestDetectThemeTimeout(t *testing.T) {
 	got := DetectTheme(tty, os.Getenv, 50*time.Millisecond)
 	elapsed := time.Since(start)
 
-	// A live terminal may answer any of the three (Rex answers dark), so the
-	// result is only required to be a real Theme, not a specific one.
 	if got != ThemeUnknown && got != ThemeDark && got != ThemeLight {
 		t.Errorf("DetectTheme(tty) = %q, want one of %q, %q, %q", got, ThemeUnknown, ThemeDark, ThemeLight)
 	}

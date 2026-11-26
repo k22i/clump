@@ -17,31 +17,18 @@ import (
 	"github.com/k22i/clump/internal/lazygit"
 )
 
-// DefaultDebounce is the trailing debounce on lazygit selection changes
-// (A-lazygit.md: key repeat is at most ~30 Hz).
 const DefaultDebounce = 400 * time.Millisecond
 
-// WatchOptions configures watch mode.
 type WatchOptions struct {
-	// Repo is the repository root watched.
-	Repo string
-	// Listener receives pushes; watch serves it and closes it on quit.
-	Listener *ipc.Listener
-	// Debounce defaults to DefaultDebounce.
-	Debounce time.Duration
-	// AutoGroup starts with auto-grouping on (config auto_group).
-	AutoGroup bool
-	// FollowWorktree follows working-tree diffs (config follow_worktree).
+	Repo           string
+	Listener       *ipc.Listener
+	Debounce       time.Duration
+	AutoGroup      bool
 	FollowWorktree bool
-	// Log receives one line per event (nil: none). Safe for concurrent use
-	// is not required: watch serialises its writes.
-	Log io.Writer
-	// Resolve fills in a followed selection (title, context, merges). Nil
-	// means resolveSelection; tests replace it.
-	Resolve func(ctx context.Context, repo string, sel lazygit.Selection, diff string) (*gitdiff.Loaded, error)
+	Log            io.Writer
+	Resolve        func(ctx context.Context, repo string, sel lazygit.Selection, diff string) (*gitdiff.Loaded, error)
 }
 
-// watchState is the follow state machine. See DESIGN.md §10.
 type watchState struct {
 	o      *WatchOptions
 	auto   bool
@@ -51,11 +38,11 @@ type watchState struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	newest  int64    // largest sent_ns seen
-	pending *ipc.Msg // latest push waiting for the debounce
-	seq     int      // increments with every accepted push
+	newest  int64
+	pending *ipc.Msg
+	seq     int
 
-	lastSel lazygit.Selection // the selection the shown doc came from
+	lastSel lazygit.Selection
 
 	inflight *inflightJob
 	queued   *engine.Job
@@ -99,7 +86,6 @@ func (w *watchState) logf(format string, args ...any) {
 	fmt.Fprintf(w.o.Log, "%s %s\n", time.Now().Format("15:04:05.000"), fmt.Sprintf(format, args...))
 }
 
-// start begins serving the listener; pushes arrive as pushMsg.
 func (w *watchState) start() tea.Cmd {
 	w.logf("watch start repo=%s auto=%v", w.o.Repo, w.auto)
 	if w.o.Listener != nil && w.send != nil {
@@ -134,7 +120,6 @@ func (w *watchState) headerTag() string {
 	return tag
 }
 
-// onMsg handles watch-only messages.
 func (w *watchState) onMsg(m *Model, msg tea.Msg) (tea.Cmd, bool) {
 	switch msg := msg.(type) {
 	case pushMsg:
@@ -162,7 +147,7 @@ func (w *watchState) onPush(p ipc.Msg) tea.Cmd {
 
 func (w *watchState) onDebounce(m *Model, seq int) tea.Cmd {
 	if seq != w.seq || w.pending == nil {
-		return nil // a newer push restarted the debounce
+		return nil
 	}
 	p := *w.pending
 	w.pending = nil
@@ -186,8 +171,6 @@ func (w *watchState) onDebounce(m *Model, seq int) tea.Cmd {
 	}
 }
 
-// cursorTo handles "file inside a commit": keep the commit's groups and move
-// the cursor to the group holding that file.
 func (w *watchState) cursorTo(m *Model, sel lazygit.Selection) {
 	if m.doc == nil || w.lastSel.Kind != lazygit.KindCommit || w.lastSel.Commit != sel.Commit || len(sel.Paths) == 0 {
 		if m.doc != nil {
@@ -236,7 +219,7 @@ func (w *watchState) onResolved(m *Model, r resolvedMsg) tea.Cmd {
 		return nil
 	}
 	w.lastSel, w.dimmed = r.sel, false
-	w.queued = nil // only the current selection may be queued
+	w.queued = nil
 	cmd := m.open(r.l, w.auto)
 	switch d := m.doc; {
 	case d.state == stGrouped && d.edited():
@@ -249,7 +232,6 @@ func (w *watchState) onResolved(m *Model, r resolvedMsg) tea.Cmd {
 	return cmd
 }
 
-// request runs j now, or queues it behind the call in flight (latest wins).
 func (w *watchState) request(m *Model, j *engine.Job) tea.Cmd {
 	m.doc.state, m.doc.started = stGrouping, m.o.Now()
 	if w.inflight != nil {
@@ -320,8 +302,6 @@ func (w *watchState) onGrouped(m *Model, msg groupedMsg) tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
-// toggleAuto flips auto-grouping (A); turning it on groups the shown diff
-// when that is under the ceiling.
 func (w *watchState) toggleAuto(m *Model) tea.Cmd {
 	w.auto = !w.auto
 	w.logf("auto=%v", w.auto)
@@ -336,10 +316,6 @@ func (w *watchState) toggleAuto(m *Model) tea.Cmd {
 	return nil
 }
 
-// resolveSelection turns a followed selection and the diff lazygit showed
-// into a Loaded: the parsed diff, a title and the prompt context. A merge
-// commit (combined diff, or a merge with no patch) is re-loaded against its
-// first parent.
 func resolveSelection(ctx context.Context, repo string, sel lazygit.Selection, diff string) (*gitdiff.Loaded, error) {
 	d, err := gitdiff.Parse(diff)
 	if errors.Is(err, gitdiff.ErrCombined) || (err == nil && sel.Kind == lazygit.KindCommit && len(d.Files) == 0 && len(d.Commits) > 0 && d.Commits[0].Merge) {

@@ -15,7 +15,6 @@ import (
 	"github.com/k22i/clump/internal/tui/view/viewtest"
 )
 
-// allIDs returns every hunk ID of d in diff order.
 func allIDs(d *gitdiff.Diff) []string {
 	ids := make([]string, 0, len(d.Hunks))
 	for _, h := range d.Hunks {
@@ -24,7 +23,6 @@ func allIDs(d *gitdiff.Diff) []string {
 	return ids
 }
 
-// countSGR counts the SGR sequences in s.
 func countSGR(s string) int { return strings.Count(s, "\x1b[") }
 
 func TestGoldenCommit(t *testing.T) {
@@ -118,7 +116,6 @@ func TestSubsetAndOrder(t *testing.T) {
 	if !strings.Contains(headers[0].Plain, "docs/old.txt -> docs/new.txt") {
 		t.Fatalf("first header is %q, want the docs file", headers[0].Plain)
 	}
-	// h1 is the only shown hunk of that file: +1 −0.
 	if !strings.Contains(headers[0].Plain, "(R +1 −0)") {
 		t.Fatalf("first header is %q, want the h1 sums", headers[0].Plain)
 	}
@@ -140,13 +137,11 @@ func TestSubsetAndOrder(t *testing.T) {
 	}
 }
 
-// nums is the (Kind, OldLine, NewLine) triple of a rendered line.
 type nums struct {
 	kind     view.LineKind
 	old, new int
 }
 
-// triples returns the numbers of every line.
 func triples(lines []view.Line) []nums {
 	out := make([]nums, 0, len(lines))
 	for _, l := range lines {
@@ -278,7 +273,6 @@ func TestColouredStripsToPlain(t *testing.T) {
 	}
 }
 
-// isBody reports whether kind is a hunk body line kind.
 func isBody(kind view.LineKind) bool {
 	switch kind {
 	case view.KindAdd, view.KindDel, view.KindContext:
@@ -303,7 +297,6 @@ func TestNoLexer(t *testing.T) {
 			t.Fatalf("line %d: StripSGR(Text) %q != Plain %q", i, got, l.Plain)
 		}
 	}
-	// The body keeps the theme's +/- colours even without a lexer.
 	if countSGR(lines[1].Text) == 0 || countSGR(lines[2].Text) == 0 {
 		t.Fatal("body lines lost their theme colours")
 	}
@@ -466,9 +459,6 @@ func TestPerf(t *testing.T) {
 		OldStart: 1, NewStart: 1,
 		Lines: body,
 	}
-	// 1.5s is the budget for an uninstrumented build. Chroma's regexp engine
-	// runs roughly 25x slower under the race detector, so the -race run gets
-	// a looser ceiling that still catches real regressions.
 	budget := 1500 * time.Millisecond
 	if raceEnabled {
 		budget = 12 * time.Second
@@ -512,7 +502,6 @@ func TestLineTint(t *testing.T) {
 		}
 	}
 
-	// No width: no padding. Plain theme: no tint and no padding.
 	if l := diffview.RenderHunk(h, th, diffview.HunkOpts{})[3]; l.Plain != "  +new" {
 		t.Errorf("width 0: Plain = %q", l.Plain)
 	}
@@ -528,8 +517,6 @@ func TestGoldenSplit(t *testing.T) {
 	viewtest.Golden(t, "dp-split", viewtest.JoinPlain(lines))
 }
 
-// splitBody is a hunk body line rendered side by side: the separator column
-// splits the row at the left half's edge.
 func splitBody(t *testing.T, l view.Line, w int) (left, right string) {
 	t.Helper()
 	if w < 3 {
@@ -562,16 +549,15 @@ func TestSplitPairsAndNumbers(t *testing.T) {
 	}
 	want := []nums{
 		{view.KindHunk, 10, 20},
-		{view.KindContext, 10, 20}, // " a" fills both halves
-		{view.KindContext, 11, 21}, // -bb faces +cc
-		{view.KindAdd, 0, 22},      // +dd alone in the right half
+		{view.KindContext, 10, 20},
+		{view.KindContext, 11, 21},
+		{view.KindAdd, 0, 22},
 		{view.KindContext, 12, 23},
-		{view.KindNoNewline, 0, 0}, // the marker under its context line
+		{view.KindNoNewline, 0, 0},
 	}
 	if got := triples(lines); !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %v, want %v", got, want)
 	}
-	// Each half carries the mark gutter (left), its own number and prefix.
 	left, right := splitBody(t, lines[1], 40)
 	if !strings.HasPrefix(left, "  10  a") || !strings.HasPrefix(right, "20  a") {
 		t.Fatalf("context row is %q | %q", left, right)
@@ -615,7 +601,6 @@ func TestSplitMarkedAndNarrow(t *testing.T) {
 		OldStart: 1, NewStart: 1,
 		Lines: []string{"-the old line that is too long for the half", "+the new line that is also too long"},
 	}
-	// Marked hunk, halves truncate their content to fit the width.
 	lines := diffview.RenderHunk(h, view.PlainTheme(), diffview.HunkOpts{Width: 21, Marked: true, Split: true})
 	if len(lines) != 2 {
 		t.Fatalf("got %d lines, want 2:\n%s", len(lines), viewtest.JoinPlain(lines))
@@ -627,7 +612,6 @@ func TestSplitMarkedAndNarrow(t *testing.T) {
 	if strings.Contains(r, "x ") {
 		t.Fatalf("mark gutter repeated in the right half: %q", r)
 	}
-	// Width 2 and below falls back to the unified layout.
 	for _, w := range []int{0, 2} {
 		out := diffview.RenderHunk(h, view.PlainTheme(), diffview.HunkOpts{Width: w, Split: true})
 		if len(out) != 3 || strings.Contains(out[1].Plain, "│") {

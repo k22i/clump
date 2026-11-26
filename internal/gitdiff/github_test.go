@@ -49,16 +49,10 @@ func TestParsePRSpecErrors(t *testing.T) {
 	}
 }
 
-// stubGh answers LoadPR's gh calls from fixture files: "pr diff" prints
-// diffPath, "pr view" prints viewPath. Every invocation appends
-// "<cwd> <args>" to $CLUMP_GH_LOG; $CLUMP_GH_FAIL makes it exit 1 with that
-// text on stderr. dir is for PATH.
 func stubGh(t *testing.T, diffPath, viewPath string) (dir, logPath string) {
 	t.Helper()
 	dir = t.TempDir()
 	logPath = filepath.Join(dir, "gh.log")
-	// gh runs in the directories LoadPR is given, so the fixtures must be
-	// absolute paths.
 	if p, err := filepath.Abs(diffPath); err == nil {
 		diffPath = p
 	}
@@ -84,7 +78,6 @@ esac
 	return dir, logPath
 }
 
-// ghLog returns the recorded stub invocations; nil when gh never ran.
 func ghLog(t *testing.T, path string) []string {
 	t.Helper()
 	b, err := os.ReadFile(path)
@@ -149,7 +142,7 @@ func TestLoadPRNamedRepo(t *testing.T) {
 
 func TestLoadPRCurrentRepo(t *testing.T) {
 	_, logPath := stubGh(t, "testdata/github/pr-42.patch", "testdata/github/pr-42.json")
-	repo := t.TempDir() // just the directory gh runs in; not a real clone
+	repo := t.TempDir()
 	l, err := LoadPR(context.Background(), repo, "#42")
 	if err != nil {
 		t.Fatalf("LoadPR: %v", err)
@@ -162,7 +155,6 @@ func TestLoadPRCurrentRepo(t *testing.T) {
 		t.Fatal("gh was not called")
 	}
 	fields := strings.Fields(got[0])
-	// sh's pwd is the physical path; t.TempDir may be behind a symlink.
 	real, err := filepath.EvalSymlinks(repo)
 	if err != nil {
 		t.Fatal(err)
@@ -213,8 +205,6 @@ func TestLoadPRGhMissing(t *testing.T) {
 }
 
 func TestLoadPRContextCap(t *testing.T) {
-	// A pull request with a huge body: the context must be capped, like the
-	// git loaders cap theirs.
 	viewPath := filepath.Join(t.TempDir(), "view.json")
 	body := strings.Repeat("x", MaxContextBytes)
 	view := `{"number": 42, "title": "Big", "body": "` + body + `", "commits": []}`

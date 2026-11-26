@@ -20,62 +20,41 @@ var buildGroupPrompt string
 //go:embed prompt_summary_v1.txt
 var buildSummaryPrompt string
 
-// BuildOpts configures Build.
 type BuildOpts struct {
-	// MaxGroups is written into the prompt; <= 0 means DefaultMaxGroups.
-	MaxGroups int
-	// Budget is the token budget for one prompt; <= 0 means unlimited.
-	Budget int
-	// BytesPerToken converts prompt bytes to tokens; <= 0 means 3.3.
+	MaxGroups     int
+	Budget        int
 	BytesPerToken float64
-	// Context is the commit message(s), placed inside the data markers.
-	Context string
-	// CollapseMin is passed to catalog.Units.
-	CollapseMin int
-	// MinBodyCap is the smallest per-hunk body cap tier 1 accepts before
-	// switching to tier 2; <= 0 means 4.
-	MinBodyCap int
-	// Nonce fixes the data-marker nonce (tests only); "" means random.
-	Nonce string
+	Context       string
+	CollapseMin   int
+	MinBodyCap    int
+	Nonce         string
 }
 
-// Plan is what Build decided to send.
 type Plan struct {
-	// Tier is 1 (one grouping call, bodies possibly truncated) or 2
-	// (per-file summary calls, then one grouping call over the summaries).
 	Tier    int
 	Units   []catalog.Unit
 	Aliases map[string][]string
 
-	// Prompt is the tier-1 grouping prompt ("" for tier 2 until the
-	// summaries are known; see BuildFromSummaries).
-	Prompt string
-	// EstTokens estimates the whole plan's input tokens (all calls,
-	// excluding per-call provider overhead).
-	EstTokens int
-	// BodyCap is the per-hunk body line cap tier 1 used; -1 is untruncated.
+	Prompt       string
+	EstTokens    int
 	BodyCap      int
-	Truncated    int // hunks whose bodies were cut
-	DroppedLines int // body lines cut in total
+	Truncated    int
+	DroppedLines int
 
-	// Summaries are the tier-2 summary calls, in file order.
-	Summaries []SummaryChunk
-	// FinalEstTokens estimates the tier-2 grouping call.
+	Summaries      []SummaryChunk
 	FinalEstTokens int
 
 	Notices []string
 	opts    BuildOpts
 }
 
-// SummaryChunk is one tier-2 summary call over one or more whole files.
 type SummaryChunk struct {
-	Files     []int // indexes into Diff.Files
+	Files     []int
 	Prompt    string
 	EstTokens int
-	BodyCap   int // -1 is untruncated
+	BodyCap   int
 }
 
-// Calls is the number of provider calls the plan needs (before the cache).
 func (p *Plan) Calls() int {
 	if p.Tier == 2 {
 		return len(p.Summaries) + 1
@@ -126,7 +105,6 @@ func buildContext(ctx string) string {
 	return strings.TrimRight(ctx, "\n")
 }
 
-// buildRenderGroup fills prompt_v1.txt. hunks is the whole HUNKS section.
 func (o BuildOpts) buildRenderGroup(nonce, cat, hunks string) string {
 	r := strings.NewReplacer("{{NONCE}}", nonce, "{{MAX_GROUPS}}", fmt.Sprint(o.MaxGroups),
 		"{{CONTEXT}}", buildContext(o.Context), "{{CATALOG}}", cat, "{{HUNKS}}", hunks)
@@ -138,7 +116,6 @@ func (o BuildOpts) buildRenderSummary(nonce, files string) string {
 	return r.Replace(buildSummaryPrompt)
 }
 
-// buildHunks renders the HUNKS section with a per-unit body cap.
 func buildHunks(units []catalog.Unit, capLines int) (text string, truncated, dropped int) {
 	var b strings.Builder
 	b.WriteString("HUNKS:\n")
@@ -153,10 +130,6 @@ func buildHunks(units []catalog.Unit, capLines int) (text string, truncated, dro
 	return b.String(), truncated, dropped
 }
 
-// Build renders the prompt(s) for d. It never truncates the catalog or hunk
-// headers. Tier 1 binary-searches the largest per-hunk body cap that fits
-// Budget. When that cap would fall below MinBodyCap, or the catalog alone
-// exceeds Budget, it plans tier 2. See DESIGN.md "Large diffs".
 func Build(d *gitdiff.Diff, o BuildOpts) *Plan {
 	o = o.buildNorm()
 	o.Context = withGeneratedNote(o.Context, d)
@@ -202,7 +175,6 @@ func Build(d *gitdiff.Diff, o BuildOpts) *Plan {
 	return p
 }
 
-// buildTier2 plans the per-file summary calls and estimates the final call.
 func buildTier2(d *gitdiff.Diff, p *Plan, o BuildOpts, catalogOnly string) {
 	p.Tier, p.Prompt, p.BodyCap = 2, "", -1
 	if !o.fits(catalogOnly) {
@@ -210,7 +182,6 @@ func buildTier2(d *gitdiff.Diff, p *Plan, o BuildOpts, catalogOnly string) {
 			o.buildEst(catalogOnly), o.Budget))
 	}
 	nonce := o.buildNonce()
-	// Each file's cap: untruncated if it fits a chunk alone, else the largest cap that does.
 	type fb struct {
 		idx  int
 		text string
@@ -275,7 +246,7 @@ func buildTier2(d *gitdiff.Diff, p *Plan, o BuildOpts, catalogOnly string) {
 	flush()
 	pending := map[int]string{}
 	for i := range d.Files {
-		pending[i] = strings.Repeat("x", 200) // a typical summary's size, for the estimate
+		pending[i] = strings.Repeat("x", 200)
 	}
 	final, _ := p.BuildFromSummaries(d, pending)
 	p.FinalEstTokens = o.buildEst(final)
@@ -289,12 +260,8 @@ func buildTier2(d *gitdiff.Diff, p *Plan, o BuildOpts, catalogOnly string) {
 		files, len(p.Summaries)))
 }
 
-// maxGeneratedNote caps the generated paths listed in the prompt context.
 const maxGeneratedNote = 40
 
-// withGeneratedNote appends to the prompt context the paths of the generated
-// files left out of the request, so the model knows they changed (a schema
-// change and its migration, say) without paying for their bodies.
 func withGeneratedNote(ctx string, d *gitdiff.Diff) string {
 	var paths []string
 	for _, f := range d.Files {
@@ -317,10 +284,6 @@ func withGeneratedNote(ctx string, d *gitdiff.Diff) string {
 	return strings.TrimRight(ctx, "\n") + "\n\n" + note
 }
 
-// BuildFromSummaries renders the tier-2 grouping prompt: the full catalog plus
-// one summary per file (summaries maps a file index to its summary; a
-// missing entry is shown as "(no summary)"). It returns the prompt and its
-// token estimate.
 func (p *Plan) BuildFromSummaries(d *gitdiff.Diff, summaries map[int]string) (prompt string, estTokens int) {
 	o := p.opts.buildNorm()
 	var b strings.Builder
@@ -339,9 +302,6 @@ func (p *Plan) BuildFromSummaries(d *gitdiff.Diff, summaries map[int]string) (pr
 	return prompt, o.buildEst(prompt)
 }
 
-// ParseSummaries reads a summary call's answer,
-// {"files":[{"path":"...","summary":"..."}]}, into path -> summary.
-// Summaries are sanitised like titles and capped at 400 runes.
 func ParseSummaries(text string) (map[string]string, error) {
 	js, ok := ExtractJSON(text)
 	if !ok {
@@ -366,8 +326,6 @@ func ParseSummaries(text string) (map[string]string, error) {
 	return out, nil
 }
 
-// buildCleanLine turns control runes into spaces, collapses whitespace and
-// cuts to n runes (n-1 plus an ellipsis).
 func buildCleanLine(s string, n int) string {
 	s = strings.Map(func(r rune) rune {
 		if unicode.IsControl(r) {

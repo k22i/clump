@@ -10,8 +10,6 @@ import (
 	"github.com/k22i/clump/internal/tui/view"
 )
 
-// theme picks the colour theme: CLUMP_THEME, else the terminal's answer to
-// the colour-scheme query, else dark.
 func theme() view.Theme {
 	return view.NewTheme(detectDark())
 }
@@ -24,7 +22,6 @@ func runTUI(ctx context.Context, a *app, o oneShotOpts, stdin *os.File, provider
 	}
 	if !o.pick {
 		if len(o.args) == 0 && !o.branch && !isTerminal(stdin) {
-			// Read the patch now: the TUI then reads keys from /dev/tty.
 			b, err := io.ReadAll(stdin)
 			if err != nil {
 				return err

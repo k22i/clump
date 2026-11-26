@@ -1,13 +1,3 @@
-// Package update checks for and installs prebuilt clump releases published
-// on GitHub. Every tag (v0.1.0) publishes, for each platform, the archive
-// clump_<GOOS>_<GOARCH>.tar.gz — one clump binary at its root — plus
-// checksums.txt, one "sha256  name" line per archive
-// (.github/workflows/release.yml builds them). Latest asks the GitHub API
-// for the newest non-prerelease, Download fetches this platform's archive
-// and verifies it against checksums.txt, and Install renames the running
-// binary to the new one. clump stores no tokens: the client cmd/clump
-// passes in is anonymous, or carries the gh CLI's token when gh is logged
-// in, exactly like the other GitHub integrations.
 package update
 
 import (
@@ -29,32 +19,23 @@ import (
 	"strings"
 )
 
-// Repo is the GitHub repository releases are published to.
 const Repo = "k22i/clump"
 
-// API is the GitHub API base URL.
 const API = "https://api.github.com"
 
-// checksumsAsset is the release asset holding one "sha256  name" line per
-// archive. Divider whitespace may be one or two spaces; we parse by fields.
 const checksumsAsset = "checksums.txt"
 
-// maxArchive caps a download, so a bad URL or a proxy cannot fill the disk.
 const maxArchive = 64 << 20
 
-// Release is one published GitHub release: its tag and its assets by name.
 type Release struct {
 	Tag    string
-	Assets map[string]string // asset name -> download URL
+	Assets map[string]string
 }
 
-// AssetName is the release archive built for goos/goarch.
 func AssetName(goos, goarch string) string {
 	return "clump_" + goos + "_" + goarch + ".tar.gz"
 }
 
-// Latest returns the latest non-draft, non-prerelease release of repo
-// ("owner/name"), an alias of Repo.
 func Latest(ctx context.Context, client *http.Client, apiURL, repo string) (Release, error) {
 	url := strings.TrimSuffix(apiURL, "/") + "/repos/" + repo + "/releases/latest"
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
@@ -93,19 +74,14 @@ func Latest(ctx context.Context, client *http.Client, apiURL, repo string) (Rele
 	return rel, nil
 }
 
-// Newer reports whether tag names a newer release than current. Versions
-// compare major.minor.patch numerically, after stripping a leading "v" and
-// any "+build" suffix; a "-rc" suffix makes a prerelease older than its
-// final, equal-numbered release. Fields that are not plain numbers count
-// as zero. Anything ("", "dev", "0.0.0") is older than v0.0.1.
 func Newer(current, tag string) bool {
 	cur, curPre := parseVersion(current)
 	if cur == nil {
-		return true // unknown current → let the latest release in
+		return true
 	}
 	latest, latestPre := parseVersion(tag)
 	if latest == nil {
-		return false // unparsable tag → never update to it
+		return false
 	}
 	for i := range cur {
 		if latest[i] != cur[i] {
@@ -115,9 +91,6 @@ func Newer(current, tag string) bool {
 	return curPre && !latestPre
 }
 
-// parseVersion returns the numeric fields of "v1.2.3-rc1" ([1 2 3]) and
-// whether it carries a prerelease suffix, or (nil, false) when the string
-// is not dotted fields at all.
 func parseVersion(s string) ([]int, bool) {
 	s = strings.TrimPrefix(strings.TrimPrefix(s, "v"), "V")
 	pre := false
@@ -140,8 +113,6 @@ func parseVersion(s string) ([]int, bool) {
 	return nums, pre
 }
 
-// Download fetches the goos/goarch archive of rel, verifies it against the
-// release's checksums.txt and returns the clump binary it contains.
 func Download(ctx context.Context, client *http.Client, rel Release, goos, goarch string) ([]byte, error) {
 	name := AssetName(goos, goarch)
 	archiveURL, ok := rel.Assets[name]
@@ -171,7 +142,6 @@ func Download(ctx context.Context, client *http.Client, rel Release, goos, goarc
 	return untar(archive)
 }
 
-// get downloads url and returns its body, capped at maxArchive.
 func get(ctx context.Context, client *http.Client, url string) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -188,7 +158,6 @@ func get(ctx context.Context, client *http.Client, url string) ([]byte, error) {
 	return io.ReadAll(io.LimitReader(resp.Body, maxArchive))
 }
 
-// checksum returns the sha256 checksums.txt lists for name.
 func checksum(checksums []byte, name string) (string, error) {
 	for _, line := range strings.Split(string(checksums), "\n") {
 		fields := strings.Fields(line)
@@ -199,7 +168,6 @@ func checksum(checksums []byte, name string) (string, error) {
 	return "", fmt.Errorf("%s lists no checksum for %s", checksumsAsset, name)
 }
 
-// untar returns the clump binary at the root of the gzipped tar archive.
 func untar(archive []byte) ([]byte, error) {
 	gz, err := gzip.NewReader(bytes.NewReader(archive))
 	if err != nil {
@@ -221,10 +189,6 @@ func untar(archive []byte) ([]byte, error) {
 	}
 }
 
-// Install replaces the executable at path with bin: it writes bin to a temp
-// file next to it and renames that over the old one, so the update works
-// while the binary is running (the kernel keeps the old inode), and nothing
-// is left half-written: a failed install leaves the old binary as it was.
 func Install(path string, bin []byte) error {
 	mode := os.FileMode(0o755)
 	if old, err := os.Stat(path); err == nil {
@@ -234,7 +198,7 @@ func Install(path string, bin []byte) error {
 	if err != nil {
 		return err
 	}
-	defer os.Remove(tmp.Name()) // a rename removes it; a failure does not leave it behind
+	defer os.Remove(tmp.Name())
 	if _, err := tmp.Write(bin); err != nil {
 		tmp.Close()
 		return err
@@ -249,7 +213,6 @@ func Install(path string, bin []byte) error {
 	return os.Rename(tmp.Name(), path)
 }
 
-// keys lists a map's keys in order, for error messages.
 func keys(m map[string]string) []string {
 	names := make([]string, 0, len(m))
 	for k := range m {

@@ -1,8 +1,3 @@
-// pushproto is a throwaway prototype of `clump push` (a lazygit stdinFilter) and a
-// minimal `watch` listener, to measure the latency budget and the IPC shape.
-//
-//	pushproto push    # stdin -> stdout unchanged; fire-and-forget copy to the socket
-//	pushproto listen  # print one line per received message
 package main
 
 import (
@@ -27,7 +22,7 @@ type Msg struct {
 	V        int      `json:"v"`
 	SentNS   int64    `json:"sent_ns"`
 	RepoRoot string   `json:"repo_root"`
-	GitArgv  []string `json:"git_argv,omitempty"` // parent git command line, if readable
+	GitArgv  []string `json:"git_argv,omitempty"`
 	RexBlock string   `json:"rex_block,omitempty"`
 	Diff     string   `json:"diff"`
 }
@@ -54,7 +49,6 @@ func sockPath(root string) string {
 	return filepath.Join(base, "clump", hex.EncodeToString(h[:8])+".sock")
 }
 
-// parentArgv reads the parent's argv without cgo: kern.procargs2 on darwin, /proc on linux.
 func parentArgv() []string {
 	ppid := os.Getppid()
 	switch runtime.GOOS {
@@ -71,7 +65,6 @@ func parentArgv() []string {
 		}
 		argc := int(b[0]) | int(b[1])<<8 | int(b[2])<<16 | int(b[3])<<24
 		rest := b[4:]
-		// skip exec path and padding NULs
 		i := bytes.IndexByte(rest, 0)
 		if i < 0 {
 			return nil
@@ -102,11 +95,11 @@ func isTTY(f *os.File) bool {
 
 func push() {
 	start := time.Now()
-	if isTTY(os.Stdin) { // lazygit's startup probe: no diff, nothing to forward
+	if isTTY(os.Stdin) {
 		return
 	}
 	data, _ := io.ReadAll(os.Stdin)
-	os.Stdout.Write(data) // pass through unchanged, first, so lazygit never waits on us
+	os.Stdout.Write(data)
 	os.Stdout.Close()
 	cwd, _ := os.Getwd()
 	root := repoRoot(cwd)

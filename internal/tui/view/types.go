@@ -1,6 +1,3 @@
-// Package view holds the types and small helpers shared by clump's TUI
-// render packages: the Theme, the rendered Line model, list rows and help
-// entries.
 package view
 
 import (
@@ -9,45 +6,37 @@ import (
 	"charm.land/lipgloss/v2"
 )
 
-// Theme holds every style the render functions use. PlainTheme renders no
-// escape sequences at all (golden tests compare plain text).
 type Theme struct {
-	// Plain disables all styling, including syntax highlighting.
 	Plain bool
-	// Dark selects dark-background colours and the dark Chroma style.
-	Dark bool
+	Dark  bool
 
-	Title      lipgloss.Style // header line, group titles in the diff pane
-	Dim        lipgloss.Style // secondary text, dimmed (unfollowed) results
-	Selected   lipgloss.Style // the cursor row in the group list
-	Marked     lipgloss.Style // hunk marked with x
-	FileHeader lipgloss.Style // "── path ──" lines
-	HunkHeader lipgloss.Style // "@@ ... @@" lines
-	Add        lipgloss.Style // "+" lines (base colour; syntax colours go on top)
-	Del        lipgloss.Style // "-" lines
-	Context    lipgloss.Style // " " lines
-	AddLine    lipgloss.Style // background tint across a whole "+" line
-	DelLine    lipgloss.Style // background tint across a whole "-" line
-	AddWord    lipgloss.Style // changed words inside a paired "+" line
-	DelWord    lipgloss.Style // changed words inside a paired "-" line
-	GroupLabel lipgloss.Style // "[g2 Title]" labels and boundaries in the raw view
-	Match      lipgloss.Style // search matches
-	Notice     lipgloss.Style // the notices bar
-	Error      lipgloss.Style // errors
-	Key        lipgloss.Style // key names in the help overlay
-	Border     lipgloss.Style // separators
+	Title      lipgloss.Style
+	Dim        lipgloss.Style
+	Selected   lipgloss.Style
+	Marked     lipgloss.Style
+	FileHeader lipgloss.Style
+	HunkHeader lipgloss.Style
+	Add        lipgloss.Style
+	Del        lipgloss.Style
+	Context    lipgloss.Style
+	AddLine    lipgloss.Style
+	DelLine    lipgloss.Style
+	AddWord    lipgloss.Style
+	DelWord    lipgloss.Style
+	GroupLabel lipgloss.Style
+	Match      lipgloss.Style
+	Notice     lipgloss.Style
+	Error      lipgloss.Style
+	Key        lipgloss.Style
+	Border     lipgloss.Style
 
-	// ChromaStyle is the Chroma style name for syntax colours
-	// ("github-dark" when Dark, else "github"); unused when Plain.
 	ChromaStyle string
 }
 
-// PlainTheme is the theme with no styling.
 func PlainTheme() Theme {
 	return Theme{Plain: true}
 }
 
-// NewTheme returns the coloured theme for a dark or light background.
 func NewTheme(dark bool) Theme {
 	c := func(darkHex, lightHex string) color.Color {
 		if dark {
@@ -82,82 +71,54 @@ func NewTheme(dark bool) Theme {
 	return t
 }
 
-// LineKind says what a rendered diff line is.
 type LineKind int
 
-// Line kinds.
 const (
-	KindBlank     LineKind = iota // an empty spacer line
-	KindFile                      // file header
-	KindHunk                      // "@@" header or pseudo-hunk description
-	KindAdd                       // "+" body line
-	KindDel                       // "-" body line
-	KindContext                   // " " body line
-	KindNoNewline                 // "\ No newline at end of file"
-	KindBoundary                  // raw view: a group boundary marker
-	KindGroup                     // diff pane: the group's title/description block
-	KindComment                   // a review comment row (always under its target)
+	KindBlank LineKind = iota
+	KindFile
+	KindHunk
+	KindAdd
+	KindDel
+	KindContext
+	KindNoNewline
+	KindBoundary
+	KindGroup
+	KindComment
 )
 
-// Line is one rendered line of a diff view.
 type Line struct {
-	// Text is the styled text (equal to Plain under PlainTheme). It never
-	// contains a newline and is at most the requested width wide.
-	Text string
-	// Plain is the same text without styling; search runs over it.
-	Plain string
-	Kind  LineKind
-	// HunkID is the hunk the line belongs to ("" for file headers, blanks,
-	// boundaries and group blocks).
-	HunkID string
-	// FileIdx is the file's index in Diff.Files, or -1.
-	FileIdx int
-	// OldLine and NewLine are the 1-based line numbers in the old and new
-	// file (0 when the line has none on that side). For a KindHunk line
-	// they are the hunk's OldStart/NewStart.
+	Text             string
+	Plain            string
+	Kind             LineKind
+	HunkID           string
+	FileIdx          int
 	OldLine, NewLine int
-	// Gutter is the byte length of the leading part of Plain that is not
-	// content (mark column, line numbers, raw-view label). Search skips it.
-	Gutter int
-	// BlockHunks, on a KindFile line, are the hunk IDs listed under that
-	// header (shown or folded).
-	BlockHunks []string
-	// Folded is set on a KindFile line whose hunks are hidden.
-	Folded bool
+	Gutter           int
+	BlockHunks       []string
+	Folded           bool
 }
 
-// FileState is how a file header is drawn.
 type FileState struct {
-	// Folded hides the file's hunks; the header says how many.
-	Folded bool
-	// Reviewed draws a check mark and dims the header.
-	Reviewed bool
-	// Generated is gitdiff.File.Generated (why it is skipped), or "".
+	Folded    bool
+	Reviewed  bool
 	Generated string
 }
 
-// ListRow is one row of the group list.
 type ListRow struct {
-	ID       string
-	Title    string
-	Add, Del int
-	Hunks    int
-	// Marks is how many of the group's hunks are marked with x.
-	Marks int
-	// Ungrouped is set for the Ungrouped and Generated files groups
-	// (rendered dim).
+	ID        string
+	Title     string
+	Add, Del  int
+	Hunks     int
+	Marks     int
 	Ungrouped bool
-	// Reviewed is how many of the group's hunks are marked reviewed.
-	Reviewed int
+	Reviewed  int
 }
 
-// HelpEntry is one key in the help overlay.
 type HelpEntry struct {
-	Keys string // e.g. "j/k", "ctrl+r"
+	Keys string
 	Desc string
 }
 
-// HelpSection is a titled block of keys.
 type HelpSection struct {
 	Title   string
 	Entries []HelpEntry

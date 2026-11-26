@@ -32,14 +32,12 @@ func TestReviewed(t *testing.T) {
 	if got, _ := s.Reviewed([]string{a, c}); got[a] || !got[c] {
 		t.Fatalf("after unmark: %v", got)
 	}
-	// Unmarking the last key of a shard removes the shard file.
 	if err := s.SetReviewed([]string{b}, false, now); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Join(dir, "reviewed", "b.json")); !os.IsNotExist(err) {
 		t.Fatalf("shard b kept: %v", err)
 	}
-	// Old marks are pruned when their shard is written.
 	later := now.Add(ReviewedTTL + time.Hour)
 	if err := s.SetReviewed([]string{"a" + strings.Repeat("e", 63)}, true, later); err != nil {
 		t.Fatal(err)
@@ -47,7 +45,6 @@ func TestReviewed(t *testing.T) {
 	if got, _ := s.Reviewed([]string{c}); got[c] {
 		t.Fatal("expired mark kept")
 	}
-	// A corrupt shard reads as empty and is rewritten.
 	if err := os.WriteFile(filepath.Join(dir, "reviewed", "f.json"), []byte("{"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +58,6 @@ func TestReviewed(t *testing.T) {
 	if got, _ := s.Reviewed([]string{f}); !got[f] {
 		t.Fatal("rewrite of a corrupt shard")
 	}
-	// Keys that could escape the directory are refused.
 	if _, err := s.Reviewed([]string{"../x"}); err == nil {
 		t.Fatal("bad key accepted")
 	}

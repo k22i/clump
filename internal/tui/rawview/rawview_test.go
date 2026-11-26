@@ -12,8 +12,6 @@ import (
 	"github.com/k22i/clump/internal/tui/view/viewtest"
 )
 
-// stub renders a hunk's header and body lines with two leading spaces, cut to
-// w cells when w > 0. It stands in for diffview.RenderHunk in these tests.
 func stub(h *gitdiff.Hunk, w int) []view.Line {
 	lines := make([]view.Line, 0, len(h.Lines)+1)
 	lines = append(lines, view.Line{
@@ -47,7 +45,6 @@ func stub(h *gitdiff.Hunk, w int) []view.Line {
 	return lines
 }
 
-// cut is view.Truncate with the stub's "no limit when w <= 0" rule.
 func cut(s string, w int) string {
 	if w <= 0 {
 		return s
@@ -55,8 +52,6 @@ func cut(s string, w int) string {
 	return view.Truncate(s, w)
 }
 
-// rangeGrouping is the grouping used by most tests: two groups interleaved
-// over the four hunks of lazygit/range-selection.txt.
 func rangeGrouping() group.Grouping {
 	return group.Grouping{Groups: []group.Group{
 		{ID: "g1", Title: "Rename docs", Hunks: []string{"h1", "h3"}},
@@ -69,7 +64,6 @@ func TestGoldenRawRange(t *testing.T) {
 	got := RenderAll(d, rangeGrouping(), view.PlainTheme(), 70, stub)
 	viewtest.Golden(t, "rv-range", viewtest.JoinPlain(got))
 
-	// The hunks alternate g1/g2/g1/g2, so every hunk starts a new boundary.
 	var boundaries, labels []string
 	for _, l := range got {
 		switch l.Kind {
@@ -138,7 +132,6 @@ func TestRawNoGroup(t *testing.T) {
 	if !strings.HasPrefix(h2Boundary, "┄┄ ?. (no group) ") {
 		t.Fatalf("h2 boundary = %q, want prefix %q", h2Boundary, "┄┄ ?. (no group) ")
 	}
-	// h1 keeps its own label and boundary.
 	for _, l := range got {
 		if l.Kind == view.KindHunk && l.HunkID == "h1" && l.Plain[:LabelWidth] != "[ 1] " {
 			t.Fatalf("h1 label = %q, want %q", l.Plain[:LabelWidth], "[ 1] ")
@@ -188,7 +181,6 @@ func TestRawFields(t *testing.T) {
 			}
 		}
 	}
-	// Hunk lines keep the file index the renderer reported.
 	seen := map[string]int{}
 	for _, l := range got {
 		if l.HunkID != "" {
@@ -217,7 +209,6 @@ func TestRawColoured(t *testing.T) {
 			t.Errorf("line %d: coloured Kind %v, plain Kind %v", i, coloured[i].Kind, plain[i].Kind)
 		}
 	}
-	// The label really is styled: at least one line carries an escape.
 	styled := false
 	for _, l := range coloured {
 		if l.Kind == view.KindHunk && strings.Contains(l.Text, "\x1b[") {

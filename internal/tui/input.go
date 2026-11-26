@@ -8,8 +8,6 @@ import (
 	"github.com/k22i/clump/internal/tui/view"
 )
 
-// lineInput is a minimal single-line editor (Bubbles' textinput pulls in a
-// clipboard dependency clump does not otherwise need).
 type lineInput struct {
 	prompt string
 	value  []rune
@@ -19,7 +17,6 @@ type lineInput struct {
 func (l *lineInput) set(s string) { l.value, l.pos = []rune(s), len([]rune(s)) }
 func (l *lineInput) text() string { return string(l.value) }
 
-// key applies a key press; it reports done (enter) or cancel (esc).
 func (l *lineInput) key(k tea.KeyPressMsg) (done, cancel bool) {
 	switch k.String() {
 	case "enter":
@@ -84,7 +81,6 @@ func (l *lineInput) insert(t string) {
 	l.value, l.pos = out, l.pos+len(rs)
 }
 
-// view renders the prompt and value with a block cursor, cut to width.
 func (l *lineInput) view(width int, th view.Theme, active bool) string {
 	before := string(l.value[:l.pos])
 	cur := " "
@@ -98,7 +94,6 @@ func (l *lineInput) view(width int, th view.Theme, active bool) string {
 	}
 	plain := l.prompt + before + cur + after
 	if view.Truncate(plain, width) != plain {
-		// Keep the cursor visible: show the tail.
 		tail := []rune(before)
 		for len(tail) > 0 && len([]rune(l.prompt))+len(tail)+2 > width {
 			tail = tail[1:]

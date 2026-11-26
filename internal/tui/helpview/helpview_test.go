@@ -12,14 +12,12 @@ import (
 	"github.com/k22i/clump/internal/tui/view/viewtest"
 )
 
-// sample is the help content the golden tests render.
 var sample = []view.HelpSection{
 	{Title: "Navigate", Entries: []view.HelpEntry{{Keys: "j/k", Desc: "next/previous group"}, {Keys: "enter", Desc: "focus the diff pane"}, {Keys: "]/[", Desc: "next/previous group from anywhere"}, {Keys: "a", Desc: "grouped / all hunks"}}},
 	{Title: "Search", Entries: []view.HelpEntry{{Keys: "/", Desc: "search"}, {Keys: "n/N", Desc: "next/previous match"}}},
 	{Title: "Edit", Entries: []view.HelpEntry{{Keys: "x", Desc: "mark hunk"}, {Keys: "M", Desc: "move marked hunks"}, {Keys: "R", Desc: "rename group"}, {Keys: "u/ctrl+r", Desc: "undo/redo"}}},
 }
 
-// splitLines splits rendered output into lines, treating "" as no lines.
 func splitLines(s string) []string {
 	if s == "" {
 		return nil
@@ -27,7 +25,6 @@ func splitLines(s string) []string {
 	return strings.Split(s, "\n")
 }
 
-// checkWidth fails when any line of got is wider than width cells.
 func checkWidth(t *testing.T, got string, width int) {
 	t.Helper()
 	for i, l := range splitLines(got) {

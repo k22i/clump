@@ -6,9 +6,8 @@ import (
 )
 
 func TestValidateGenerated(t *testing.T) {
-	d := mkDiff(2, 1, 2) // h1 h2 | h3 | h4 h5
+	d := mkDiff(2, 1, 2)
 	d.Files[1].Generated = "pattern go.sum"
-	// The model groups what it saw and names a generated hunk anyway.
 	r := Validate(d, `{"groups":[{"title":"A","hunks":["h1","h3"]},{"title":"B","hunks":["h4"]}]}`, ValidateOpts{})
 	mustCheck(t, d, r)
 	ids := func(i int) string { return strings.Join(r.Groups[i].Hunks, ",") }
@@ -26,7 +25,6 @@ func TestValidateGenerated(t *testing.T) {
 		t.Fatalf("notices = %q", r.Notices)
 	}
 
-	// The fallback keeps generated files out of the per-file groups.
 	fb := Validate(d, "not json", ValidateOpts{})
 	mustCheck(t, d, fb)
 	if !fb.Fallback || len(fb.Groups) != 3 || fb.Groups[2].ID != GeneratedID || ids(3) != "h3" {
@@ -64,7 +62,6 @@ func TestBuildLeavesOutGenerated(t *testing.T) {
 		t.Fatalf("no generated note in:\n%s", p.Prompt)
 	}
 
-	// Tier 2 summarises only the reviewable files.
 	big := mkDiff(1, 1, 1)
 	big.Files[0].Generated = "x"
 	for _, h := range big.Hunks {

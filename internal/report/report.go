@@ -1,6 +1,3 @@
-// Package report renders a grouped diff as Markdown (for `y` and --plain, a
-// PR-description-style summary) and as JSON (for --json, scripts and
-// agents). Both reflect the effective grouping, edits included.
 package report
 
 import (
@@ -15,27 +12,21 @@ import (
 	"github.com/k22i/clump/internal/group"
 )
 
-// Doc is one grouped diff as the UI and the outputs see it.
 type Doc struct {
-	Title    string
-	Ref      string
-	Diff     *gitdiff.Diff
-	Grouping group.Grouping
-	Notices  []string
-	Provider string
-	DiffHash string
-	Cached   bool
-	Edited   bool
-	Fallback bool
-	// Snapshots are kept edit snapshots (from the override file).
+	Title     string
+	Ref       string
+	Diff      *gitdiff.Diff
+	Grouping  group.Grouping
+	Notices   []string
+	Provider  string
+	DiffHash  string
+	Cached    bool
+	Edited    bool
+	Fallback  bool
 	Snapshots []cache.Snapshot
-	// Comments are the review comments of the diff, pre-placed on their
-	// groups (internal/comment: line, file and group comments). Empty
-	// when the report comes from a path without comments.
-	Comments []comment.Placed
+	Comments  []comment.Placed
 }
 
-// GroupStats returns the +/- totals, file count and hunk count of a group.
 func GroupStats(d *gitdiff.Diff, g group.Group) (add, del, files int) {
 	seen := map[int]bool{}
 	for _, id := range g.Hunks {
@@ -48,7 +39,6 @@ func GroupStats(d *gitdiff.Diff, g group.Group) (add, del, files int) {
 	return add, del, len(seen)
 }
 
-// fileRows lists a group's files in diff order with their hunk counts.
 func fileRows(d *gitdiff.Diff, g group.Group) []string {
 	type row struct {
 		n, add, del int
@@ -93,7 +83,6 @@ func sortInts(a []int) {
 	}
 }
 
-// Markdown renders doc as a Markdown summary suitable for a PR description.
 func Markdown(doc Doc) string {
 	var b strings.Builder
 	d := doc.Diff
@@ -144,8 +133,6 @@ func Markdown(doc Doc) string {
 			}
 		}
 	}
-	// Comments on targets that are in no group (an ungrouped hunk, the
-	// raw file list before grouping) close the review.
 	if rest := groupComments(doc, ""); len(rest) > 0 {
 		b.WriteString("\n## Review comments\n\n")
 		for i, c := range rest {
@@ -161,8 +148,6 @@ func Markdown(doc Doc) string {
 	return b.String()
 }
 
-// groupComments lists the review comments showing in group groupID, stable
-// overall order, numbered within the report.
 func groupComments(doc Doc, groupID string) []comment.Placed {
 	var out []comment.Placed
 	for _, c := range doc.Comments {
@@ -173,8 +158,6 @@ func groupComments(doc Doc, groupID string) []comment.Placed {
 	return out
 }
 
-// commentLabel names a comment the way a reader (and an agent asked to fix
-// it) can quote it back: the group, the file, or the file and line.
 func commentLabel(c comment.Placed) string {
 	var at string
 	switch c.Kind {
@@ -198,7 +181,6 @@ func plural(n int, word string) string {
 	return fmt.Sprintf("%d %ss", n, word)
 }
 
-// JSONHunk is one hunk in the --json output.
 type JSONHunk struct {
 	ID      string         `json:"id"`
 	File    string         `json:"file"`
@@ -210,7 +192,6 @@ type JSONHunk struct {
 	Pseudo  bool           `json:"pseudo,omitempty"`
 }
 
-// JSONGroup is one group in the --json output.
 type JSONGroup struct {
 	ID          string     `json:"id"`
 	Title       string     `json:"title"`
@@ -220,7 +201,6 @@ type JSONGroup struct {
 	Hunks       []JSONHunk `json:"hunks"`
 }
 
-// JSONDoc is the --json output.
 type JSONDoc struct {
 	Version   int           `json:"version"`
 	Title     string        `json:"title"`
@@ -240,7 +220,6 @@ type JSONDoc struct {
 	Comments  []JSONComment `json:"comments,omitempty"`
 }
 
-// JSONComment is a review comment in the --json output.
 type JSONComment struct {
 	Kind    string    `json:"kind"`
 	GroupID string    `json:"group,omitempty"`
@@ -253,14 +232,12 @@ type JSONComment struct {
 	Anchor  string    `json:"anchor"`
 }
 
-// JSONSnap is a kept snapshot in the --json output.
 type JSONSnap struct {
 	Name   string        `json:"name"`
 	At     time.Time     `json:"at"`
 	Groups []group.Group `json:"groups"`
 }
 
-// JSON renders doc as indented JSON ending in a newline.
 func JSON(doc Doc) ([]byte, error) {
 	d := doc.Diff
 	add, del := d.Stats()
