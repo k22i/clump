@@ -455,6 +455,8 @@ Press `?` for the same list inside the TUI.
 | `}/{` | next/previous hunk (diff pane) |
 | `ctrl+d/ctrl+u` | half page down/up |
 | `a` | toggle grouped / all hunks in file order |
+| `wheel` | scroll the window over the diff pane (or the group list); the highlight stays on the edge the window scrolls past |
+| `click` | put the cursor on the line (diff pane) or group (list) under the pointer |
 
 **Review**
 

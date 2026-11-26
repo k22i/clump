@@ -82,6 +82,8 @@ func (m *Model) scrollToGroup() {
 	}
 }
 
+// setDcur moves the diff cursor to i, scrolling the window to keep it in
+// sight.
 func (m *Model) setDcur(i int) {
 	lines := m.ensureLines()
 	if len(lines) == 0 {
@@ -96,12 +98,18 @@ func (m *Model) setDcur(i int) {
 	if m.dcur >= m.scroll+h {
 		m.scroll = m.dcur - h + 1
 	}
-	if m.mode == modeAll {
-		// Keep the group cursor on the group under the diff cursor.
-		if id := m.hunkAt(m.dcur); id != "" {
-			if gi := m.doc.hist.Current().GroupOf(id); gi >= 0 {
-				m.cursor = gi
-			}
+	m.syncGroupCursor()
+}
+
+// syncGroupCursor keeps the group cursor on the group under the diff cursor
+// in the all view.
+func (m *Model) syncGroupCursor() {
+	if m.mode != modeAll {
+		return
+	}
+	if id := m.hunkAt(m.dcur); id != "" {
+		if gi := m.doc.hist.Current().GroupOf(id); gi >= 0 {
+			m.cursor = gi
 		}
 	}
 }

@@ -280,8 +280,9 @@ func (m *Model) renderDiff(w, h int) string {
 	if len(lines) == 0 {
 		return ""
 	}
-	if m.scroll > len(lines)-1 {
-		m.scroll = max(0, len(lines)-1)
+	// The last page stays full: the window never scrolls past the last line.
+	if maxScroll := max(0, len(lines)-h); m.scroll > maxScroll {
+		m.scroll = maxScroll
 	}
 	matchSet := map[int]bool{}
 	for _, i := range m.matches {

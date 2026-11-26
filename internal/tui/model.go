@@ -398,6 +398,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.onGrouped(msg)
 	case tea.KeyPressMsg:
 		return m, m.onKey(msg)
+	case tea.MouseMsg:
+		m.onMouse(msg)
+		return m, nil
 	case tea.PasteMsg:
 		if m.ov == ovInput || m.ov == ovSearch {
 			return m, m.forwardInput(msg)
@@ -420,6 +423,8 @@ func (m *Model) View() tea.View {
 	v := tea.NewView(m.render())
 	v.AltScreen = true
 	v.WindowTitle = m.windowTitle()
+	// Click and wheel events drive the panes (see mouse.go).
+	v.MouseMode = tea.MouseModeCellMotion
 	return v
 }
 

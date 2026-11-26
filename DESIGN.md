@@ -382,6 +382,16 @@ Markdown, `r` regroup, `m` provider, `?` help, `q` quit, `s` side-by-side/unifie
 instead; `esc` clears the query), `R` rename/explain, `d` delete, `J`/`K` reorder, `g` merge (one-shot) / group now
 (watch, when nothing is grouped yet), `u` undo, `ctrl+r` redo. Watch: `A` auto-group toggle.
 
+Mouse (`MouseModeCellMotion`, so clicks and the wheel arrive while the terminal keeps its own
+text selection on shift): the wheel scrolls the window (`m.scroll`, `wheelStep` lines a notch)
+instead of walking the cursor down the pane — the pane under the pointer, or the group list one
+group per notch. The cursor never scrolls out of sight: a window scrolled past it pins it to the
+nearest edge (`scrollDiff`/`pinDcur`), so the arrow keys carry on from there inside the window.
+A left click puts the cursor on what is drawn there: the line at `m.scroll + row - diffRect.y`
+in the diff pane, or the group at that row of the list's window (`listview.Window`). `diffRect`
+and `listRect` mirror `renderBody`'s layout, so the mapping holds in the wide and stacked
+layouts both. Overlays swallow mouse events.
+
 Review: `c` marks the file block under the diff cursor (or the selected group, from the list)
 reviewed. A finished group moves the cursor to the next group that is not reviewed, wrapping
 around. The Generated files group and empty groups are not counted in the header's `N/M reviewed`.

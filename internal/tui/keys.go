@@ -18,6 +18,7 @@ func HelpSections(watch bool) []view.HelpSection {
 			{Keys: "}/{", Desc: "next/previous hunk (diff pane)"},
 			{Keys: "ctrl+d/ctrl+u", Desc: "half page down/up"},
 			{Keys: "a", Desc: "toggle grouped / all hunks in file order"},
+			{Keys: "wheel/click", Desc: "scroll the pane, or put the cursor on a line or group"},
 		}},
 		{Title: "Review", Entries: []view.HelpEntry{
 			{Keys: "c", Desc: "mark the file (diff pane) or group (list) reviewed; then on to the next unreviewed group"},
